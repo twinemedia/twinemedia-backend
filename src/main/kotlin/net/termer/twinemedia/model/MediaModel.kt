@@ -2,6 +2,7 @@ package net.termer.twinemedia.model
 
 import io.vertx.core.json.JsonArray
 import io.vertx.ext.sql.ResultSet
+import io.vertx.kotlin.ext.sql.queryAwait
 import io.vertx.kotlin.ext.sql.queryWithParamsAwait
 import net.termer.twinemedia.db.Database.client
 
@@ -41,5 +42,31 @@ suspend fun fetchMedia(mediaId : String) : ResultSet? {
     return client?.queryWithParamsAwait(
             "SELECT * FROM media WHERE media_id = ?",
             JsonArray().add(mediaId)
+    )
+}
+
+/**
+ * Fetches a list of media
+ * @param offset The offset of the media to fetch
+ * @param limit The amount of media to return
+ * @since 1.0
+ */
+suspend fun fetchMediaList(offset : Int, limit : Int) : ResultSet? {
+    return client?.queryWithParamsAwait(
+            """
+                SELECT
+                media_id AS id,
+                media_name AS name,
+                media_filename AS filename,
+                media_size AS size,
+                media_mime AS mime,
+                media_created_on AS created_on
+                FROM media
+                WHERE media_parent IS NULL
+                OFFSET ? LIMIT ?
+            """.trimIndent(),
+            JsonArray()
+                    .add(offset)
+                    .add(limit)
     )
 }

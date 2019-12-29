@@ -1,6 +1,7 @@
 package net.termer.twinemedia.controller
 
 import io.vertx.core.json.JsonObject
+import io.vertx.kotlin.core.file.deleteAwait
 import io.vertx.kotlin.coroutines.dispatcher
 import kotlinx.coroutines.GlobalScope
 import kotlinx.coroutines.launch
@@ -22,8 +23,8 @@ fun uploadController() {
 
     // Accepts media uploads
     post("/api/v1/media/upload", domain) { r ->
+        r.request().pause()
         GlobalScope.launch(vertx().dispatcher()) {
-            r.request().pause()
             if (r.protectWithPermission("upload")) {
                 // Check file size header
                 val length = r.request().getHeader("content-length").toLong()
@@ -36,6 +37,9 @@ fun uploadController() {
                 // Generate ID
                 val id = generateString(10)
 
+                // File save location
+                var saveLoc = "";
+
                 // Only accept upload if not over the size limit
                 if(length <= config.max_upload) {
                     var upload = false
@@ -45,14 +49,6 @@ fun uploadController() {
                     r.request().isExpectMultipart = true
                     r.request().uploadHandler { upl ->
                         upload = true
-
-                        // Handle exceptions
-                        upl.exceptionHandler {
-                            logger.error("Failed to handle upload:")
-                            it.printStackTrace()
-                            upload = false
-                            error = "Internal error"
-                        }
 
                         // Resolve extension
                         var extension = ""
@@ -65,9 +61,27 @@ fun uploadController() {
                         filename = upl.filename()
                         type = upl.contentType()
                         file = id+extension
+                        saveLoc = config.upload_location+id+extension
 
                         // Stream upload to file
-                        upl.streamToFileSystem(config.upload_location+id+extension)
+                        upl.streamToFileSystem(saveLoc)
+
+                        // Handle upload errors
+                        upl.exceptionHandler {
+                            logger.error("Failed to handle upload:")
+                            it.printStackTrace()
+                            upload = false
+                            error = "Internal error"
+                            GlobalScope.launch(vertx().dispatcher()) {
+                                logger.info("Deleting file $saveLoc")
+                                vertx().fileSystem().deleteAwait(saveLoc)
+                                logger.info("Deleted")
+                            }
+                        }
+                    }
+
+                    r.addBodyEndHandler {
+                        println("FFFFFFFFFF")
                     }
 
                     r.request().endHandler {

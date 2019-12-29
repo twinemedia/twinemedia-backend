@@ -6,10 +6,7 @@ import net.termer.twine.modules.TwineModule
 import net.termer.twine.modules.TwineModule.Priority.LOW
 import net.termer.twine.utils.Reader
 import net.termer.twine.utils.Writer
-import net.termer.twinemedia.controller.accountController
-import net.termer.twinemedia.controller.authController
-import net.termer.twinemedia.controller.serveController
-import net.termer.twinemedia.controller.uploadController
+import net.termer.twinemedia.controller.*
 import net.termer.twinemedia.db.dbClose
 import net.termer.twinemedia.db.dbInit
 import net.termer.twinemedia.jwt.jwtInit
@@ -47,7 +44,7 @@ class Module : TwineModule {
             } else {
                 Writer.write("configs/twinemedia.json", Json.encodePrettily(config))
             }
-            var uploadLoc = File(config.upload_location)
+            val uploadLoc = File(config.upload_location)
             if(!uploadLoc.exists() || !uploadLoc.isDirectory) {
                 uploadLoc.mkdirs()
             }
@@ -65,6 +62,7 @@ class Module : TwineModule {
             authController()
             accountController()
             serveController()
+            mediaController()
 
             // Allow upload status event bus channels over websocket
             ws().outboundRegex("twinemedia\\..*")

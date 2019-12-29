@@ -164,7 +164,28 @@ suspend fun RoutingContext.hasPermission(permission : String) : Boolean {
 
     if(authenticated()) {
         // Check if permission is present, or user is an administrator
-        has = account().getJsonArray("account_permissions").contains(permission) || account().getBoolean("account_admin")
+        if(account().getBoolean("account_admin")) {
+            has = true
+        } else {
+            // Check if the user has the permission
+            if(account().getJsonArray("account_permissions").contains(permission)) {
+                has = true
+            } else if(permission.contains('.')) {
+                // Check permission tree
+                val permissions = account().getJsonArray("account_permissions")
+                var perm = StringBuilder()
+                for(child in permission.split('.')) {
+                    perm.append("$child.")
+                    for(p in permissions)
+                        if(p == "$perm*") {
+                            has = true
+                            break
+                        }
+                    if(has)
+                        break
+                }
+            }
+        }
     }
 
     return has
