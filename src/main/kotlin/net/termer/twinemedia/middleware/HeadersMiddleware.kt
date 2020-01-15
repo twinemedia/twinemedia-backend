@@ -13,6 +13,7 @@ fun headersMiddleware() {
     // Handle all /api/ routes on the configured domain
     handler("/api/*", domains().byName(config.domain).domain()) { r ->
         r.response().headers()["Content-Type"] = "application/json"
+        r.response().headers()["Accept"] = "application/json, application/x-www-form-urlencoded"
         r.response().headers()["Access-Control-Allow-Credentials"] = "true"
         r.response().headers()["Access-Control-Allow-Origin"] =
                 if (config.frontend_host == "*") r.request().getHeader("Origin") else config.frontend_host

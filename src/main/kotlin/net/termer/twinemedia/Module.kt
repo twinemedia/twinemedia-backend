@@ -4,6 +4,7 @@ import io.vertx.core.json.Json
 import net.termer.twine.ServerManager.ws
 import net.termer.twine.modules.TwineModule
 import net.termer.twine.modules.TwineModule.Priority.LOW
+import net.termer.twine.utils.FileChecker
 import net.termer.twine.utils.Reader
 import net.termer.twine.utils.Writer
 import net.termer.twinemedia.controller.*
@@ -48,6 +49,12 @@ class Module : TwineModule {
             if(!uploadLoc.exists() || !uploadLoc.isDirectory) {
                 uploadLoc.mkdirs()
             }
+
+            // Ensure directories exist
+            FileChecker.createIfNotPresent(arrayOf(
+                    config.upload_location,
+                    config.upload_location+"/thumbnails/"
+            ))
 
             // Setup database
             logger.info("Setting up database...")

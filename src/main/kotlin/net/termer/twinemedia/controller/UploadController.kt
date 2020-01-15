@@ -1,6 +1,7 @@
 package net.termer.twinemedia.controller
 
 import io.vertx.core.json.JsonObject
+import io.vertx.kotlin.core.executeBlockingAwait
 import io.vertx.kotlin.core.file.deleteAwait
 import io.vertx.kotlin.coroutines.dispatcher
 import kotlinx.coroutines.GlobalScope
@@ -12,7 +13,16 @@ import net.termer.twine.utils.StringFilter.generateString
 import net.termer.twinemedia.Module.Companion.config
 import net.termer.twinemedia.Module.Companion.logger
 import net.termer.twinemedia.model.createMedia
-import net.termer.twinemedia.util.*
+import net.termer.twinemedia.model.fetchMediaByHash
+import net.termer.twinemedia.util.error
+import net.termer.twinemedia.util.protectWithPermission
+import net.termer.twinemedia.util.success
+import net.termer.twinemedia.util.userId
+import sun.misc.BASE64Encoder
+import java.io.BufferedInputStream
+import java.io.FileInputStream
+import java.security.MessageDigest
+
 
 /**
  * Sets up all upload routes
@@ -80,20 +90,53 @@ fun uploadController() {
                         }
                     }
 
-                    r.addBodyEndHandler {
-                        println("FFFFFFFFFF")
-                    }
-
                     r.request().endHandler {
                         GlobalScope.launch(vertx().dispatcher()) {
                             try {
-                                // Fetch info and create media entry
-                                createMedia(id, filename, length, type, file)
+                                // Calculate file hash
+                                val hash = vertx().executeBlockingAwait<String> {
+                                    val buffer = ByteArray(8192)
+                                    var count: Int
+                                    val digest = MessageDigest.getInstance("SHA-256")
+                                    val bis = BufferedInputStream(FileInputStream(saveLoc))
+                                    while (bis.read(buffer).also { count = it } > 0) {
+                                        digest.update(buffer, 0, count)
+                                    }
+                                    bis.close()
+
+                                    it.complete(BASE64Encoder().encode(digest.digest()))
+                                }
+
+                                // Check if hash was created
+                                if(hash == null) {
+                                    upload = false
+                                    error = "Failed to generate file hash"
+                                    logger.info("Deleting file $saveLoc")
+                                    vertx().fileSystem().deleteAwait(saveLoc)
+                                    logger.info("Deleted")
+                                } else {
+                                    // Check if a file with the generated hash already exists
+                                    val filesRes = fetchMediaByHash(hash)
+                                    if(filesRes != null && filesRes.rows.size > 0) {
+                                        // Get already uploaded file's filename
+                                        file = filesRes.rows[0].getString("media_file")
+
+                                        // Delete duplicate
+                                        logger.info("Deleting file $saveLoc")
+                                        vertx().fileSystem().deleteAwait(saveLoc)
+                                        logger.info("Deleted")
+                                    }
+
+                                    createMedia(id, filename, length, type, file, r.userId(), hash)
+                                }
                             } catch(e : Exception) {
                                 logger.error("Failed to create media entry:")
                                 e.printStackTrace()
                                 upload = false
                                 error = "Database error"
+                                logger.info("Deleting file $saveLoc")
+                                vertx().fileSystem().deleteAwait(saveLoc)
+                                logger.info("Deleted")
                             }
 
                             // Send response if not already sent

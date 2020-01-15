@@ -29,6 +29,9 @@ dependencies {
     implementation("io.vertx:vertx-auth-jwt:3.8.4")
     implementation("org.jetbrains.kotlinx:kotlinx-coroutines-core:1.3.2")
     implementation("de.mkammerer:argon2-jvm:2.6")
+    implementation("net.bramp:ffmpeg:0.6.2")
+
+    // Twine jar
     implementation(files("libs/twine-1.3.jar"))
 
     // Use the Kotlin JDK 8 standard library.
