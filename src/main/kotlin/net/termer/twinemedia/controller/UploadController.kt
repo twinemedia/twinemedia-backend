@@ -3,6 +3,7 @@ package net.termer.twinemedia.controller
 import io.vertx.core.json.JsonObject
 import io.vertx.kotlin.core.executeBlockingAwait
 import io.vertx.kotlin.core.file.deleteAwait
+import io.vertx.kotlin.core.file.existsAwait
 import io.vertx.kotlin.coroutines.dispatcher
 import kotlinx.coroutines.GlobalScope
 import kotlinx.coroutines.launch
@@ -14,10 +15,7 @@ import net.termer.twinemedia.Module.Companion.config
 import net.termer.twinemedia.Module.Companion.logger
 import net.termer.twinemedia.model.createMedia
 import net.termer.twinemedia.model.fetchMediaByHash
-import net.termer.twinemedia.util.error
-import net.termer.twinemedia.util.protectWithPermission
-import net.termer.twinemedia.util.success
-import net.termer.twinemedia.util.userId
+import net.termer.twinemedia.util.*
 import sun.misc.BASE64Encoder
 import java.io.BufferedInputStream
 import java.io.FileInputStream
@@ -32,6 +30,7 @@ fun uploadController() {
     val domain = Twine.domains().byName(config.domain).domain()
 
     // Accepts media uploads
+    //
     post("/api/v1/media/upload", domain) { r ->
         r.request().pause()
         GlobalScope.launch(vertx().dispatcher()) {
@@ -107,6 +106,9 @@ fun uploadController() {
                                     it.complete(BASE64Encoder().encode(digest.digest()))
                                 }
 
+                                // Thumbnail file
+                                var thumbnail : String? = null
+
                                 // Check if hash was created
                                 if(hash == null) {
                                     upload = false
@@ -121,22 +123,54 @@ fun uploadController() {
                                         // Get already uploaded file's filename
                                         file = filesRes.rows[0].getString("media_file")
 
+                                        // Get already uploaded file's thumbnail
+                                        thumbnail = filesRes.rows[0].getString("media_thumbnail_file")
+
                                         // Delete duplicate
                                         logger.info("Deleting file $saveLoc")
                                         vertx().fileSystem().deleteAwait(saveLoc)
                                         logger.info("Deleted")
+                                    } else if(type.startsWith("video/")) {
+                                        // Generate thumbnail ID
+                                        val thumbId = generateString(10)
+
+                                        try {
+                                            // Probe file
+                                            val probe = probeFile(saveLoc)
+
+                                            if(probe != null) {
+                                                // Generate preview
+                                                createVideoThumbnail(saveLoc, (probe.format.duration / 2).toInt(), "${config.upload_location}thumbnails/$thumbId.jpg")
+                                                thumbnail = "$thumbId.jpg"
+                                            }
+                                        } catch(thumbEx : Exception) {
+                                            // Failed to generate thumbnail
+                                        }
+                                    } else if(type.startsWith("image/") || type.startsWith("audio/")) {
+                                        // Generate thumbnail ID
+                                        val thumbId = generateString(10)
+
+                                        try {
+                                            // Generate preview
+                                            createImagePreview(saveLoc, "${config.upload_location}thumbnails/$thumbId.jpg")
+                                            thumbnail = "$thumbId.jpg"
+                                        } catch(thumbEx : Exception) {
+                                            // Failed to generate thumbnail
+                                        }
                                     }
 
-                                    createMedia(id, filename, length, type, file, r.userId(), hash)
+                                    createMedia(id, filename, length, type, file, r.userId(), hash, thumbnail)
                                 }
                             } catch(e : Exception) {
                                 logger.error("Failed to create media entry:")
                                 e.printStackTrace()
                                 upload = false
                                 error = "Database error"
-                                logger.info("Deleting file $saveLoc")
-                                vertx().fileSystem().deleteAwait(saveLoc)
-                                logger.info("Deleted")
+                                if(vertx().fileSystem().existsAwait(saveLoc)) {
+                                    logger.info("Deleting file $saveLoc")
+                                    vertx().fileSystem().deleteAwait(saveLoc)
+                                    logger.info("Deleted")
+                                }
                             }
 
                             // Send response if not already sent

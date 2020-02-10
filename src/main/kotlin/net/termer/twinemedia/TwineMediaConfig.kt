@@ -24,4 +24,7 @@ class TwineMediaConfig {
     var crypt_memory_kb = 1048576
 
     var frontend_host = "*"
+
+    var ffmpeg_path = "/usr/bin/ffmpeg"
+    var ffprobe_path = "/usr/bin/ffprobe"
 }

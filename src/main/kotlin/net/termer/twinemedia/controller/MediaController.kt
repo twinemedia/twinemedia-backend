@@ -25,7 +25,14 @@ import java.lang.NumberFormatException
 fun mediaController() {
     val domain = Twine.domains().byName(config.domain).domain()
 
-    // Returns all media, or searches media
+    // Returns all media files
+    // Permissions:
+    //  - files.list
+    // Parameters:
+    //  - offset: Integer at least 0 that sets the offset of returned results
+    //  - limit: Integer from 0 to 100, sets the amount of results to return
+    //  - mime: String, the mime pattern to search for, can use % as a wildcard character
+    //  - order: Integer from 0 to 5, denotes the type of sorting to use (date newest to oldest, date oldest to newest, alphabetically ascending, alphabetically descending, size large to small, size small to large)
     get("/api/v1/media", domain) { r ->
         val params = r.request().params()
         GlobalScope.launch(vertx().dispatcher()) {
@@ -34,20 +41,12 @@ fun mediaController() {
                     // Collect parameters
                     val offset = (if (params.contains("offset")) params["offset"].toInt() else 0).coerceAtLeast(0)
                     val limit = (if(params.contains("limit")) params["limit"].toInt() else 100).coerceIn(0, 100)
-                    val sort = (if(params.contains("sort")) params["sort"].toInt() else 0).coerceIn(0, 5)
                     val mime = if(params.contains("mime")) params["mime"] else "*"
-                    val query = if(params.contains("query")) params["query"] else ""
-                    val searchItems = JsonObject()
-                            .put("name", if(params.contains("searchNames")) params["searchNames"].toBoolean() else true)
-                            .put("filename", if(params.contains("searchFilenames")) params["searchFilenames"].toBoolean() else true)
-                            .put("tag", if(params.contains("searchTags")) params["searchTags"].toBoolean() else true)
-                            .put("description", if(params.contains("searchDescriptions")) params["searchDescriptions"].toBoolean() else true)
-
-                    // TODO Handle search
+                    val order = (if(params.contains("order")) params["order"].toInt() else 0).coerceIn(0, 5)
 
                     try {
                         // Fetch files
-                        val media = fetchMediaList(offset, limit)
+                        val media = fetchMediaList(offset, limit, mime, order)
 
                         // Create JSON array of files
                         val arr = JsonArray()
@@ -56,7 +55,7 @@ fun mediaController() {
                             arr.add(file)
 
                         // Send files
-                        r.success(JsonObject().put("media", arr))
+                        r.success(JsonObject().put("files", arr))
                     } catch(e : Exception) {
                         logger.error("Failed to create fetch files:")
                         e.printStackTrace()
@@ -69,7 +68,74 @@ fun mediaController() {
         }
     }
 
-    // Media tag search
+    // Searches media files using a plaintext query
+    // Permissions:
+    //  - files.list
+    // Parameters:
+    //  - query: String, the plaintext query to search
+    //  - offset: Integer at least 0 that sets the offset of returned results
+    //  - limit: Integer from 0 to 100, sets the amount of results to return
+    //  - mime: String, the mime pattern to search for, can use % as a wildcard character
+    //  - order: Integer from 0 to 5, denotes the type of sorting to use (date newest to oldest, date oldest to newest, alphabetically ascending, alphabetically descending, size large to small, size small to large)
+    //  - searchNames: Bool, whether to search file names
+    //  - searchFilenames: Bool, whether to search file filenames
+    //  - searchTags: Bool, whether to search file tags
+    //  - searchDescriptions: Bool, whether to search file descriptions
+    get("/api/v1/media/search", domain) { r ->
+        val params = r.request().params()
+        GlobalScope.launch(vertx().dispatcher()) {
+            if(r.protectWithPermission("files.list")) {
+                try {
+                    // Collect parameters
+                    val offset = (if (params.contains("offset")) params["offset"].toInt() else 0).coerceAtLeast(0)
+                    val limit = (if(params.contains("limit")) params["limit"].toInt() else 100).coerceIn(0, 100)
+                    val mime = if(params.contains("mime")) params["mime"] else "*"
+                    val order = (if(params.contains("order")) params["order"].toInt() else 0).coerceIn(0, 5)
+                    val query = if(params.contains("query")) params["query"] else ""
+                    val searchItems = JsonObject()
+                            .put("name", if(params.contains("searchNames")) params["searchNames"].toBoolean() else true)
+                            .put("filename", if(params.contains("searchFilenames")) params["searchFilenames"].toBoolean() else true)
+                            .put("tag", if(params.contains("searchTags")) params["searchTags"].toBoolean() else true)
+                            .put("description", if(params.contains("searchDescriptions")) params["searchDescriptions"].toBoolean() else true)
+
+                    try {
+                        // Fetch files
+                        val media = fetchMediaByPlaintextQuery(query, offset, limit, order, mime,
+                                searchItems.getBoolean("name"),
+                                searchItems.getBoolean("filename"),
+                                searchItems.getBoolean("tag"),
+                                searchItems.getBoolean("description")
+                        )
+
+                        // Create JSON array of files
+                        val arr = JsonArray()
+
+                        for (file in media?.rows.orEmpty())
+                            arr.add(file)
+
+                        // Send files
+                        r.success(JsonObject().put("files", arr))
+                    } catch(e : Exception) {
+                        logger.error("Failed to create fetch files:")
+                        e.printStackTrace()
+                        r.error("Database error")
+                    }
+                } catch(e : Exception) {
+                    r.error("Invalid parameters")
+                }
+            }
+        }
+    }
+
+    // Media file tag search
+    // Permissions:
+    //  - files.list
+    // Parameters:
+    //  - tags: JSON array, the tags to search for
+    //  - offset: Integer at least 0 that sets the offset of returned results
+    //  - limit: Integer from 0 to 100, sets the amount of results to return
+    //  - mime: String, the mime pattern to search for, can use % as a wildcard character
+    //  - order: Integer from 0 to 5, denotes the type of sorting to use (date newest to oldest, date oldest to newest, alphabetically ascending, alphabetically descending, size large to small, size small to large)
     get("/api/v1/media/tags", domain) { r ->
         val params = r.request().params()
         GlobalScope.launch(vertx().dispatcher()) {
@@ -79,10 +145,12 @@ fun mediaController() {
                         val tags = JsonArray(params["tags"])
                         val offset = if(params.contains("offset")) params["offset"].toInt().coerceAtLeast(0) else 0
                         val limit = if(params.contains("limit")) params["limit"].toInt().coerceIn(0, 100) else 100
+                        val order = if(params.contains("order")) params["order"].toInt() else 0
+                        val mime = if(params.contains("mime")) params["mime"] else "%"
 
                         try {
                             // Fetch files
-                            val filesRes = fetchMediaListByTags(tags, offset, limit)
+                            val filesRes = fetchMediaListByTags(tags, mime, order, offset, limit)
 
                             // Compose response
                             val files = JsonArray()
@@ -107,6 +175,10 @@ fun mediaController() {
     }
 
     // Returns info about the specified media file
+    // Permissions:
+    //  - files.view
+    // Route parameters:
+    //  - file: String, the alphanumeric ID of the requested media file
     get("/api/v1/media/:file", domain) { r ->
         val params = r.request().params()
         GlobalScope.launch(vertx().dispatcher()) {
@@ -173,6 +245,14 @@ fun mediaController() {
     }
 
     // Edits a media file's metadata
+    // Permissions:
+    //  - files.edit
+    // Route parameters:
+    //  - file: String, the alphanumeric ID of the requested media file
+    // Parameters:
+    //  - name (optional): String, the new name of the media file, can be null
+    //  - desc (optional): String, the new description of the media file, can be null
+    //  - tags (optional): Json array, the new tags to give this media file
     post("/api/v1/media/:file/edit", domain) { r ->
         val params = r.request().params()
         GlobalScope.launch(vertx().dispatcher()) {
@@ -212,6 +292,78 @@ fun mediaController() {
                     }
                 } catch(e : Exception) {
                     logger.error("Failed to fetch file:")
+                    e.printStackTrace()
+                    r.error("Database error")
+                }
+            }
+        }
+    }
+
+    // Deletes a media file
+    // Permissions:
+    //  - files.delete
+    // Route parameters:
+    //  - file: String, the alphanumeric ID of the requested media file
+    post("/api/v1/media/:file/delete", domain) { r ->
+        GlobalScope.launch(vertx().dispatcher()) {
+            if(r.protectWithPermission("files.delete")) {
+                val fileId = r.pathParam("file")
+
+                try {
+                    val mediaRes = fetchMedia(fileId)
+
+                    if(mediaRes != null && mediaRes.rows.size > 0) {
+                        val media = mediaRes.rows[0]
+
+                        // Check if files with the same hash exist
+                        val hashMediaRes = fetchMediaByHash(media.getString("media_file_hash"))
+
+                        if(hashMediaRes != null && hashMediaRes.rows.size < 2) {
+                            // Delete media files
+                            val fs = vertx().fileSystem()
+                            try {
+                                // Delete main file
+                                val file = media.getString("media_file")
+
+                                fs.deleteAwait(config.upload_location + file)
+                            } catch (e: Exception) {
+                                // Failed to delete main file
+                                logger.error("Failed to delete file ${media.getString("media_file")}:")
+                                e.printStackTrace()
+                                r.error("Internal error")
+                                return@launch
+                            }
+                            if (media.getBoolean("media_thumbnail")) {
+                                try {
+                                    // Delete thumbnail file
+                                    val file = media.getString("media_thumbnail_file")
+
+                                    fs.deleteAwait(config.upload_location + "thumbnails/" + file)
+                                } catch (e: Exception) {
+                                    // Failed to delete thumbnail file
+                                    logger.error("Failed to delete file ${media.getString("media_thumbnail_file")}")
+                                    e.printStackTrace()
+                                    r.error("Internal error")
+                                    return@launch
+                                }
+                            }
+                        }
+
+                        try {
+                            // Delete database entry
+                            deleteMedia(fileId)
+
+                            r.success()
+                        } catch(e : Exception) {
+                            logger.error("Failed to delete file entry for ID $fileId:")
+                            e.printStackTrace()
+                            r.error("Internal error")
+                        }
+                    } else {
+                        r.error("File does not exist")
+                    }
+                } catch(e : Exception) {
+                    logger.error("Failed to delete file:")
                     e.printStackTrace()
                     r.error("Database error")
                 }

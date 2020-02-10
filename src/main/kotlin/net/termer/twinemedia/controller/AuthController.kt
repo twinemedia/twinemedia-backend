@@ -26,6 +26,9 @@ fun authController() {
     var domain = domains().byName(config.domain).domain()
 
     // Login route
+    // Parameters:
+    //  - email: String, the email of the account
+    //  - password: String, the password of the account
     post("/api/v1/auth", domain) { r ->
         // Check credentials
         val params = r.request().params()
