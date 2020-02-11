@@ -30,7 +30,10 @@ fun uploadController() {
     val domain = Twine.domains().byName(config.domain).domain()
 
     // Accepts media uploads
-    //
+    // Permissions:
+    //  - upload
+    // Parameters:
+    //  - Provide one file in multipart form data, called "file"
     post("/api/v1/media/upload", domain) { r ->
         r.request().pause()
         GlobalScope.launch(vertx().dispatcher()) {

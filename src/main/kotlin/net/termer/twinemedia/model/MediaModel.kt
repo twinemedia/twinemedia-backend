@@ -16,7 +16,7 @@ import net.termer.twinemedia.db.Database.client
  * 4 = Size, largest to smallest
  * 5 = Size, smallest to largest
  * @param order The order
- * @since The appropriate "ORDER BY" SQL for the selected order
+ * @return The appropriate "ORDER BY" SQL for the selected order
  * @since 1.0
  */
 private fun orderBy(order : Int) : String {
@@ -353,13 +353,14 @@ suspend fun fetchMediaByPlaintextQuery(query : String, offset : Int, limit : Int
                 JOIN accounts ON accounts.id = media_creator
                 WHERE media_parent IS NULL AND
                 to_tsvector(
-                	${ tsvectorParts.joinToString("|| ' ' ||") }
+                	${ tsvectorParts.joinToString(" || ' ' || ") }
                 ) @@ plainto_tsquery(?) AND
                 media_mime LIKE ?
-                OFFSET ? LIMIT ?
                 ${ orderBy(order) }
+                OFFSET ? LIMIT ?
             """.trimIndent(),
             JsonArray()
+                    .add(query)
                     .add(mime)
                     .add(offset)
                     .add(limit)

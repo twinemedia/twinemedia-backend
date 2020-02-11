@@ -41,7 +41,7 @@ fun mediaController() {
                     // Collect parameters
                     val offset = (if (params.contains("offset")) params["offset"].toInt() else 0).coerceAtLeast(0)
                     val limit = (if(params.contains("limit")) params["limit"].toInt() else 100).coerceIn(0, 100)
-                    val mime = if(params.contains("mime")) params["mime"] else "*"
+                    val mime = if(params.contains("mime")) params["mime"] else "%"
                     val order = (if(params.contains("order")) params["order"].toInt() else 0).coerceIn(0, 5)
 
                     try {
@@ -89,7 +89,7 @@ fun mediaController() {
                     // Collect parameters
                     val offset = (if (params.contains("offset")) params["offset"].toInt() else 0).coerceAtLeast(0)
                     val limit = (if(params.contains("limit")) params["limit"].toInt() else 100).coerceIn(0, 100)
-                    val mime = if(params.contains("mime")) params["mime"] else "*"
+                    val mime = if(params.contains("mime")) params["mime"] else "%"
                     val order = (if(params.contains("order")) params["order"].toInt() else 0).coerceIn(0, 5)
                     val query = if(params.contains("query")) params["query"] else ""
                     val searchItems = JsonObject()
@@ -100,12 +100,17 @@ fun mediaController() {
 
                     try {
                         // Fetch files
-                        val media = fetchMediaByPlaintextQuery(query, offset, limit, order, mime,
-                                searchItems.getBoolean("name"),
-                                searchItems.getBoolean("filename"),
-                                searchItems.getBoolean("tag"),
-                                searchItems.getBoolean("description")
-                        )
+                        val media = when(query.isNotEmpty()) {
+                            true -> {
+                                fetchMediaByPlaintextQuery(query, offset, limit, order, mime,
+                                        searchItems.getBoolean("name"),
+                                        searchItems.getBoolean("filename"),
+                                        searchItems.getBoolean("tag"),
+                                        searchItems.getBoolean("description")
+                                )
+                            }
+                            else -> fetchMediaList(offset, limit, mime, order)
+                        }
 
                         // Create JSON array of files
                         val arr = JsonArray()
