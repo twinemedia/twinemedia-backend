@@ -1,6 +1,7 @@
 package net.termer.twinemedia.model
 
 import io.vertx.core.json.JsonArray
+import io.vertx.core.json.JsonObject
 import io.vertx.ext.sql.ResultSet
 import io.vertx.kotlin.ext.sql.queryAwait
 import io.vertx.kotlin.ext.sql.queryWithParamsAwait
@@ -41,13 +42,13 @@ private fun orderBy(order : Int) : String {
  * @param thumbnailFile The filename of the media's generated thumbnail, null if none
  * @since 1.0
  */
-suspend fun createMedia(id : String, filename : String, size : Long, mime : String, file : String, creator : Int, hash : String, thumbnailFile : String?) {
+suspend fun createMedia(id : String, filename : String, size : Long, mime : String, file : String, creator : Int, hash : String, thumbnailFile : String?, meta : JsonObject) {
     client?.queryWithParamsAwait(
             """
                 INSERT INTO media
-                ( media_id, media_filename, media_size, media_mime, media_file, media_creator, media_file_hash, media_thumbnail, media_thumbnail_file )
+                ( media_id, media_filename, media_size, media_mime, media_file, media_creator, media_file_hash, media_thumbnail, media_thumbnail_file, media_meta )
                 VALUES
-                ( ?, ?, ?, ?, ?, ?, ?, ?, ? )
+                ( ?, ?, ?, ?, ?, ?, ?, ?, ?, CAST( ? AS jsonb) )
             """.trimIndent(),
             JsonArray()
                     .add(id)
@@ -59,6 +60,46 @@ suspend fun createMedia(id : String, filename : String, size : Long, mime : Stri
                     .add(hash)
                     .add(thumbnailFile != null)
                     .add(thumbnailFile)
+                    .add(meta.toString())
+
+    )
+}
+
+/**
+ * Creates a new media entry
+ * @param id The generated alphanumeric media ID
+ * @param filename The media's original filename
+ * @param size The size of the media (in bytes)
+ * @param mime The mime type of the media
+ * @param file The name of the saved media file
+ * @param creator The ID of the account that uploaded this media file
+ * @param thumbnailFile The filename of the media's generated thumbnail, null if none
+ * @param parent The parent of this media file
+ * @param processing Whether the media file is processing
+ * @since 1.0
+ */
+suspend fun createMedia(id : String, filename : String, size : Long, mime : String, file : String, creator : Int, hash : String, thumbnailFile : String?, meta : JsonObject, parent : Int, processing : Boolean) {
+    client?.queryWithParamsAwait(
+            """
+                INSERT INTO media
+                ( media_id, media_filename, media_size, media_mime, media_file, media_creator, media_file_hash, media_thumbnail, media_thumbnail_file, media_meta, media_parent, media_processing )
+                VALUES
+                ( ?, ?, ?, ?, ?, ?, ?, ?, ?, CAST( ? AS jsonb), ?, ? )
+            """.trimIndent(),
+            JsonArray()
+                    .add(id)
+                    .add(filename)
+                    .add(size)
+                    .add(mime)
+                    .add(file)
+                    .add(creator)
+                    .add(hash)
+                    .add(thumbnailFile != null)
+                    .add(thumbnailFile)
+                    .add(meta.toString())
+                    .add(parent)
+                    .add(processing)
+
     )
 }
 
@@ -97,9 +138,10 @@ suspend fun fetchMediaList(offset : Int, limit : Int, mime : String, order : Int
                     media_creator AS creator,
                     media_file_hash AS file_hash,
                     media_thumbnail AS thumbnail,
+                    media_processing AS processing,
                     account_name AS creator_name
                 FROM media
-                JOIN accounts ON accounts.id = media_creator
+                LEFT JOIN accounts ON accounts.id = media_creator
                 WHERE media_parent IS NULL AND
                 media_mime LIKE ?
                 ${ orderBy(order) }
@@ -136,9 +178,10 @@ suspend fun fetchMediaInfo(mediaId : String) : ResultSet? {
                     media_tags AS tags,
                     media_file_hash AS file_hash,
                     media_thumbnail AS thumbnail,
+                    media_processing AS processing,
                 	account_name AS creator_name
                 FROM media
-                JOIN accounts ON accounts.id = media_creator
+                LEFT JOIN accounts ON accounts.id = media_creator
                 WHERE media_id = ?
             """.trimIndent(),
             JsonArray().add(mediaId)
@@ -169,9 +212,10 @@ suspend fun fetchMediaInfo(id : Int) : ResultSet? {
                     media_tags AS tags,
                     media_file_hash AS file_hash,
                     media_thumbnail AS thumbnail,
+                    media_processing AS processing,
                 	account_name AS creator_name
                 FROM media
-                JOIN accounts ON accounts.id = media_creator
+                LEFT JOIN accounts ON accounts.id = media_creator
                 WHERE media.id = ?
             """.trimIndent(),
             JsonArray().add(id)
@@ -197,9 +241,10 @@ suspend fun fetchMediaChildren(id : Int) : ResultSet? {
                     media_creator AS creator,
                     media_file_hash AS file_hash,
                     media_thumbnail AS thumbnail,
+                    media_processing AS processing,
                     account_name AS creator_name
                 FROM media
-                JOIN accounts ON accounts.id = media_creator
+                LEFT JOIN accounts ON accounts.id = media_creator
                 WHERE media_parent = ?
             """.trimIndent(),
             JsonArray().add(id)
@@ -209,7 +254,6 @@ suspend fun fetchMediaChildren(id : Int) : ResultSet? {
 /**
  * Updates a media file's info
  * @param id The internal media ID of the media file
- * @param newMediaId The new alphanumeric ID for this media file
  * @param newName The new name for this media file
  * @param newDesc The new description for this media file
  * @param newTags The new tags for this media
@@ -229,6 +273,60 @@ suspend fun updateMediaInfo(id : Int, newName : String?, newDesc : String?, newT
                     .add(newName)
                     .add(newDesc)
                     .add(newTags.toString())
+                    .add(id)
+    )
+}
+
+/**
+ * Updates a media file's info
+ * @param id The generated alphanumeric ID of the media file
+ * @param processing Whether the media file is currently processing
+ * @param size The size of the media file in bytes
+ * @param hash The hash of the media file
+ * @param thumbnailFile The filename of this media file's thumbnail (null if it has none)
+ * @param meta The metadata of this media file
+ * @since 1.0
+ */
+suspend fun updateMediaInfo(id : String, processing : Boolean, size : Long, hash : String, thumbnailFile : String?, meta : JsonObject) {
+    client?.queryWithParamsAwait(
+            """
+                UPDATE media
+                SET
+                    media_processing = ?,
+                    media_size = ?,
+                    media_file_hash = ?,
+                    media_thumbnail_file = ?,
+                    media_thumbnail = ?,
+                    media_meta = CAST( ? AS jsonb)
+                WHERE media_id = ?
+            """.trimIndent(),
+            JsonArray()
+                    .add(processing)
+                    .add(size)
+                    .add(hash)
+                    .add(thumbnailFile)
+                    .add(thumbnailFile != null)
+                    .add(meta.toString())
+                    .add(id)
+    )
+}
+
+/**
+ * Updates a media file entry's processing error field
+ * @param id The generated alphanumeric ID of the media file
+ * @param error The error to set for this media file (can be null)
+ * @since 1.0
+ */
+suspend fun updateMediaProcessError(id : String, error : String?) {
+    client?.queryWithParamsAwait(
+            """
+                UPDATE media
+                SET
+                    media_process_error = ?
+                WHERE media_id = ?
+            """.trimIndent(),
+            JsonArray()
+                    .add(error)
                     .add(id)
     )
 }
@@ -271,9 +369,10 @@ suspend fun fetchMediaListByTags(tags : JsonArray, mime : String, order : Int, o
                     media_creator AS creator,
                     media_file_hash AS file_hash,
                     media_thumbnail AS thumbnail,
+                    media_processing AS processing,
                     account_name AS creator_name
                 FROM media
-                JOIN accounts ON accounts.id = media_creator
+                LEFT JOIN accounts ON accounts.id = media_creator
                 WHERE
                 media_parent IS NULL
             """.trimIndent()
@@ -348,9 +447,10 @@ suspend fun fetchMediaByPlaintextQuery(query : String, offset : Int, limit : Int
                 	media_creator AS creator,
                 	media_file_hash AS file_hash,
                 	media_thumbnail AS thumbnail,
+                    media_processing AS processing,
                 	account_name AS creator_name
                 FROM media
-                JOIN accounts ON accounts.id = media_creator
+                LEFT JOIN accounts ON accounts.id = media_creator
                 WHERE media_parent IS NULL AND
                 to_tsvector(
                 	${ tsvectorParts.joinToString(" || ' ' || ") }

@@ -38,6 +38,7 @@ fun accountController() {
                 // Collect properties
                 val account = json {
                     obj(
+                            "id" to r.account().getInteger("id"),
                             "permissions" to r.account().getJsonArray("account_permissions"),
                             "name" to r.account().getString("account_name"),
                             "email" to r.account().getString("account_email"),

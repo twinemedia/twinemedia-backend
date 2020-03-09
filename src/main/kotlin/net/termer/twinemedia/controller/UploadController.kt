@@ -1,5 +1,6 @@
 package net.termer.twinemedia.controller
 
+import io.vertx.core.json.JsonArray
 import io.vertx.core.json.JsonObject
 import io.vertx.kotlin.core.executeBlockingAwait
 import io.vertx.kotlin.core.file.deleteAwait
@@ -98,7 +99,7 @@ fun uploadController() {
                                 // Calculate file hash
                                 val hash = vertx().executeBlockingAwait<String> {
                                     val buffer = ByteArray(8192)
-                                    var count: Int
+                                    var count : Int
                                     val digest = MessageDigest.getInstance("SHA-256")
                                     val bis = BufferedInputStream(FileInputStream(saveLoc))
                                     while (bis.read(buffer).also { count = it } > 0) {
@@ -111,6 +112,9 @@ fun uploadController() {
 
                                 // Thumbnail file
                                 var thumbnail : String? = null
+
+                                // Metadata
+                                var meta = JsonObject()
 
                                 // Check if hash was created
                                 if(hash == null) {
@@ -142,6 +146,9 @@ fun uploadController() {
                                             val probe = probeFile(saveLoc)
 
                                             if(probe != null) {
+                                                // Collect metadata from probe
+                                                meta = ffprobeToJsonMeta(probe)
+
                                                 // Generate preview
                                                 createVideoThumbnail(saveLoc, (probe.format.duration / 2).toInt(), "${config.upload_location}thumbnails/$thumbId.jpg")
                                                 thumbnail = "$thumbId.jpg"
@@ -162,7 +169,7 @@ fun uploadController() {
                                         }
                                     }
 
-                                    createMedia(id, filename, length, type, file, r.userId(), hash, thumbnail)
+                                    createMedia(id, filename, length, type, file, r.userId(), hash, thumbnail, meta)
                                 }
                             } catch(e : Exception) {
                                 logger.error("Failed to create media entry:")

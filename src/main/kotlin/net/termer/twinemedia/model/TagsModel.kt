@@ -33,7 +33,9 @@ private fun orderBy(order : Int) : String {
 suspend fun fetchTagsByTerm(term : String, offset : Int, limit : Int, order : Int) : ResultSet? {
     return client?.queryWithParamsAwait(
             """
-                SELECT * FROM tags
+                SELECT
+                tag_name AS name
+                FROM tags
                 WHERE tag_name LIKE ?
                 ${ orderBy(order) }
                 OFFSET ? LIMIT ?
@@ -56,12 +58,32 @@ suspend fun fetchTagsByTerm(term : String, offset : Int, limit : Int, order : In
 suspend fun fetchAllTags(offset : Int, limit : Int, order : Int) : ResultSet? {
     return client?.queryWithParamsAwait(
             """
-                SELECT * FROM tags
+                SELECT
+                tag_name AS name
+                FROM tags
                 ${ orderBy(order) }
                 OFFSET ? LIMIT ?
             """.trimIndent(),
             JsonArray()
                     .add(offset)
                     .add(limit)
+    )
+}
+
+/**
+ * Fetches info about a tag
+ * @param tag The tag to get info about
+ * @return All info about the specified tag
+ * @since 1.0
+ */
+suspend fun fetchTagInfo(tag : String) : ResultSet? {
+    return client?.queryWithParamsAwait(
+            """
+                SELECT
+                COUNT(*) AS uses
+                FROM media
+                WHERE media_tags::jsonb ?? ?
+            """.trimIndent(),
+            JsonArray().add(tag)
     )
 }

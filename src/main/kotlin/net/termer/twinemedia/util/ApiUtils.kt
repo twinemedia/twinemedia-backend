@@ -18,7 +18,7 @@ import java.util.*
 import java.util.regex.Pattern
 
 // Authorization header content regex
-val authPattern: Pattern = Pattern.compile("Bearer (.+)")
+val authPattern : Pattern = Pattern.compile("Bearer (.+)")
 
 
 /**

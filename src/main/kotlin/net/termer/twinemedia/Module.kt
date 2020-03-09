@@ -1,6 +1,10 @@
 package net.termer.twinemedia
 
+import io.vertx.core.AsyncResult
+import io.vertx.core.Handler
 import io.vertx.core.json.Json
+import io.vertx.kotlin.core.json.json
+import io.vertx.kotlin.core.json.obj
 import net.termer.twine.ServerManager.ws
 import net.termer.twine.modules.TwineModule
 import net.termer.twine.modules.TwineModule.Priority.LOW
@@ -13,7 +17,7 @@ import net.termer.twinemedia.db.dbInit
 import net.termer.twinemedia.jwt.jwtInit
 import net.termer.twinemedia.middleware.authMiddleware
 import net.termer.twinemedia.middleware.headersMiddleware
-import net.termer.twinemedia.util.Crypt
+import net.termer.twinemedia.util.*
 import org.slf4j.Logger
 import org.slf4j.LoggerFactory
 import java.io.File
@@ -70,11 +74,31 @@ class Module : TwineModule {
             accountController()
             serveController()
             mediaController()
+            tagsController()
+            accountsController()
 
             // Allow upload status event bus channels over websocket
             ws().outboundRegex("twinemedia\\..*")
 
             logger.info("Started!")
+
+            startMediaProcessor()
+            queueMediaProcessJob(object : MediaProcessorJob {
+                override val id = "ffffff"
+                override val source = "/home/termer/Videos/fukkireta.mp4"
+                override val out = "/home/termer/Videos/test.webm"
+                override val duration = 120
+                override val type = MediaProcessorJobType.VIDEO
+                override val settings = json {
+                    obj(
+                            "video_bitrate" to 300,
+                            "audio_bitrate" to 50,
+                            "width" to -1,
+                            "height" to 240
+                    )
+                }
+                override val callback: Handler<AsyncResult<Unit>>? = null
+            })
         } catch(e : IOException) {
             logger.error("Failed to initialize TwineMedia:")
             e.printStackTrace()

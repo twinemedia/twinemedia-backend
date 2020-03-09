@@ -39,7 +39,7 @@ fun mediaController() {
             if(r.protectWithPermission("files.list")) {
                 try {
                     // Collect parameters
-                    val offset = (if (params.contains("offset")) params["offset"].toInt() else 0).coerceAtLeast(0)
+                    val offset = (if(params.contains("offset")) params["offset"].toInt() else 0).coerceAtLeast(0)
                     val limit = (if(params.contains("limit")) params["limit"].toInt() else 100).coerceIn(0, 100)
                     val mime = if(params.contains("mime")) params["mime"] else "%"
                     val order = (if(params.contains("order")) params["order"].toInt() else 0).coerceIn(0, 5)
@@ -51,13 +51,13 @@ fun mediaController() {
                         // Create JSON array of files
                         val arr = JsonArray()
 
-                        for (file in media?.rows.orEmpty())
+                        for(file in media?.rows.orEmpty())
                             arr.add(file)
 
                         // Send files
                         r.success(JsonObject().put("files", arr))
                     } catch(e : Exception) {
-                        logger.error("Failed to create fetch files:")
+                        logger.error("Failed to fetch files:")
                         e.printStackTrace()
                         r.error("Database error")
                     }
@@ -87,7 +87,7 @@ fun mediaController() {
             if(r.protectWithPermission("files.list")) {
                 try {
                     // Collect parameters
-                    val offset = (if (params.contains("offset")) params["offset"].toInt() else 0).coerceAtLeast(0)
+                    val offset = (if(params.contains("offset")) params["offset"].toInt() else 0).coerceAtLeast(0)
                     val limit = (if(params.contains("limit")) params["limit"].toInt() else 100).coerceIn(0, 100)
                     val mime = if(params.contains("mime")) params["mime"] else "%"
                     val order = (if(params.contains("order")) params["order"].toInt() else 0).coerceIn(0, 5)
@@ -115,13 +115,13 @@ fun mediaController() {
                         // Create JSON array of files
                         val arr = JsonArray()
 
-                        for (file in media?.rows.orEmpty())
+                        for(file in media?.rows.orEmpty())
                             arr.add(file)
 
                         // Send files
                         r.success(JsonObject().put("files", arr))
                     } catch(e : Exception) {
-                        logger.error("Failed to create fetch files:")
+                        logger.error("Failed to fetch files:")
                         e.printStackTrace()
                         r.error("Database error")
                     }
@@ -144,7 +144,7 @@ fun mediaController() {
     get("/api/v1/media/tags", domain) { r ->
         val params = r.request().params()
         GlobalScope.launch(vertx().dispatcher()) {
-            if(r.protectWithPermission("file.list")) {
+            if(r.protectWithPermission("files.list")) {
                 if(params.contains("tags")) {
                     try {
                         val tags = JsonArray(params["tags"])
@@ -195,7 +195,7 @@ fun mediaController() {
                     val mediaRes = fetchMediaInfo(fileId)
 
                     // Check if it exists
-                    if (mediaRes != null && mediaRes.rows.size > 0) {
+                    if(mediaRes != null && mediaRes.rows.size > 0) {
                         // Fetch media info
                         val media = mediaRes.rows[0]
 
@@ -205,10 +205,13 @@ fun mediaController() {
                         val parent = media.getInteger("internal_parent")
                         media.remove("internal_parent")
 
+                        // JSON-ify media metadata
+                        media.put("meta", JsonObject(media.getString("meta")))
+
                         if(parent != null) {
                             // Fetch parent
                             val parentRes = fetchMediaInfo(parent)
-                            if (parentRes != null && parentRes.rows.size > 0) {
+                            if(parentRes != null && parentRes.rows.size > 0) {
                                 media.put("parent", parentRes.rows[0])
                                 media.getJsonObject("parent").remove("internal_id")
                                 media.getJsonObject("parent").remove("internal_parent")
@@ -257,7 +260,7 @@ fun mediaController() {
     // Parameters:
     //  - name (optional): String, the new name of the media file, can be null
     //  - desc (optional): String, the new description of the media file, can be null
-    //  - tags (optional): Json array, the new tags to give this media file
+    //  - tags (optional): JSON array, the new tags to give this media file
     post("/api/v1/media/:file/edit", domain) { r ->
         val params = r.request().params()
         GlobalScope.launch(vertx().dispatcher()) {
@@ -269,15 +272,15 @@ fun mediaController() {
                     val mediaRes = fetchMediaInfo(fileId)
 
                     // Check if it exists
-                    if (mediaRes != null && mediaRes.rows.size > 0) {
+                    if(mediaRes != null && mediaRes.rows.size > 0) {
                         // Fetch media info
                         val media = mediaRes.rows[0]
 
                         try {
                             // Resolve edit values
-                            val name : String? = if (params["name"] != null) params["name"] else media.getString("name")
-                            val desc : String? = if (params["description"] != null) params["description"] else media.getString("description")
-                            val tags = if (params["tags"] != null) JsonArray(params["tags"]) else JsonArray(media.getString("tags"))
+                            val name : String? = if(params["name"] != null) params["name"] else media.getString("name")
+                            val desc : String? = if(params["description"] != null) params["description"] else media.getString("description")
+                            val tags = if(params["tags"] != null) JsonArray(params["tags"]) else JsonArray(media.getString("tags"))
 
                             try {
                                 updateMediaInfo(media.getInteger("internal_id"), name, desc, tags)
@@ -338,7 +341,7 @@ fun mediaController() {
                                 r.error("Internal error")
                                 return@launch
                             }
-                            if (media.getBoolean("media_thumbnail")) {
+                            if(media.getBoolean("media_thumbnail")) {
                                 try {
                                     // Delete thumbnail file
                                     val file = media.getString("media_thumbnail_file")
