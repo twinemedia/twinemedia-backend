@@ -6,6 +6,7 @@ package net.termer.twinemedia
  */
 class TwineMediaConfig {
     var domain = "default"
+
     var upload_location = "file-uploads/"
     var max_upload = 1073741824
 
@@ -24,7 +25,12 @@ class TwineMediaConfig {
     var crypt_memory_kb = 1048576
 
     var frontend_host = "*"
+    var reverse_proxy = false
 
     var ffmpeg_path = "/usr/bin/ffmpeg"
     var ffprobe_path = "/usr/bin/ffprobe"
+
+    var media_processor_count = 2
+
+    var max_auth_attempts = 5
 }

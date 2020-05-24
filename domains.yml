@@ -1,0 +1,31 @@
+---
+defaultDomain: "default"
+---
+# The name of the domain
+name: "default"
+# The actual domain name to match
+domain: "default"
+# The directory from which to serve
+dir: "domains/default/"
+# The index page
+index: "index.html"
+# The 404 page
+notFound: "404.html"
+# The page to display if a server error occurs
+# This page may not use embedded scripting
+serverError: "500.html"
+---
+# Another domain entry
+name: "example"
+domain: "example.com"
+dir: "domains/example/"
+index: "index.html"
+notFound: "404.html"
+serverError: "500.html"
+# Determines whether a 404 status code shouldn't be sent
+# when sending the 404 document.
+# Useful for Single Page Applications (SPAs) that need
+# all traffic pointed towards a single page.
+# This attribute is entirely optional, and defaults
+# to false if omitted.
+ignore404: true

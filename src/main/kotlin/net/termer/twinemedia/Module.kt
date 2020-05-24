@@ -5,6 +5,12 @@ import io.vertx.core.Handler
 import io.vertx.core.json.Json
 import io.vertx.kotlin.core.json.json
 import io.vertx.kotlin.core.json.obj
+import io.vertx.kotlin.coroutines.awaitBlocking
+import io.vertx.kotlin.coroutines.dispatcher
+import kotlinx.coroutines.GlobalScope
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.runBlocking
+import net.termer.twine.ServerManager.vertx
 import net.termer.twine.ServerManager.ws
 import net.termer.twine.modules.TwineModule
 import net.termer.twine.modules.TwineModule.Priority.LOW
@@ -17,11 +23,13 @@ import net.termer.twinemedia.db.dbInit
 import net.termer.twinemedia.jwt.jwtInit
 import net.termer.twinemedia.middleware.authMiddleware
 import net.termer.twinemedia.middleware.headersMiddleware
+import net.termer.twinemedia.model.refreshTags
 import net.termer.twinemedia.util.*
 import org.slf4j.Logger
 import org.slf4j.LoggerFactory
 import java.io.File
 import java.io.IOException
+import kotlin.math.log
 
 class Module : TwineModule {
     companion object {
@@ -44,20 +52,20 @@ class Module : TwineModule {
             val cfg = File("configs/twinemedia.json")
             if (cfg.exists()) {
                 config = Json.decodeValue(Reader.read(cfg), TwineMediaConfig::class.java)
-                if(!config.upload_location.endsWith('/'))
+                if (!config.upload_location.endsWith('/'))
                     config.upload_location += '/'
             } else {
                 Writer.write("configs/twinemedia.json", Json.encodePrettily(config))
             }
             val uploadLoc = File(config.upload_location)
-            if(!uploadLoc.exists() || !uploadLoc.isDirectory) {
+            if (!uploadLoc.exists() || !uploadLoc.isDirectory) {
                 uploadLoc.mkdirs()
             }
 
             // Ensure directories exist
             FileChecker.createIfNotPresent(arrayOf(
                     config.upload_location,
-                    config.upload_location+"/thumbnails/"
+                    config.upload_location + "/thumbnails/"
             ))
 
             // Setup database
@@ -76,29 +84,26 @@ class Module : TwineModule {
             mediaController()
             tagsController()
             accountsController()
+            mediaChildController()
+            processesController()
+            listsController()
 
             // Allow upload status event bus channels over websocket
             ws().outboundRegex("twinemedia\\..*")
 
-            logger.info("Started!")
+            // Start media processor threads
+            logger.info("Starting media processors...")
+            repeat(config.media_processor_count.coerceAtLeast(1)) {
+                startMediaProcessor()
+            }
 
-            startMediaProcessor()
-            queueMediaProcessJob(object : MediaProcessorJob {
-                override val id = "ffffff"
-                override val source = "/home/termer/Videos/fukkireta.mp4"
-                override val out = "/home/termer/Videos/test.webm"
-                override val duration = 120
-                override val type = MediaProcessorJobType.VIDEO
-                override val settings = json {
-                    obj(
-                            "video_bitrate" to 300,
-                            "audio_bitrate" to 50,
-                            "width" to -1,
-                            "height" to 240
-                    )
-                }
-                override val callback: Handler<AsyncResult<Unit>>? = null
-            })
+            runBlocking {
+                // Refresh tags
+                logger.info("Refreshing tags...")
+                refreshTags()
+
+                logger.info("Started!")
+            }
         } catch(e : IOException) {
             logger.error("Failed to initialize TwineMedia:")
             e.printStackTrace()
@@ -111,5 +116,5 @@ class Module : TwineModule {
 
     override fun name() = "TwineMedia"
     override fun priority() = LOW
-    override fun twineVersion() = "1.2+"
+    override fun twineVersion() = "1.5+"
 }

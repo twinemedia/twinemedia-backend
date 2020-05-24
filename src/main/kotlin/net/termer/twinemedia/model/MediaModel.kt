@@ -10,10 +10,10 @@ import net.termer.twinemedia.db.Database.client
 /**
  * Utility function to generate an ORDER BY statement based on an integer corresponding to a combination of criteria and order.
  * Order key:
- * 0 = Date, newest to oldest
- * 1 = Date, oldest to newest
- * 2 = Alphabetically, ascending
- * 3 = Alphabetically, descending
+ * 0 = Creation date, newest to oldest
+ * 1 = Creation date, oldest to newest
+ * 2 = Name alphabetically, ascending
+ * 3 = Name alphabetically, descending
  * 4 = Size, largest to smallest
  * 5 = Size, smallest to largest
  * @param order The order
@@ -48,7 +48,7 @@ suspend fun createMedia(id : String, filename : String, size : Long, mime : Stri
                 INSERT INTO media
                 ( media_id, media_filename, media_size, media_mime, media_file, media_creator, media_file_hash, media_thumbnail, media_thumbnail_file, media_meta )
                 VALUES
-                ( ?, ?, ?, ?, ?, ?, ?, ?, ?, CAST( ? AS jsonb) )
+                ( ?, ?, ?, ?, ?, ?, ?, ?, ?, CAST( ? AS jsonb ) )
             """.trimIndent(),
             JsonArray()
                     .add(id)
@@ -68,6 +68,7 @@ suspend fun createMedia(id : String, filename : String, size : Long, mime : Stri
 /**
  * Creates a new media entry
  * @param id The generated alphanumeric media ID
+ * @param name The media file's name (can be null)
  * @param filename The media's original filename
  * @param size The size of the media (in bytes)
  * @param mime The mime type of the media
@@ -78,16 +79,17 @@ suspend fun createMedia(id : String, filename : String, size : Long, mime : Stri
  * @param processing Whether the media file is processing
  * @since 1.0
  */
-suspend fun createMedia(id : String, filename : String, size : Long, mime : String, file : String, creator : Int, hash : String, thumbnailFile : String?, meta : JsonObject, parent : Int, processing : Boolean) {
+suspend fun createMedia(id : String, name : String?, filename : String, size : Long, mime : String, file : String, creator : Int, hash : String, thumbnailFile : String?, meta : JsonObject, parent : Int, processing : Boolean) {
     client?.queryWithParamsAwait(
             """
                 INSERT INTO media
-                ( media_id, media_filename, media_size, media_mime, media_file, media_creator, media_file_hash, media_thumbnail, media_thumbnail_file, media_meta, media_parent, media_processing )
+                ( media_id, media_name, media_filename, media_size, media_mime, media_file, media_creator, media_file_hash, media_thumbnail, media_thumbnail_file, media_meta, media_parent, media_processing )
                 VALUES
-                ( ?, ?, ?, ?, ?, ?, ?, ?, ?, CAST( ? AS jsonb), ?, ? )
+                ( ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, CAST( ? AS jsonb ), ?, ? )
             """.trimIndent(),
             JsonArray()
                     .add(id)
+                    .add(name)
                     .add(filename)
                     .add(size)
                     .add(mime)
@@ -120,7 +122,7 @@ suspend fun fetchMedia(mediaId : String) : ResultSet? {
  * Fetches a list of media
  * @param offset The offset of the media to fetch
  * @param limit The amount of media to return
- * @param mime The media MIME pattern (allows % for use a wildcards)
+ * @param mime The media MIME pattern (allows % for use as wildcards)
  * @param order The order to return the media files
  * @return All media files in the specified range
  * @since 1.0
@@ -139,6 +141,7 @@ suspend fun fetchMediaList(offset : Int, limit : Int, mime : String, order : Int
                     media_file_hash AS file_hash,
                     media_thumbnail AS thumbnail,
                     media_processing AS processing,
+                    media_process_error AS media_process,
                     account_name AS creator_name
                 FROM media
                 LEFT JOIN accounts ON accounts.id = media_creator
@@ -156,7 +159,7 @@ suspend fun fetchMediaList(offset : Int, limit : Int, mime : String, order : Int
 
 /**
  * Fetches info about a media file. Note: the returned "internal_id" field should be removed before serving info the the client.
- * @param mediaId The alphanumberic generated file ID to search
+ * @param mediaId The alphanumeric generated file ID to search
  * @return The info for the specified media file
  * @since 1.0
  */
@@ -179,6 +182,7 @@ suspend fun fetchMediaInfo(mediaId : String) : ResultSet? {
                     media_file_hash AS file_hash,
                     media_thumbnail AS thumbnail,
                     media_processing AS processing,
+                    media_process_error AS process_error,
                 	account_name AS creator_name
                 FROM media
                 LEFT JOIN accounts ON accounts.id = media_creator
@@ -213,6 +217,7 @@ suspend fun fetchMediaInfo(id : Int) : ResultSet? {
                     media_file_hash AS file_hash,
                     media_thumbnail AS thumbnail,
                     media_processing AS processing,
+                    media_process_error AS media_process,
                 	account_name AS creator_name
                 FROM media
                 LEFT JOIN accounts ON accounts.id = media_creator
@@ -223,12 +228,12 @@ suspend fun fetchMediaInfo(id : Int) : ResultSet? {
 }
 
 /**
- * Fetches a media file's child generated alphanumeric IDs
+ * Fetches info for a media file's children
  * @param id The internal media ID of the media file
- * @return All child IDs of the specified media fiel
+ * @return All info for the children of the specified media file
  * @since 1.0
  */
-suspend fun fetchMediaChildren(id : Int) : ResultSet? {
+suspend fun fetchMediaChildrenInfo(id : Int) : ResultSet? {
     return client?.queryWithParamsAwait(
             """
                 SELECT
@@ -242,12 +247,264 @@ suspend fun fetchMediaChildren(id : Int) : ResultSet? {
                     media_file_hash AS file_hash,
                     media_thumbnail AS thumbnail,
                     media_processing AS processing,
+                    media_process_error AS media_process,
                     account_name AS creator_name
                 FROM media
                 LEFT JOIN accounts ON accounts.id = media_creator
                 WHERE media_parent = ?
             """.trimIndent(),
             JsonArray().add(id)
+    )
+}
+
+/**
+ * Fetches all data for a media file's children
+ * @param id The internal media ID of the media file
+ * @return All data for the children of the specified media file
+ * @since 1.0
+ */
+suspend fun fetchMediaChildren(id : Int) : ResultSet? {
+    return client?.queryWithParamsAwait(
+            """
+                SELECT
+                    *
+                FROM media
+                WHERE media_parent = ?
+            """.trimIndent(),
+            JsonArray().add(id)
+    )
+}
+
+/**
+ * Fetches all media files with the provided hash
+ * @param hash The file hash to search for
+ * @return All media files with the specified hash
+ * @since 1.0
+ */
+suspend fun fetchMediaByHash(hash : String) : ResultSet? {
+    return client?.queryWithParamsAwait(
+            """
+                SELECT * FROM media
+                WHERE media_file_hash = ?
+            """.trimIndent(),
+            JsonArray().add(hash)
+    )
+}
+
+/**
+ * Fetches a list of media files by tags
+ * @param tags The tags to search for
+ * @param mime The media MIME pattern (allows % for use as wildcards)
+ * @param order The order to return the media files
+ * @param offset The offset of rows to return
+ * @param limit The amount of rows to return
+ * @return The all media file info entries that contain the specified tags
+ * @since 1.0
+ */
+suspend fun fetchMediaListByTags(tags : JsonArray, mime : String, order : Int, offset : Int, limit : Int) : ResultSet? {
+    var sql = """
+                SELECT
+                    media_id AS id,
+                    media_name AS name,
+                    media_filename AS filename,
+                    media_size AS size,
+                    media_mime AS mime,
+                    media_created_on AS created_on,
+                    media_creator AS creator,
+                    media_file_hash AS file_hash,
+                    media_thumbnail AS thumbnail,
+                    media_processing AS processing,
+                    media_process_error AS media_process,
+                    account_name AS creator_name
+                FROM media
+                LEFT JOIN accounts ON accounts.id = media_creator
+                WHERE
+                media_parent IS NULL
+            """.trimIndent()
+
+    // Add AND statements for tags
+    for(tag in tags)
+        sql += "\nAND media_tags::jsonb ?? ?"
+
+    // Mime type and order
+    sql += "\nAND media_mime LIKE ?"
+    sql += "\n${ orderBy(order) }"
+
+    // Offset, limit
+    sql += "\nOFFSET ? LIMIT ?"
+
+    return client?.queryWithParamsAwait(
+            sql,
+            tags
+                    .add(mime)
+                    .add(offset)
+                    .add(limit)
+    )
+}
+
+/**
+ * Searches media files by plaintext keywords, using PostgreSQL's fulltext search capabilities
+ * @param query The plaintext query to search for
+ * @param offset The offset of rows to return
+ * @param limit The amount of rows to return
+ * @param order The order to return the media files
+ * @param mime The media MIME pattern (allows % for use as wildcards)
+ * @param searchNames Whether to search the names of media files
+ * @param searchFilenames Whether to search the filenames of media files
+ * @param searchTags Whether to search the tags of media files
+ * @param searchDescs Whether to search the descriptions of media files
+ * @return All media files matching the specified plaintext query
+ * @since 1.0
+ */
+suspend fun fetchMediaByPlaintextQuery(query : String, offset : Int, limit : Int, order : Int, mime : String, searchNames : Boolean, searchFilenames : Boolean, searchTags : Boolean, searchDescs : Boolean) : ResultSet? {
+    var tsvectorParts = arrayListOf<String>()
+    if(searchNames)
+        tsvectorParts.add("COALESCE(media_name, '')")
+    if(searchFilenames)
+        tsvectorParts.add("media_filename")
+    if(searchTags)
+        tsvectorParts.add("media_tags")
+    if(searchDescs)
+        tsvectorParts.add("COALESCE(media_description, '')")
+
+    return client?.queryWithParamsAwait(
+            """
+                SELECT
+                	media_id AS id,
+                	media_name AS name,
+                	media_filename AS filename,
+                	media_size AS size,
+                	media_mime AS mime,
+                	media_created_on AS created_on,
+                	media_creator AS creator,
+                	media_file_hash AS file_hash,
+                	media_thumbnail AS thumbnail,
+                    media_processing AS processing,
+                    media_process_error AS media_process,
+                	account_name AS creator_name
+                FROM media
+                LEFT JOIN accounts ON accounts.id = media_creator
+                WHERE media_parent IS NULL AND
+                to_tsvector(
+                	${ tsvectorParts.joinToString(" || ' ' || ") }
+                ) @@ plainto_tsquery(?) AND
+                media_mime LIKE ?
+                ${ orderBy(order) }
+                OFFSET ? LIMIT ?
+            """.trimIndent(),
+            JsonArray()
+                    .add(query)
+                    .add(mime)
+                    .add(offset)
+                    .add(limit)
+    )
+}
+
+/**
+ * Fetches all media files with the specified tags, and between the provided dates
+ * @param tags The tags to search for
+ * @param createdBefore The ISO date String that media files must have been created before (can be null to allow any time)
+ * @param createdAfter The ISO date String that media files must have been created after (can be null to allow any time)
+ * @param mime The media MIME pattern (allows % for use as wildcards, null to allow all types)
+ * @param offset The offset of rows to return
+ * @param limit The amount of rows to return
+ * @since 1.0
+ */
+suspend fun fetchMediaByTagsAndDateRange(tags : JsonArray, createdBefore : String?, createdAfter : String?, mime: String?, offset : Int, limit : Int): ResultSet? {
+    val params = JsonArray()
+
+    val beforeSql = if(createdBefore == null) {
+        ""
+    } else {
+        params.add(createdBefore)
+        "AND media_created_on < ?"
+    }
+    val afterSql = if(createdAfter == null) {
+        ""
+    } else {
+        params.add(createdAfter)
+        "AND media_created_on > ?"
+    }
+    val mimeSql = if(mime == null) {
+        ""
+    } else {
+        params.add(mime)
+        "AND media_mime LIKE ?"
+    }
+    var tagsSql = ""
+
+    for(tag in tags) {
+        tagsSql += "AND media_tags ? '?' "
+        params.add(tags.toString())
+    }
+
+    return client?.queryWithParamsAwait(
+            """
+                SELECT
+                	media_id AS id,
+                	media_name AS name,
+                	media_filename AS filename,
+                	media_size AS size,
+                	media_mime AS mime,
+                	media_created_on AS created_on,
+                	media_creator AS creator,
+                	media_file_hash AS file_hash,
+                	media_thumbnail AS thumbnail,
+                	media_processing AS processing,
+                	media_process_error AS media_process,
+                	account_name AS creator_name
+                FROM media
+                LEFT JOIN accounts ON accounts.id = media_creator
+                WHERE media_parent IS NULL
+                AND media_parent IS NULL
+                $beforeSql
+                $afterSql
+                $mime
+                $tagsSql
+                OFFSET ? LIMIT ?
+            """.trimIndent(),
+            params
+                    .add(offset)
+                    .add(limit)
+    )
+}
+
+/**
+ * Fetches a list of media from the specified list
+ * @param offset The offset of the media to fetch
+ * @param limit The amount of media to return
+ * @param list The internal ID of the list to fetch media from
+ * @param order The order to return the media files
+ * @return All media files in the specified range
+ * @since 1.0
+ */
+suspend fun fetchMediaListByListId(offset : Int, limit : Int, list : Int, order : Int) : ResultSet? {
+    return client?.queryWithParamsAwait(
+            """
+                SELECT
+                    media_id AS id,
+                    media_name AS name,
+                    media_filename AS filename,
+                    media_size AS size,
+                    media_mime AS mime,
+                    media_created_on AS created_on,
+                    media_creator AS creator,
+                    media_file_hash AS file_hash,
+                    media_thumbnail AS thumbnail,
+                    media_processing AS processing,
+                    media_process_error AS media_process,
+                    account_name AS creator_name
+                FROM listitems
+                LEFT JOIN accounts ON accounts.id = media_creator
+                WHERE media_parent IS NULL AND
+                item_list = ?
+                ${ orderBy(order) }
+                OFFSET ? LIMIT ?
+            """.trimIndent(),
+            JsonArray()
+                    .add(list)
+                    .add(offset)
+                    .add(limit)
     )
 }
 
@@ -297,7 +554,7 @@ suspend fun updateMediaInfo(id : String, processing : Boolean, size : Long, hash
                     media_file_hash = ?,
                     media_thumbnail_file = ?,
                     media_thumbnail = ?,
-                    media_meta = CAST( ? AS jsonb)
+                    media_meta = CAST( ? AS jsonb )
                 WHERE media_id = ?
             """.trimIndent(),
             JsonArray()
@@ -332,72 +589,6 @@ suspend fun updateMediaProcessError(id : String, error : String?) {
 }
 
 /**
- * Fetches all media files with the provided hash
- * @param hash The file hash to search for
- * @return All media files with the specified hash
- * @since 1.0
- */
-suspend fun fetchMediaByHash(hash : String) : ResultSet? {
-    return client?.queryWithParamsAwait(
-            """
-                SELECT * FROM media
-                WHERE media_file_hash = ?
-            """.trimIndent(),
-            JsonArray().add(hash)
-    )
-}
-
-/**
- * Fetches a list of media files by tags
- * @param tags The tags to search for
- * @param mime The media MIME pattern (allows % for use a wildcards)
- * @param order The order to return the media files
- * @param offset The offset of rows to return
- * @param limit The amount of rows to return
- * @return The all media file info entries that contain the specified tags
- * @since 1.0
- */
-suspend fun fetchMediaListByTags(tags : JsonArray, mime : String, order : Int, offset : Int, limit : Int) : ResultSet? {
-    var sql = """
-                SELECT
-                    media_id AS id,
-                    media_name AS name,
-                    media_filename AS filename,
-                    media_size AS size,
-                    media_mime AS mime,
-                    media_created_on AS created_on,
-                    media_creator AS creator,
-                    media_file_hash AS file_hash,
-                    media_thumbnail AS thumbnail,
-                    media_processing AS processing,
-                    account_name AS creator_name
-                FROM media
-                LEFT JOIN accounts ON accounts.id = media_creator
-                WHERE
-                media_parent IS NULL
-            """.trimIndent()
-
-    // Add AND statements for tags
-    for(tag in tags)
-        sql += "\nAND media_tags::jsonb ?? ?"
-
-    // Mime type and order
-    sql += "\nAND media_mime LIKE ?"
-    sql += "\n${ orderBy(order) }"
-
-    // Offset, limit
-    sql += "\nOFFSET ? LIMIT ?"
-
-    return client?.queryWithParamsAwait(
-            sql,
-            tags
-                    .add(mime)
-                    .add(offset)
-                    .add(limit)
-    )
-}
-
-/**
  * Deletes a media file entry by its generated alphanumeric ID
  * @param mediaId The generated alphanumeric media ID
  * @since 1.0
@@ -408,61 +599,5 @@ suspend fun deleteMedia(mediaId : String) {
                 DELETE FROM media WHERE media_id = ?
             """.trimIndent(),
             JsonArray().add(mediaId)
-    )
-}
-
-/**
- * Searches media files by plaintext keywords, using PostgreSQL's fulltext search capabilities
- * @param query The plaintext query to search for
- * @param offset The offset of rows to return
- * @param limit The amount of rows to return
- * @param order The order to return the media files
- * @param mime The media MIME pattern (allows % for use a wildcards)
- * @param searchNames Whether to search the names of media files
- * @param searchFilenames Whether to search the filenames of media files
- * @param searchTags Whether to search the tags of media files
- * @param searchDescs Whether to search the descriptions of media files
- * @since 1.0
- */
-suspend fun fetchMediaByPlaintextQuery(query : String, offset : Int, limit : Int, order : Int, mime : String, searchNames : Boolean, searchFilenames : Boolean, searchTags : Boolean, searchDescs : Boolean) : ResultSet? {
-    var tsvectorParts = arrayListOf<String>()
-    if(searchNames)
-        tsvectorParts.add("COALESCE(media_name, '')")
-    if(searchFilenames)
-        tsvectorParts.add("media_filename")
-    if(searchTags)
-        tsvectorParts.add("media_tags")
-    if(searchDescs)
-        tsvectorParts.add("COALESCE(media_description, '')")
-
-    return client?.queryWithParamsAwait(
-            """
-                SELECT
-                	media_id AS id,
-                	media_name AS name,
-                	media_filename AS filename,
-                	media_size AS size,
-                	media_mime AS mime,
-                	media_created_on AS created_on,
-                	media_creator AS creator,
-                	media_file_hash AS file_hash,
-                	media_thumbnail AS thumbnail,
-                    media_processing AS processing,
-                	account_name AS creator_name
-                FROM media
-                LEFT JOIN accounts ON accounts.id = media_creator
-                WHERE media_parent IS NULL AND
-                to_tsvector(
-                	${ tsvectorParts.joinToString(" || ' ' || ") }
-                ) @@ plainto_tsquery(?) AND
-                media_mime LIKE ?
-                ${ orderBy(order) }
-                OFFSET ? LIMIT ?
-            """.trimIndent(),
-            JsonArray()
-                    .add(query)
-                    .add(mime)
-                    .add(offset)
-                    .add(limit)
     )
 }

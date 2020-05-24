@@ -87,3 +87,16 @@ suspend fun fetchTagInfo(tag : String) : ResultSet? {
             JsonArray().add(tag)
     )
 }
+
+/**
+ * Refreshes the tags materialized view
+ * @since 1.0
+ */
+suspend fun refreshTags() : ResultSet? {
+    return client?.queryWithParamsAwait(
+            """
+                REFRESH MATERIALIZED VIEW tags
+            """.trimIndent(),
+            JsonArray()
+    )
+}

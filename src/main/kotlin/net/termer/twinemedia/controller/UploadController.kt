@@ -1,5 +1,7 @@
 package net.termer.twinemedia.controller
 
+import com.google.common.hash.Hashing
+import com.google.common.io.Files
 import io.vertx.core.json.JsonArray
 import io.vertx.core.json.JsonObject
 import io.vertx.kotlin.core.executeBlockingAwait
@@ -7,6 +9,7 @@ import io.vertx.kotlin.core.file.deleteAwait
 import io.vertx.kotlin.core.file.existsAwait
 import io.vertx.kotlin.coroutines.dispatcher
 import kotlinx.coroutines.GlobalScope
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import net.termer.twine.ServerManager.post
 import net.termer.twine.ServerManager.vertx
@@ -16,9 +19,11 @@ import net.termer.twinemedia.Module.Companion.config
 import net.termer.twinemedia.Module.Companion.logger
 import net.termer.twinemedia.model.createMedia
 import net.termer.twinemedia.model.fetchMediaByHash
+import net.termer.twinemedia.model.fetchProcessesForMime
 import net.termer.twinemedia.util.*
 import sun.misc.BASE64Encoder
 import java.io.BufferedInputStream
+import java.io.File
 import java.io.FileInputStream
 import java.security.MessageDigest
 
@@ -95,19 +100,14 @@ fun uploadController() {
 
                     r.request().endHandler {
                         GlobalScope.launch(vertx().dispatcher()) {
+                            delay(100)
+                            
                             try {
                                 // Calculate file hash
                                 val hash = vertx().executeBlockingAwait<String> {
-                                    val buffer = ByteArray(8192)
-                                    var count : Int
-                                    val digest = MessageDigest.getInstance("SHA-256")
-                                    val bis = BufferedInputStream(FileInputStream(saveLoc))
-                                    while (bis.read(buffer).also { count = it } > 0) {
-                                        digest.update(buffer, 0, count)
-                                    }
-                                    bis.close()
 
-                                    it.complete(BASE64Encoder().encode(digest.digest()))
+                                    val file = File(saveLoc)
+                                    it.complete(BASE64Encoder().encode(Files.asByteSource(file).hash(Hashing.sha256()).asBytes()))
                                 }
 
                                 // Thumbnail file
@@ -169,7 +169,35 @@ fun uploadController() {
                                         }
                                     }
 
+                                    
+                                    // Create database entry
                                     createMedia(id, filename, length, type, file, r.userId(), hash, thumbnail, meta)
+
+                                    // Check if uploaded file is media
+                                    if(type.startsWith("video/") || type.startsWith("audio/")) {
+                                        try {
+                                            // Fetch processes for this type
+                                            val processes = fetchProcessesForMime(type)
+
+                                            // Queue processing jobs
+                                            for(process in processes?.rows.orEmpty()) {
+                                                // Generate new media's ID
+                                                val newId = generateString(10)
+
+                                                // Queue job
+                                                queueMediaProcessJobFromMedia(
+                                                        sourceId = id,
+                                                        newId = newId,
+                                                        extension = process.getString("extension"),
+                                                        creator = r.userId(),
+                                                        settings = JsonObject(process.getString("settings"))
+                                                )
+                                            }
+                                        } catch (e: Exception) {
+                                            logger.error("Failed to process uploaded media:")
+                                            // Nothing that can be done
+                                        }
+                                    }
                                 }
                             } catch(e : Exception) {
                                 logger.error("Failed to create media entry:")

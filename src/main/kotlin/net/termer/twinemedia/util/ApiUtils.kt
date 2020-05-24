@@ -9,6 +9,7 @@ import io.vertx.kotlin.core.json.json
 import io.vertx.kotlin.core.json.obj
 import io.vertx.kotlin.ext.auth.authenticateAwait
 import net.termer.twine.Twine
+import net.termer.twinemedia.Module.Companion.config
 import net.termer.twinemedia.exception.AuthException
 import net.termer.twinemedia.jwt.JWT
 import net.termer.twinemedia.model.fetchAccountById
@@ -168,7 +169,7 @@ suspend fun RoutingContext.hasPermission(permission : String) : Boolean {
             has = true
         } else {
             // Check if the user has the permission
-            if(account().getJsonArray("account_permissions").contains(permission)) {
+            if(account().getJsonArray("account_permissions").contains(permission) || account().getJsonArray("account_permissions").contains("*")) {
                 has = true
             } else if(permission.contains('.')) {
                 // Check permission tree
@@ -275,4 +276,19 @@ fun RoutingContext.sendFileRanged(f : File) {
         // Send file part
         response().sendFile(f.absolutePath, off, (end + 1).coerceAtMost(len))
     }
+}
+
+/**
+ * Returns the IP address that this request connected from (respects X-Forwarded-For header if reverse_proxy is enabled)
+ * @return The IP address that this request connected from
+ * @since 1.0
+ */
+fun RoutingContext.ip() = if(config.reverse_proxy) {
+    if(request().headers().contains("X-Forwarded-For")) {
+        request().getHeader("X-Forwarded-For")
+    } else {
+        request().connection().remoteAddress().host()
+    }
+} else {
+    request().connection().remoteAddress().host()
 }

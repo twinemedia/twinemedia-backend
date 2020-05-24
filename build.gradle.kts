@@ -31,8 +31,8 @@ dependencies {
     implementation("de.mkammerer:argon2-jvm:2.6")
     implementation("net.bramp.ffmpeg:ffmpeg:0.6.2")
 
-    // Twine jar
-    implementation(files("libs/twine-1.3.jar"))
+    // Twine
+    implementation("net.termer.twine:twine:1.5b")
 
     // Use the Kotlin JDK 8 standard library.
     implementation("org.jetbrains.kotlin:kotlin-stdlib-jdk8")

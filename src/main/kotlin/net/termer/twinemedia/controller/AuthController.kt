@@ -16,6 +16,7 @@ import net.termer.twinemedia.Module.Companion.logger
 import net.termer.twinemedia.jwt.jwtCreateToken
 import net.termer.twinemedia.model.fetchAccountByEmail
 import net.termer.twinemedia.util.error
+import net.termer.twinemedia.util.ip
 import net.termer.twinemedia.util.success
 
 /**
@@ -23,6 +24,12 @@ import net.termer.twinemedia.util.success
  * @since 1.0
  */
 fun authController() {
+    // Enforce max attempts per minute for authentication
+    val attempts = HashMap<String, Int>()
+    vertx().setPeriodic(12000) {
+        attempts.clear()
+    }
+
     var domain = domains().byName(config.domain).domain()
 
     // Login route
@@ -34,6 +41,18 @@ fun authController() {
         val params = r.request().params()
 
         if(params.contains("email") && params.contains("password")) {
+            // Check if max attempts reached, otherwise increment attempts
+            if(!attempts.containsKey(r.ip()))
+                attempts[r.ip()] = 0
+            if(attempts[r.ip()] != null) {
+                val count = attempts[r.ip()]?:0
+                attempts[r.ip()] = count+1
+            }
+            if(attempts[r.ip()]!! > config.max_auth_attempts) {
+                r.error("Too many attempts, try again later")
+                return@post
+            }
+
             val email = params.get("email")
             val password = params.get("password")
 
@@ -60,6 +79,9 @@ fun authController() {
                                         })
                                 )
                             })
+
+                            // Clear auth attempts
+                            attempts.remove(r.ip())
                         } else {
                             r.error("Invalid email or password")
                         }

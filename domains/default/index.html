@@ -1,0 +1,78 @@
+<!DOCTYPE html>
+<html>
+	<head>
+		<title>Welcome to Twine</title>
+		<style>
+			body {
+				margin: 0px;
+				margin-left: 10%;
+				margin-right: 10%;
+				font-family: sans-serif;
+				background: #4A4A4A;
+			}
+			img {
+				width: 200px;
+				height: 200px;
+				float: right;
+				position: relative;
+				top: 20px;
+			}
+			
+			#header {
+				color: white;
+				background: #B050B0;
+				padding: 10px;
+				height: 80px;
+				text-align: center;
+			}
+			#content {
+				background: #F0F0F0;
+				padding-top: 10px;
+				padding-left: 50px;
+				padding-right: 50px;
+				padding-bottom: 10px;
+				height: 100%;
+			}
+			#content p {
+				border-left: 3px solid gray;
+				padding-left: 10px;
+			}
+			#content h1, h2 {
+				display: inline-block;
+				border-bottom: 3px solid gray;
+			}
+		</style>
+	</head>
+	<body>
+		<div id="header">
+			<h1>Twine Default Page</h1>
+		</div>
+		<div id="content">
+			<h1>Welcome to Twine!</h1>
+			<img src="logo.png"/>
+			<p>
+				Currently, you have not set up any domains, so this page has been served.<br/>
+				If this server is accessed from a domain that has no defined directory or alias,
+				it will serve from <code>./domains/default/</code>, so be sure to change this page for future use!<br/>
+			</p>
+			<br/>
+			<h2>Configuring Twine</h2>
+			<p>
+				As you may have noticed, Twine has generated a few configuration files.
+				One among these, <code>twine.yml</code>, plays a large role in how your server
+				behaves, so it's best to configure it before going into production.<br/>
+				Specifically, you should take a look at <code>ip</code> and <code>port</code>.
+				<code>ip</code> and <code>port</code> should be pretty self-explanatory; they
+				determine the IP/address and port to which the
+				server should bind. To configure domains, take a look at <code>domains.yml</code>
+				to get an example on how it works.
+			</p>
+			<br/>
+			<h2>More Info</h2>
+			<p>
+				To get more info on Twine, and to view its source code, head over to its
+				<a href="https://github.com/termermc/twine">GitHub</a> page.
+			</p>
+		</div>
+	</body>
+</html>

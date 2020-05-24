@@ -3,27 +3,25 @@ package net.termer.twinemedia.controller
 import io.vertx.core.json.JsonArray
 import io.vertx.core.json.JsonObject
 import io.vertx.kotlin.core.file.deleteAwait
-import io.vertx.kotlin.core.json.json
-import io.vertx.kotlin.core.json.obj
+import io.vertx.kotlin.core.file.existsAwait
 import io.vertx.kotlin.coroutines.dispatcher
 import kotlinx.coroutines.GlobalScope
 import kotlinx.coroutines.launch
 import net.termer.twine.ServerManager.*
-import net.termer.twine.Twine
+import net.termer.twine.Twine.domains
 import net.termer.twinemedia.Module.Companion.config
 import net.termer.twinemedia.Module.Companion.logger
 import net.termer.twinemedia.model.*
 import net.termer.twinemedia.util.error
 import net.termer.twinemedia.util.protectWithPermission
 import net.termer.twinemedia.util.success
-import java.lang.NumberFormatException
 
 /**
  * Sets up all routes for retrieving and modifying file info + processing files
  * @since 1.0
  */
 fun mediaController() {
-    val domain = Twine.domains().byName(config.domain).domain()
+    val domain = domains().byName(config.domain).domain()
 
     // Returns all media files
     // Permissions:
@@ -221,7 +219,7 @@ fun mediaController() {
                         }
 
                         // Fetch children
-                        val childrenRes = fetchMediaChildren(id)
+                        val childrenRes = fetchMediaChildrenInfo(id)
 
                         // If there wasn't an error in fetching, this will never be null
                         if(childrenRes != null) {
@@ -283,9 +281,19 @@ fun mediaController() {
                             val tags = if(params["tags"] != null) JsonArray(params["tags"]) else JsonArray(media.getString("tags"))
 
                             try {
+                                // Update media info
                                 updateMediaInfo(media.getInteger("internal_id"), name, desc, tags)
 
-                                r.success()
+                                try {
+                                    // Update tags
+                                    refreshTags()
+
+                                    r.success()
+                                } catch(e : Exception) {
+                                    logger.error("Failed to update tags:")
+                                    e.printStackTrace()
+                                    r.error("Database error")
+                                }
                             } catch(e : Exception) {
                                 logger.error("Failed to edit file info:")
                                 e.printStackTrace()
@@ -320,20 +328,70 @@ fun mediaController() {
                 try {
                     val mediaRes = fetchMedia(fileId)
 
-                    if(mediaRes != null && mediaRes.rows.size > 0) {
+                    startEdit@ if(mediaRes != null && mediaRes.rows.size > 0) {
                         val media = mediaRes.rows[0]
+                        val fs = vertx().fileSystem()
 
-                        // Check if files with the same hash exist
-                        val hashMediaRes = fetchMediaByHash(media.getString("media_file_hash"))
+                        // Whether this media's files should be deleted
+                        var delete = false
 
-                        if(hashMediaRes != null && hashMediaRes.rows.size < 2) {
+                        // Check if media is a child
+                        if(media.getInteger("media_parent") == null) {
+                            delete = true
+
+                            try {
+                                // Fetch children
+                                val children = fetchMediaChildren(media.getInteger("id"))
+
+                                // Delete children
+                                for(child in children?.rows.orEmpty()) {
+                                    try {
+                                        val file = config.upload_location+child.getString("media_file")
+
+                                        // Delete file
+                                        if(fs.existsAwait(file))
+                                            fs.deleteAwait(file)
+
+                                        if(child.getBoolean("media_thumbnail")) {
+                                            val thumbFile = config.upload_location+"thumnails/"+child.getString("media_thumbnail_file")
+
+                                            // Delete thumbnail
+                                            if(fs.existsAwait(thumbFile))
+                                                fs.deleteAwait(thumbFile)
+                                        }
+
+                                        // Delete entry
+                                        deleteMedia(child.getString("media_id"))
+                                    } catch(e : Exception) {
+                                        logger.error("Failed to delete child ID ${child.getString("")}:")
+                                        e.printStackTrace()
+                                        r.error("Database error")
+                                        return@launch
+                                    }
+                                }
+                            } catch(e : Exception) {
+                                logger.error("Failed to fetch media children:")
+                                e.printStackTrace()
+                                r.error("Database error")
+                                return@launch
+                            }
+                        } else {
+                            // Check if files with the same hash exist
+                            val hashMediaRes = fetchMediaByHash(media.getString("media_file_hash"))
+
+                            if (hashMediaRes != null && hashMediaRes.rows.size < 2) {
+                                delete = true
+                            }
+                        }
+
+                        if(delete) {
                             // Delete media files
-                            val fs = vertx().fileSystem()
                             try {
                                 // Delete main file
                                 val file = media.getString("media_file")
 
-                                fs.deleteAwait(config.upload_location + file)
+                                if(fs.existsAwait(config.upload_location + file))
+                                    fs.deleteAwait(config.upload_location + file)
                             } catch (e: Exception) {
                                 // Failed to delete main file
                                 logger.error("Failed to delete file ${media.getString("media_file")}:")
@@ -346,7 +404,8 @@ fun mediaController() {
                                     // Delete thumbnail file
                                     val file = media.getString("media_thumbnail_file")
 
-                                    fs.deleteAwait(config.upload_location + "thumbnails/" + file)
+                                    if (fs.existsAwait(config.upload_location + "thumbnails/" + file))
+                                        fs.deleteAwait(config.upload_location + "thumbnails/" + file)
                                 } catch (e: Exception) {
                                     // Failed to delete thumbnail file
                                     logger.error("Failed to delete file ${media.getString("media_thumbnail_file")}")
@@ -362,7 +421,7 @@ fun mediaController() {
                             deleteMedia(fileId)
 
                             r.success()
-                        } catch(e : Exception) {
+                        } catch (e: Exception) {
                             logger.error("Failed to delete file entry for ID $fileId:")
                             e.printStackTrace()
                             r.error("Internal error")
@@ -370,10 +429,67 @@ fun mediaController() {
                     } else {
                         r.error("File does not exist")
                     }
+
+                    try {
+                        // Update tags
+                        refreshTags()
+                    } catch(e : Exception) {
+                        logger.error("Failed to update tags:")
+                        e.printStackTrace()
+                        r.error("Database error")
+                    }
                 } catch(e : Exception) {
                     logger.error("Failed to delete file:")
                     e.printStackTrace()
                     r.error("Database error")
+                }
+            }
+        }
+    }
+
+    // Returns all media files from a list
+    // Permissions:
+    //  - files.list
+    // Parameters:
+    //  - offset: Integer at least 0 that sets the offset of returned results
+    //  - limit: Integer from 0 to 100, sets the amount of results to return
+    //  - mime: String, the mime pattern to search for, can use % as a wildcard character
+    //  - order: Integer from 0 to 5, denotes the type of sorting to use (date newest to oldest, date oldest to newest, alphabetically ascending, alphabetically descending, size large to small, size small to large)
+    // Route params:
+    //  - id: String, the alphanumeric ID of the list
+    get("/api/v1/media/list/:id", domain) { r ->
+        val params = r.request().params()
+        val listId = r.pathParam("id")
+        GlobalScope.launch(vertx().dispatcher()) {
+            if(r.protectWithPermission("files.list")) {
+                try {
+                    // Collect parameters
+                    val offset = (if(params.contains("offset")) params["offset"].toInt() else 0).coerceAtLeast(0)
+                    val limit = (if(params.contains("limit")) params["limit"].toInt() else 100).coerceIn(0, 100)
+                    val mime = if(params.contains("mime")) params["mime"] else "%"
+                    val order = (if(params.contains("order")) params["order"].toInt() else 0).coerceIn(0, 5)
+
+                    try {
+                        // Fetch files
+                        val media = fetchMediaList(offset, limit, mime, order)
+
+                        // TODO FFFFFF
+
+                        // Create JSON array of files
+                        val arr = JsonArray()
+
+                        for(file in media?.rows.orEmpty())
+                            arr.add(file)
+
+                        // Send files
+                        r.success(JsonObject().put("files", arr))
+                    } catch(e : Exception) {
+                        logger.error("Failed to fetch files:")
+                        e.printStackTrace()
+                        r.error("Database error")
+                    }
+                } catch(e : Exception) {
+                    r.error("Invalid parameters")
                 }
             }
         }
