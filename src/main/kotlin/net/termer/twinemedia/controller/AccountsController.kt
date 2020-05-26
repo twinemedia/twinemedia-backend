@@ -6,8 +6,6 @@ import io.vertx.kotlin.coroutines.dispatcher
 import kotlinx.coroutines.GlobalScope
 import kotlinx.coroutines.launch
 import net.termer.twine.ServerManager.*
-import net.termer.twine.Twine.domains
-import net.termer.twinemedia.Module.Companion.config
 import net.termer.twinemedia.Module.Companion.crypt
 import net.termer.twinemedia.Module.Companion.logger
 import net.termer.twinemedia.model.*
@@ -18,7 +16,7 @@ import net.termer.twinemedia.util.*
  * @since 1.0
  */
 fun accountsController() {
-    val domain = domains().byName(config.domain).domain()
+    val domain = appDomain()
 
     // Returns a list of accounts
     // Permissions:
@@ -109,33 +107,50 @@ fun accountsController() {
         val params = r.request().params()
         GlobalScope.launch(vertx().dispatcher()) {
             if(r.protectRoute()) {
-                try {
-                    val acc = r.account()
+                val acc = r.account()
 
-                    // Resolve edit values
-                    val name = if (params.contains("name")) {
-                        if (params["name"].length > 64) params["name"].substring(0, 64) else params["name"]
-                    } else {
-                        acc.getString("account_name")
+                // Resolve edit values
+                val name = if (params.contains("name")) {
+                    if (params["name"].length > 64) params["name"].substring(0, 64) else params["name"]
+                } else {
+                    acc.getString("account_name")
+                }
+                val email = if (params.contains("email")) {
+                    if (params["email"].length > 64) params["email"].substring(0, 64) else params["email"]
+                } else {
+                    acc.getString("account_email")
+                }
+
+                if(validEmail(email)) {
+                    try {
+                        // Check if account with that email already exists
+                        val emailRes = fetchAccountByEmail(email)
+
+                        if (emailRes != null && emailRes.rows.size > 0) {
+                            r.error("Account with that email already exists")
+                        } else {
+                            try {
+                                // Hash password if present
+                                val hash = if (params.contains("password")) crypt.hashPassword(params["password"]).orEmpty() else acc.getString("account_hash")
+
+                                // Update info
+                                updateAccountInfo(acc.getInteger("id"), name, email, hash)
+
+                                // Success
+                                r.success()
+                            } catch (e: Exception) {
+                                logger.error("Failed to update account info:")
+                                e.printStackTrace()
+                                r.error("Database error")
+                            }
+                        }
+                    } catch(e : Exception) {
+                        logger.error("Failed to fetch account by email:")
+                        e.printStackTrace()
+                        r.error("Database error")
                     }
-                    val email = if (params.contains("email")) {
-                        if (params["email"].length > 64) params["email"].substring(0, 64) else params["email"]
-                    } else {
-                        acc.getString("account_email")
-                    }
-
-                    // Hash password if present
-                    val hash = if (params.contains("password")) crypt.hashPassword(params["password"]).orEmpty() else acc.getString("account_hash")
-
-                    // Update info
-                    updateAccountInfo(acc.getInteger("id"), name, email, hash)
-
-                    // Success
-                    r.success()
-                } catch(e : Exception) {
-                    logger.error("Failed to update account info:")
-                    e.printStackTrace()
-                    r.error("Database error")
+                } else {
+                    r.error("Invalid email")
                 }
             }
         }
@@ -186,14 +201,37 @@ fun accountsController() {
                                     account.getBoolean("admin")
                                 }
 
-                                try {
-                                    updateAccountInfo(id, name, email, admin, perms)
+                                // Make sure non-admin cannot create an admin account
+                                if(admin && !r.account().getBoolean("account_admin")) {
+                                    r.error("Must be an administrator to make an administrator account")
+                                    return@launch
+                                }
 
-                                    r.success()
-                                } catch (e: Exception) {
-                                    logger.error("Failed to edit account info:")
-                                    e.printStackTrace()
-                                    r.error("Database error")
+                                if(validEmail(email)) {
+                                    try {
+                                        // Check if account with that email already exists
+                                        val emailRes = fetchAccountByEmail(email)
+
+                                        if (emailRes != null && emailRes.rows.size > 0) {
+                                            r.error("Account with that email already exists")
+                                        } else {
+                                            try {
+                                                updateAccountInfo(id, name, email, admin, perms)
+
+                                                r.success()
+                                            } catch (e: Exception) {
+                                                logger.error("Failed to edit account info:")
+                                                e.printStackTrace()
+                                                r.error("Database error")
+                                            }
+                                        }
+                                    } catch(e : Exception) {
+                                        logger.error("Failed to fetch account by email:")
+                                        e.printStackTrace()
+                                        r.error("Database error")
+                                    }
+                                } else {
+                                    r.error("Invalid email")
                                 }
                             } catch (e: Exception) {
                                 // Invalid tags JSON array, or invalid admin value
@@ -226,7 +264,7 @@ fun accountsController() {
     post("/api/v1/accounts/create", domain) { r ->
         val params = r.request().params()
         GlobalScope.launch(vertx().dispatcher()) {
-            if(r.account().getBoolean("account_admin")) {
+            if(r.protectWithPermission("accounts.create")) {
                 // Verify proper parameters were provided
                 if(params.contains("name") && params.contains("email") && params.contains("admin") && params.contains("permissions") && params.contains("password")) {
                     try {
@@ -237,29 +275,39 @@ fun accountsController() {
                         val admin = params["admin"].toBoolean()
                         val password = params["password"]
 
-                        // Check if account with same email already exists
-                        try {
-                            val accountRes = fetchAccountByEmail(email)
+                        // Make sure non-admin cannot create an admin account
+                        if(admin && !r.account().getBoolean("account_admin")) {
+                            r.error("Must be an administrator to make an administrator account")
+                            return@launch
+                        }
 
-                            if(accountRes != null && accountRes.rows.size > 0) {
-                                r.error("Account with that email already exists")
-                            } else {
-                                try {
-                                    // Create account
-                                    createAccount(name, email, admin, perms, password)
+                        if(validEmail(email)) {
+                            // Check if account with same email already exists
+                            try {
+                                val accountRes = fetchAccountByEmail(email)
 
-                                    // Send success
-                                    r.success()
-                                } catch (e: Exception) {
-                                    logger.error("Failed to create new account:")
-                                    e.printStackTrace()
-                                    r.error("Database error")
+                                if (accountRes != null && accountRes.rows.size > 0) {
+                                    r.error("Account with that email already exists")
+                                } else {
+                                    try {
+                                        // Create account
+                                        createAccount(name, email, admin, perms, password)
+
+                                        // Send success
+                                        r.success()
+                                    } catch (e: Exception) {
+                                        logger.error("Failed to create new account:")
+                                        e.printStackTrace()
+                                        r.error("Database error")
+                                    }
                                 }
+                            } catch (e: Exception) {
+                                logger.error("Failed to fetch account:")
+                                e.printStackTrace()
+                                r.error("Database error")
                             }
-                        } catch(e : Exception) {
-                            logger.error("Failed to fetch account:")
-                            e.printStackTrace()
-                            r.error("Database error")
+                        } else {
+                            r.error("Invalid email")
                         }
                     } catch (e: Exception) {
                         // Invalid tags JSON array, or invalid admin value
@@ -269,8 +317,6 @@ fun accountsController() {
                 } else {
                     r.error("Must provide the following values: name, email, admin, permissions, password")
                 }
-            } else {
-                r.unauthorized()
             }
         }
     }

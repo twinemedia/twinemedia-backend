@@ -234,47 +234,49 @@ fun RoutingContext.sendFileRanged(file : String) = sendFileRanged(File(file))
  * @since 1.0
  */
 fun RoutingContext.sendFileRanged(f : File) {
-    // Advertise range support
-    response().putHeader("Accept-Ranges", "bytes")
-    response().putHeader("vary", "accept-encoding")
+    if(!response().closed()) {
+        // Advertise range support
+        response().putHeader("Accept-Ranges", "bytes")
+        response().putHeader("vary", "accept-encoding")
 
-    // Write caching headers if enabled
-    if (Twine.config()["staticCaching"] as Boolean) {
-        response().putHeader("date", cacheDateFormat.format(Date()))
-        response().putHeader("cache-control", "public, max-age=86400")
-        response().putHeader("last-modified", cacheDateFormat.format(Date(f.lastModified())))
-    }
-    // Check if range requested
-    if (request().headers()["Range"] == null) { // Send file length on HEAD
-        if (request().method() == HttpMethod.HEAD)
-            response().putHeader("content-length", f.length().toString())
-
-        // Correct plain text header
-        if (MimeMapping.getMimeTypeForFilename(f.name) === "text/plain") {
-            response().putHeader("Content-Type", "text/plain;charset=UTF-8")
+        // Write caching headers if enabled
+        if (Twine.config()["staticCaching"] as Boolean) {
+            response().putHeader("date", cacheDateFormat.format(Date()))
+            response().putHeader("cache-control", "public, max-age=86400")
+            response().putHeader("last-modified", cacheDateFormat.format(Date(f.lastModified())))
         }
+        // Check if range requested
+        if (request().headers()["Range"] == null) { // Send file length on HEAD
+            if (request().method() == HttpMethod.HEAD)
+                response().putHeader("content-length", f.length().toString())
 
-        // Send full file
-        response().sendFile(f.absolutePath)
-    } else { // Resolve range parameters
-        val rangeStr = request().headers()["Range"].substring(6)
-        val off = rangeStr.split("-".toRegex()).toTypedArray()[0].toLong()
-        var end : Long = f.length()
-        val len = end
+            // Correct plain text header
+            if (MimeMapping.getMimeTypeForFilename(f.name) === "text/plain") {
+                response().putHeader("Content-Type", "text/plain;charset=UTF-8")
+            }
 
-        if (!rangeStr.endsWith("-"))
-            end = rangeStr.split("-".toRegex()).toTypedArray()[1].toLong()
+            // Send full file
+            response().sendFile(f.absolutePath)
+        } else { // Resolve range parameters
+            val rangeStr = request().headers()["Range"].substring(6)
+            val off = rangeStr.split("-".toRegex()).toTypedArray()[0].toLong()
+            var end: Long = f.length()
+            val len = end
 
-        // Send segment length on HEAD
-        if (request().method() == HttpMethod.HEAD)
-            response().putHeader("content-length", (end - off + 1).toString())
+            if (!rangeStr.endsWith("-"))
+                end = rangeStr.split("-".toRegex()).toTypedArray()[1].toLong()
 
-        // Send headers
-        response().statusCode = 206
-        response().putHeader("Content-Range", "bytes " + off + "-" + (end - 1) + "/" + len)
+            // Send segment length on HEAD
+            if (request().method() == HttpMethod.HEAD)
+                response().putHeader("content-length", (end - off + 1).toString())
 
-        // Send file part
-        response().sendFile(f.absolutePath, off, (end + 1).coerceAtMost(len))
+            // Send headers
+            response().statusCode = 206
+            response().putHeader("Content-Range", "bytes " + off + "-" + (end - 1) + "/" + len)
+
+            // Send file part
+            response().sendFile(f.absolutePath, off, (end + 1).coerceAtMost(len))
+        }
     }
 }
 

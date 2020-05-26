@@ -8,21 +8,16 @@ import io.vertx.kotlin.coroutines.dispatcher
 import kotlinx.coroutines.GlobalScope
 import kotlinx.coroutines.launch
 import net.termer.twine.ServerManager.*
-import net.termer.twine.Twine.domains
-import net.termer.twinemedia.Module.Companion.config
 import net.termer.twinemedia.Module.Companion.logger
 import net.termer.twinemedia.model.*
-import net.termer.twinemedia.util.error
-import net.termer.twinemedia.util.protectWithPermission
-import net.termer.twinemedia.util.success
-import net.termer.twinemedia.util.userId
+import net.termer.twinemedia.util.*
 
 /**
  * Sets up all routes for editing and modifying processing presets
  * @since 1.0
  */
 fun processesController() {
-    val domain = domains().byName(config.domain).domain()
+    val domain = appDomain()
 
     // Returns info about a process
     // Permissions:

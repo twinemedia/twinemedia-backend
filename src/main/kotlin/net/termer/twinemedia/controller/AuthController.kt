@@ -8,13 +8,13 @@ import kotlinx.coroutines.GlobalScope
 import kotlinx.coroutines.launch
 import net.termer.twine.ServerManager.post
 import net.termer.twine.ServerManager.vertx
-import net.termer.twine.Twine.domains
 import net.termer.twine.utils.StringFilter.generateString
 import net.termer.twinemedia.Module.Companion.config
 import net.termer.twinemedia.Module.Companion.crypt
 import net.termer.twinemedia.Module.Companion.logger
 import net.termer.twinemedia.jwt.jwtCreateToken
 import net.termer.twinemedia.model.fetchAccountByEmail
+import net.termer.twinemedia.util.appDomain
 import net.termer.twinemedia.util.error
 import net.termer.twinemedia.util.ip
 import net.termer.twinemedia.util.success
@@ -26,11 +26,11 @@ import net.termer.twinemedia.util.success
 fun authController() {
     // Enforce max attempts per minute for authentication
     val attempts = HashMap<String, Int>()
-    vertx().setPeriodic(12000) {
+    vertx().setPeriodic(config.auth_timeout_period.toLong()) {
         attempts.clear()
     }
 
-    var domain = domains().byName(config.domain).domain()
+    var domain = appDomain()
 
     // Login route
     // Parameters:

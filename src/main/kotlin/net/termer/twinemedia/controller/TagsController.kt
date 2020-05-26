@@ -6,12 +6,11 @@ import io.vertx.kotlin.coroutines.dispatcher
 import kotlinx.coroutines.GlobalScope
 import kotlinx.coroutines.launch
 import net.termer.twine.ServerManager.*
-import net.termer.twine.Twine.domains
-import net.termer.twinemedia.Module.Companion.config
 import net.termer.twinemedia.Module.Companion.logger
 import net.termer.twinemedia.model.fetchAllTags
 import net.termer.twinemedia.model.fetchTagInfo
 import net.termer.twinemedia.model.fetchTagsByTerm
+import net.termer.twinemedia.util.appDomain
 import net.termer.twinemedia.util.error
 import net.termer.twinemedia.util.protectWithPermission
 import net.termer.twinemedia.util.success
@@ -21,7 +20,7 @@ import net.termer.twinemedia.util.success
  * @since 1.0
  */
 fun tagsController() {
-    val domain = domains().byName(config.domain).domain()
+    val domain = appDomain()
 
     // Returns tags, optionally based on a query (which supports % wildcards)
     // Permissions:

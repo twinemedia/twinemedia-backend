@@ -7,6 +7,7 @@
 plugins {
     // Apply the Kotlin JVM plugin to add support for Kotlin.
     id("org.jetbrains.kotlin.jvm") version "1.3.41"
+    id("com.github.johnrengelman.shadow") version("5.2.0")
 }
 
 repositories {
@@ -30,9 +31,10 @@ dependencies {
     implementation("org.jetbrains.kotlinx:kotlinx-coroutines-core:1.3.2")
     implementation("de.mkammerer:argon2-jvm:2.6")
     implementation("net.bramp.ffmpeg:ffmpeg:0.6.2")
+    implementation("org.flywaydb:flyway-core:6.4.2")
 
-    // Twine
-    implementation("net.termer.twine:twine:1.5b")
+    // Twine, does not get packaged
+    compileOnly("net.termer.twine:twine:1.5b")
 
     // Use the Kotlin JDK 8 standard library.
     implementation("org.jetbrains.kotlin:kotlin-stdlib-jdk8")

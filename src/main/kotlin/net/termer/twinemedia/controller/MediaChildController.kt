@@ -8,9 +8,7 @@ import kotlinx.coroutines.GlobalScope
 import kotlinx.coroutines.launch
 import net.termer.twine.ServerManager.post
 import net.termer.twine.ServerManager.vertx
-import net.termer.twine.Twine.domains
 import net.termer.twine.utils.StringFilter.generateString
-import net.termer.twinemedia.Module.Companion.config
 import net.termer.twinemedia.Module.Companion.logger
 import net.termer.twinemedia.model.fetchMedia
 import net.termer.twinemedia.util.*
@@ -19,7 +17,7 @@ import net.termer.twinemedia.util.*
  * Setups up all routes for creating child media files
  */
 fun mediaChildController() {
-    val domain = domains().byName(config.domain).domain()
+    val domain = appDomain()
 
     // Creates a new child media entry and starts processing the new version
     // Permissions:

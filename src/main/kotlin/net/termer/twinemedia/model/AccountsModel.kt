@@ -116,6 +116,20 @@ suspend fun fetchAccountInfoById(id : Int) : ResultSet? {
 }
 
 /**
+ * Fetches all admin accounts
+ * @return All accounts that are administrators
+ * @since 1.0
+ */
+suspend fun fetchAdminAccounts() : ResultSet? {
+    return client?.queryWithParamsAwait(
+            """
+                SELECT * FROM accounts WHERE account_admin = true
+            """.trimIndent(),
+            JsonArray()
+    )
+}
+
+/**
  * Updates an account's info
  * @param id The ID of the account
  * @param newName The new name for this account
@@ -167,6 +181,24 @@ suspend fun updateAccountInfo(id : Int, newName : String, newEmail: String, newH
                     .add(newEmail)
                     .add(newHash)
                     .add(id)
+    )
+}
+
+/**
+ * Updates an account's password hash
+ * @param id The ID of the account
+ * @param newHash The new password hash for this account
+ * @since 1.0
+ */
+suspend fun updateAccountHash(id : Int, newHash: String) {
+    client?.queryWithParamsAwait(
+            """
+                UPDATE accounts
+                SET
+                    account_hash = ?
+                WHERE id = ?
+            """.trimIndent(),
+            JsonArray()
     )
 }
 

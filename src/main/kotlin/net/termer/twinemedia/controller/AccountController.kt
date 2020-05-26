@@ -6,20 +6,15 @@ import io.vertx.kotlin.coroutines.dispatcher
 import kotlinx.coroutines.GlobalScope
 import kotlinx.coroutines.launch
 import net.termer.twine.ServerManager.*
-import net.termer.twine.Twine.domains
-import net.termer.twinemedia.Module.Companion.config
 import net.termer.twinemedia.exception.AuthException
-import net.termer.twinemedia.util.account
-import net.termer.twinemedia.util.error
-import net.termer.twinemedia.util.protectRoute
-import net.termer.twinemedia.util.success
+import net.termer.twinemedia.util.*
 
 /**
  * Sets up all account routes for the user's account
  * @since 1.0
  */
 fun accountController() {
-    val domain = domains().byName(config.domain).domain()
+    val domain = appDomain()
 
     // Protect all routes in /api/v1/account/
     handler("/api/v1/account/*", domain) { r ->

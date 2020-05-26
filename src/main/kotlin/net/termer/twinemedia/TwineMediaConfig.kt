@@ -16,13 +16,13 @@ class TwineMediaConfig {
     var db_user = "me"
     var db_pass = "drowssap"
     var db_max_pool_size = 5
+    var db_auto_migrate = true
 
-    var keystore_path = "jwt.jceks"
-    var keystore_secret = "jwtauth"
-    var keystore_expire_minutes = 120
+    var jwt_secret = "jwtauth_please_change_me"
+    var jwt_expire_minutes = 120
 
     var crypt_processor_count = 1
-    var crypt_memory_kb = 1048576
+    var crypt_memory_kb = 2048
 
     var frontend_host = "*"
     var reverse_proxy = false
@@ -33,4 +33,5 @@ class TwineMediaConfig {
     var media_processor_count = 2
 
     var max_auth_attempts = 5
+    var auth_timeout_period = 12000
 }

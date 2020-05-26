@@ -7,9 +7,9 @@ import kotlinx.coroutines.GlobalScope
 import kotlinx.coroutines.launch
 import net.termer.twine.ServerManager.get
 import net.termer.twine.ServerManager.vertx
-import net.termer.twine.Twine
 import net.termer.twinemedia.Module.Companion.config
 import net.termer.twinemedia.model.fetchMedia
+import net.termer.twinemedia.util.appDomain
 import net.termer.twinemedia.util.error
 import net.termer.twinemedia.util.sendFileRanged
 
@@ -18,7 +18,7 @@ import net.termer.twinemedia.util.sendFileRanged
  * @since 1.0
  */
 fun serveController() {
-    val domain = Twine.domains().byName(config.domain).domain()
+    val domain = appDomain()
 
     get("/file/:id/*", domain, ::handleFile)
     get("/file/:id", domain, ::handleFile)

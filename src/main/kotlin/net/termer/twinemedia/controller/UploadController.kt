@@ -2,7 +2,6 @@ package net.termer.twinemedia.controller
 
 import com.google.common.hash.Hashing
 import com.google.common.io.Files
-import io.vertx.core.json.JsonArray
 import io.vertx.core.json.JsonObject
 import io.vertx.kotlin.core.executeBlockingAwait
 import io.vertx.kotlin.core.file.deleteAwait
@@ -13,7 +12,6 @@ import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import net.termer.twine.ServerManager.post
 import net.termer.twine.ServerManager.vertx
-import net.termer.twine.Twine
 import net.termer.twine.utils.StringFilter.generateString
 import net.termer.twinemedia.Module.Companion.config
 import net.termer.twinemedia.Module.Companion.logger
@@ -22,10 +20,7 @@ import net.termer.twinemedia.model.fetchMediaByHash
 import net.termer.twinemedia.model.fetchProcessesForMime
 import net.termer.twinemedia.util.*
 import sun.misc.BASE64Encoder
-import java.io.BufferedInputStream
 import java.io.File
-import java.io.FileInputStream
-import java.security.MessageDigest
 
 
 /**
@@ -33,7 +28,7 @@ import java.security.MessageDigest
  * @since 1.0
  */
 fun uploadController() {
-    val domain = Twine.domains().byName(config.domain).domain()
+    val domain = appDomain()
 
     // Accepts media uploads
     // Permissions:
