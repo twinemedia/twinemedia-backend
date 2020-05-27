@@ -357,6 +357,7 @@ suspend fun fetchMediaListByTags(tags : JsonArray, mime : String, order : Int, o
  * @since 1.0
  */
 suspend fun fetchMediaByPlaintextQuery(query : String, offset : Int, limit : Int, order : Int, mime : String, searchNames : Boolean, searchFilenames : Boolean, searchTags : Boolean, searchDescs : Boolean) : ResultSet? {
+    val params = JsonArray()
     var tsvectorParts = arrayListOf<String>()
     if(searchNames)
         tsvectorParts.add("COALESCE(media_name, '')")
@@ -366,6 +367,17 @@ suspend fun fetchMediaByPlaintextQuery(query : String, offset : Int, limit : Int
         tsvectorParts.add("media_tags")
     if(searchDescs)
         tsvectorParts.add("COALESCE(media_description, '')")
+
+    val tsvectorStr = if(tsvectorParts.size > 0)
+            """
+                to_tsvector(
+                    ${ tsvectorParts.joinToString(" || ' ' || ") }
+                ) @@ plainto_tsquery(?) AND
+            """.trimIndent().also {
+                params.add(query)
+            }
+    else
+            ""
 
     return client?.queryWithParamsAwait(
             """
@@ -385,15 +397,12 @@ suspend fun fetchMediaByPlaintextQuery(query : String, offset : Int, limit : Int
                 FROM media
                 LEFT JOIN accounts ON accounts.id = media_creator
                 WHERE media_parent IS NULL AND
-                to_tsvector(
-                	${ tsvectorParts.joinToString(" || ' ' || ") }
-                ) @@ plainto_tsquery(?) AND
+                $tsvectorStr
                 media_mime LIKE ?
                 ${ orderBy(order) }
                 OFFSET ? LIMIT ?
             """.trimIndent(),
-            JsonArray()
-                    .add(query)
+            params
                     .add(mime)
                     .add(offset)
                     .add(limit)

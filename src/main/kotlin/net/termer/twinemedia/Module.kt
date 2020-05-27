@@ -210,7 +210,7 @@ class Module : TwineModule {
                 println("What password are you using to authenticate with the database? (<leave blank to use existing/default value>): ")
                 ln = cons.readPassword().joinToString("")
 
-                if (ln != null && ln.isNotBlank())
+                if (ln.isNotBlank())
                     config.db_pass = ln
 
                 if (advanced) {
@@ -375,7 +375,7 @@ class Module : TwineModule {
                             createAdminPrompt()
                         }
                     } catch (e: Exception) {
-                        error("Error occurred when attempting to access database, check your database settings. Error:")
+                        System.err.println("Error occurred when attempting to access database, check your database settings. Error:")
                         e.printStackTrace()
                     }
                 }
@@ -394,7 +394,7 @@ class Module : TwineModule {
 
                 println("Welcome to TwineMedia. You are about to install and configure this module.")
                 println("Press enter to continue.")
-                var ln = cons.readLine()
+                cons.readLine()
 
                 println("Attempting to connect to the database...")
                 dbInit()
@@ -444,9 +444,39 @@ class Module : TwineModule {
                             println()
                         }
 
-                        print("Account ID: ")
                         try {
+                            print("Account ID: ")
                             val id = cons.readLine().toInt()
+
+                            // Check if account is in list
+                            var exists = false
+                            for(acc in adminsRes.rows)
+                                if(acc.getInteger("id") == id) {
+                                    exists = true
+                                    break
+                                }
+
+                            if(exists) {
+                                print("New password: ")
+                                val pass = cons.readPassword().joinToString("")
+                                print("Confirm password: ")
+                                val passConf = cons.readPassword().joinToString("")
+
+                                if(pass == passConf) {
+                                    try {
+                                        println("Updating password...")
+                                        updateAccountPassword(id, pass)
+                                        println("Updated!")
+                                    } catch(e : Exception) {
+                                        System.err.println("Failed to update password because of error:")
+                                        e.printStackTrace()
+                                    }
+                                } else {
+                                    println("Passwords do not match")
+                                }
+                            } else {
+                                println("Invalid ID")
+                            }
                         } catch(e : Exception) {
                             println("Invalid ID")
                         }
@@ -462,7 +492,7 @@ class Module : TwineModule {
             println("Waiting for Twine to start...")
 
             // Register server start event to shut it down immediately
-            Events.on(Events.Type.SERVER_START) { _ ->
+            Events.on(Events.Type.SERVER_START) {
                 logger.info("Shutting down Twine since TwineMedia configuration is finished...")
                 Twine.shutdown()
             }

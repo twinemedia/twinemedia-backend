@@ -109,6 +109,7 @@ suspend fun fetchListInfo(listId : String) : ResultSet? {
                 	list_source_created_before AS source_created_before,
                 	list_source_created_after AS source_created_after,
                     list_source_mime AS source_mime,
+                    list_creator AS creator,
                 	account_name AS creator_name
                 FROM lists
                 LEFT JOIN accounts ON accounts.id = list_creator
@@ -144,6 +145,7 @@ suspend fun fetchListInfo(id : Int) : ResultSet? {
                 	list_source_created_before AS source_created_before,
                 	list_source_created_after AS source_created_after,
                     list_source_mime AS source_mime,
+                    list_creator AS creator,
                 	account_name AS creator_name
                 FROM lists
                 LEFT JOIN accounts ON accounts.id = list_creator
@@ -180,6 +182,7 @@ suspend fun fetchLists(offset : Int, limit : Int, order : Int): ResultSet? {
                 	list_source_created_before AS source_created_before,
                 	list_source_created_after AS source_created_after,
                     list_source_mime AS source_mime,
+                    list_creator AS creator,
                 	account_name AS creator_name
                 FROM lists
                 LEFT JOIN accounts ON accounts.id = list_creator
@@ -204,11 +207,24 @@ suspend fun fetchLists(offset : Int, limit : Int, order : Int): ResultSet? {
  * @since 1.0
  */
 suspend fun fetchListsByPlaintextQuery(query : String, offset : Int, limit : Int, order : Int, searchNames : Boolean, searchDescs : Boolean): ResultSet? {
+    val params = JsonArray()
     var tsvectorParts = arrayListOf<String>()
     if(searchNames)
         tsvectorParts.add("COALESCE(list_name, '')")
     if(searchDescs)
         tsvectorParts.add("COALESCE(list_description, '')")
+
+    val tsvectorStr = if(tsvectorParts.size > 0)
+            """
+                WHERE
+                to_tsvector(
+                    ${ tsvectorParts.joinToString(" || ' ' || ") }
+                ) @@ plainto_tsquery(?)
+            """.trimIndent().also {
+            params.add(query)
+        }
+    else
+        ""
 
     return client?.queryWithParamsAwait(
             """
@@ -228,18 +244,15 @@ suspend fun fetchListsByPlaintextQuery(query : String, offset : Int, limit : Int
                 	list_source_created_before AS source_created_before,
                 	list_source_created_after AS source_created_after,
                     list_source_mime AS source_mime,
+                    list_creator AS creator,
                 	account_name AS creator_name
                 FROM lists
-                WHERE
-                to_tsvector(
-                	${ tsvectorParts.joinToString(" || ' ' || ") }
-                ) @@ plainto_tsquery(?)
                 LEFT JOIN accounts ON accounts.id = list_creator
+                $tsvectorStr
                 ${ orderBy(order) }
                 OFFSET ? LIMIT ?
             """.trimIndent(),
-            JsonArray()
-                    .add(query)
+            params
                     .add(offset)
                     .add(limit)
     )

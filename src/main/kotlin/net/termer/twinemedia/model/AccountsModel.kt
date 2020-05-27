@@ -199,6 +199,8 @@ suspend fun updateAccountHash(id : Int, newHash: String) {
                 WHERE id = ?
             """.trimIndent(),
             JsonArray()
+                    .add(newHash)
+                    .add(id)
     )
 }
 

@@ -115,6 +115,7 @@ fun RoutingContext.protectRoute() : Boolean {
  * @since 1.0
  */
 fun RoutingContext.userId() : Int {
+
     return user().principal().getInteger("sub")
 }
 
