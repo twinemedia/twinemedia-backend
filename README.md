@@ -4,10 +4,15 @@ Backend for TwineMedia, a fully featured personal media management web applicati
 # Prerequisites
 You will need the following to run TwineMedia:
 
+ - Java 8 or higher
+ - A PostgreSQL instance
  - A machine running Windows, Mac, or Linux (you can use BSD if you compile Argon2-jvm for it, but it's not officially supported and won't work out of the box)
  - A Twine instance running version 1.5 or later
  - FFmpeg
 
+# Compiling
+To compile, run `./gradlew shadowJar` (Mac, Linux) or `gradlew.bat shadowJar` (Windows). The compiled module will be in `build/libs/`.
+ 
 # Installation
 To install, download (or compile) the TwineMedia module jar and put it into Twine's `modules/` directory.
 
