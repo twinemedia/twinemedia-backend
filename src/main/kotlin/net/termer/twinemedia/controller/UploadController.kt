@@ -19,7 +19,7 @@ import net.termer.twinemedia.model.createMedia
 import net.termer.twinemedia.model.fetchMediaByHash
 import net.termer.twinemedia.model.fetchProcessesForMime
 import net.termer.twinemedia.util.*
-import sun.misc.BASE64Encoder
+import java.util.Base64
 import java.io.File
 
 
@@ -85,6 +85,7 @@ fun uploadController() {
                             it.printStackTrace()
                             upload = false
                             error = "Internal error"
+                            
                             GlobalScope.launch(vertx().dispatcher()) {
                                 logger.info("Deleting file $saveLoc")
                                 vertx().fileSystem().deleteAwait(saveLoc)
@@ -102,7 +103,7 @@ fun uploadController() {
                                 val hash = vertx().executeBlockingAwait<String> {
 
                                     val file = File(saveLoc)
-                                    it.complete(BASE64Encoder().encode(Files.asByteSource(file).hash(Hashing.sha256()).asBytes()))
+                                    it.complete(String(Base64.getEncoder().encode(Files.asByteSource(file).hash(Hashing.sha256()).asBytes())))
                                 }
 
                                 // Thumbnail file
