@@ -55,6 +55,7 @@ private fun newJobId() = jobIdIncrementer++
 // Fetches a mime for the specified file extension
 private fun mimeFor(extension: String) = when(extension) {
     "mp4" -> "video/mp4"
+    "m4a" -> "audio/mp4"
     "webm" -> "video/webm"
     "ogv" -> "video/ogg"
     "mkv" -> "video/x-matroska"
@@ -69,6 +70,7 @@ private fun mimeFor(extension: String) = when(extension) {
 // Acceptable audio file extensions for processing
 val audioExtensions = arrayOf(
         "mp3",
+        "m4a",
         "flac",
         "wav",
         "aac",

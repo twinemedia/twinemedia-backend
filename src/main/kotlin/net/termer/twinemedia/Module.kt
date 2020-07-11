@@ -373,6 +373,8 @@ class Module : TwineModule {
                     try {
                         dbInit()
                         println("Database connection successful!")
+                        println("Setting up schema...")
+                        dbMigrate()
                         println("Checking for an admin account...")
                         val admins = fetchAdminAccounts()
                         if (admins != null && admins.rows != null && admins.rows.size > 0) {
