@@ -91,6 +91,9 @@ fun listsController() {
                     val offset = (if(params.contains("offset")) params["offset"].toInt() else 0).coerceAtLeast(0)
                     val limit = (if(params.contains("limit")) params["limit"].toInt() else 100).coerceIn(0, 100)
                     val order = (if(params.contains("order")) params["order"].toInt() else 0).coerceIn(0, 5)
+                    // Fix for an edge case on certain machines where the path params are read as query params for another route... it doesn't make sense but this fixes it
+                    if(params["type"] == "lists")
+                        params.remove("type")
                     val type = (if(params.contains("type")) params["type"].toInt() else -1).coerceIn(-1, 1)
                     val media = params["media"]
                     val query = if(params.contains("query")) params["query"] else ""
