@@ -30,7 +30,7 @@ import net.termer.twinemedia.model.updateMediaInfo
 import net.termer.twinemedia.model.updateMediaProcessError
 import org.slf4j.Logger
 import org.slf4j.LoggerFactory
-import sun.misc.BASE64Encoder
+import java.util.Base64
 import java.io.BufferedInputStream
 import java.io.File
 import java.io.FileInputStream
@@ -242,7 +242,8 @@ fun startMediaProcessor() : Thread {
                         digest.update(buffer, 0, count)
                     }
                     bis.close()
-                    val hash = BASE64Encoder().encode(digest.digest())
+
+                    val hash = String(Base64.getEncoder().encode(digest.digest()))
 
                     // Try to generate thumbnail
                     var thumbnail: String? = null
