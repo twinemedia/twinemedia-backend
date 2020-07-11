@@ -20,8 +20,8 @@ import net.termer.twinemedia.util.sendFileRanged
 fun serveController() {
     val domain = appDomain()
 
-    get("/file/:id/*", domain, ::handleFile)
-    get("/file/:id", domain, ::handleFile)
+    get("/download/:id/*", domain, ::handleFile)
+    get("/download/:id", domain, ::handleFile)
     get("/thumbnail/:id/*", domain, ::handleThumbnail)
     get("/thumbnail/:id", domain, ::handleThumbnail)
 }
