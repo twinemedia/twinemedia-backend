@@ -25,17 +25,18 @@ tasks {
 
 dependencies {
     // Align versions of all Kotlin components
-    implementation(platform("org.jetbrains.kotlin:kotlin-bom"))
+    compileOnly(platform("org.jetbrains.kotlin:kotlin-bom"))
+    compileOnly("org.jetbrains.kotlinx:kotlinx-coroutines-core:1.3.2")
 
+    // Use the Kotlin JDK 8 standard library.
+    compileOnly("org.jetbrains.kotlin:kotlin-stdlib-jdk8")
+
+    // Normal dependencies
     implementation("io.vertx:vertx-auth-jwt:3.8.4")
-    implementation("org.jetbrains.kotlinx:kotlinx-coroutines-core:1.3.2")
     implementation("de.mkammerer:argon2-jvm:2.6")
     implementation("net.bramp.ffmpeg:ffmpeg:0.6.2")
     implementation("org.flywaydb:flyway-core:6.4.2")
 
     // Twine, does not get packaged
     compileOnly("net.termer.twine:twine:1.5b")
-
-    // Use the Kotlin JDK 8 standard library.
-    implementation("org.jetbrains.kotlin:kotlin-stdlib-jdk8")
 }
