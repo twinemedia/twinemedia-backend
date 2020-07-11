@@ -11,6 +11,8 @@ You will need the following to run TwineMedia:
 # Installation
 To install, download (or compile) the TwineMedia module jar and put it into Twine's `modules/` directory.
 
+Before running the installer, make sure to set `wsEnable` in `twine.yml` to `true`.
+
 Once you have the module, run Twine with the `--twinemedia-install` option. You will be guided through
 the installation process.
 
