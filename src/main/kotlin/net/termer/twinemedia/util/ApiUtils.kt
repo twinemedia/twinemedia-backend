@@ -83,9 +83,11 @@ suspend fun RoutingContext.authenticate() {
                 throw AuthException("Invalid JWT token provided")
             }
         } else {
+            setUser(null)
             throw AuthException("Invalid authentication header")
         }
     } else {
+        setUser(null)
         throw AuthException("No authentication header provided in request")
     }
 }
