@@ -8,8 +8,7 @@ import net.termer.twine.ServerManager.vertx
 import net.termer.twine.Twine
 import net.termer.twinemedia.Module
 import net.termer.twinemedia.exception.AuthException
-import net.termer.twinemedia.util.appDomain
-import net.termer.twinemedia.util.authenticate
+import net.termer.twinemedia.util.*
 
 /**
  * Automatically authenticates all API routes with JWT if possible
