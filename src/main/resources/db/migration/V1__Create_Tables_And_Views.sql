@@ -43,6 +43,32 @@ CREATE TABLE public.processes
     PRIMARY KEY (id)
 );
 
+CREATE TABLE public.lists
+(
+    id serial NOT NULL,
+    list_id character varying(10) NOT NULL,
+    list_name character varying(256) NOT NULL,
+    list_description character varying(1024),
+    list_creator integer NOT NULL,
+    list_type integer NOT NULL DEFAULT 0,
+    list_visibility integer NOT NULL DEFAULT 0,
+    list_created_on timestamp with time zone NOT NULL DEFAULT NOW(),
+    list_source_tags jsonb,
+    list_source_exclude_tags jsonb,
+    list_source_mime character varying(32),
+    list_source_created_before timestamp with time zone,
+    list_source_created_after timestamp with time zone,
+    PRIMARY KEY (id)
+);
+
+CREATE TABLE public.listitems
+(
+    id bigserial NOT NULL,
+    item_media integer NOT NULL,
+    item_list integer NOT NULL,
+    PRIMARY KEY (id)
+);
+
 CREATE MATERIALIZED VIEW public.tags
 AS
  SELECT btrim(tags.tag, '"'::text) AS tag_name

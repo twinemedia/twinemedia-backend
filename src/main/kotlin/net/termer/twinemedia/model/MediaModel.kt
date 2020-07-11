@@ -294,6 +294,7 @@ suspend fun fetchMediaByHash(hash : String) : ResultSet? {
 /**
  * Fetches a list of media files by tags
  * @param tags The tags to search for
+ * @param excludeTags The tags to exclude when searching
  * @param mime The media MIME pattern (allows % for use as wildcards)
  * @param order The order to return the media files
  * @param offset The offset of rows to return
@@ -301,7 +302,9 @@ suspend fun fetchMediaByHash(hash : String) : ResultSet? {
  * @return The all media file info entries that contain the specified tags
  * @since 1.0
  */
-suspend fun fetchMediaListByTags(tags : JsonArray, mime : String, order : Int, offset : Int, limit : Int) : ResultSet? {
+suspend fun fetchMediaListByTags(tags : JsonArray, excludeTags : JsonArray?, mime : String, order : Int, offset : Int, limit : Int) : ResultSet? {
+    val params = JsonArray()
+
     var sql = """
                 SELECT
                     media_id AS id,
@@ -323,8 +326,18 @@ suspend fun fetchMediaListByTags(tags : JsonArray, mime : String, order : Int, o
             """.trimIndent()
 
     // Add AND statements for tags
-    for(tag in tags)
+    for(tag in tags) {
         sql += "\nAND media_tags::jsonb ?? ?"
+        params.add(tag)
+    }
+
+    // Add AND NOT statements for excluded tags
+    if(excludeTags != null) {
+        for(tag in excludeTags) {
+            sql += "\nAND NOT media_tags::jsonb ?? ?"
+            params.add(tag)
+        }
+    }
 
     // Mime type and order
     sql += "\nAND media_mime LIKE ?"
@@ -335,7 +348,7 @@ suspend fun fetchMediaListByTags(tags : JsonArray, mime : String, order : Int, o
 
     return client?.queryWithParamsAwait(
             sql,
-            tags
+            params
                     .add(mime)
                     .add(offset)
                     .add(limit)
@@ -358,23 +371,25 @@ suspend fun fetchMediaListByTags(tags : JsonArray, mime : String, order : Int, o
  */
 suspend fun fetchMediaByPlaintextQuery(query : String, offset : Int, limit : Int, order : Int, mime : String, searchNames : Boolean, searchFilenames : Boolean, searchTags : Boolean, searchDescs : Boolean) : ResultSet? {
     val params = JsonArray()
-    var tsvectorParts = arrayListOf<String>()
+    var searchParts = ArrayList<String>()
     if(searchNames)
-        tsvectorParts.add("COALESCE(media_name, '')")
+        searchParts.add("COALESCE(media_name, '')")
     if(searchFilenames)
-        tsvectorParts.add("media_filename")
+        searchParts.add("media_filename")
     if(searchTags)
-        tsvectorParts.add("media_tags")
+        searchParts.add("media_tags")
     if(searchDescs)
-        tsvectorParts.add("COALESCE(media_description, '')")
+        searchParts.add("COALESCE(media_description, '')")
 
-    val tsvectorStr = if(tsvectorParts.size > 0)
+    val searchStr = if(searchParts.size > 0)
             """
-                to_tsvector(
-                    ${ tsvectorParts.joinToString(" || ' ' || ") }
-                ) @@ plainto_tsquery(?) AND
+                (to_tsvector(
+                    ${ searchParts.joinToString(" || ' ' || ") }
+                ) @@ plainto_tsquery(?) OR
+                LOWER(${ searchParts.joinToString(" || ' ' || ") }) LIKE LOWER(?)) AND
             """.trimIndent().also {
                 params.add(query)
+                params.add("%$query%")
             }
     else
             ""
@@ -397,7 +412,7 @@ suspend fun fetchMediaByPlaintextQuery(query : String, offset : Int, limit : Int
                 FROM media
                 LEFT JOIN accounts ON accounts.id = media_creator
                 WHERE media_parent IS NULL AND
-                $tsvectorStr
+                $searchStr
                 media_mime LIKE ?
                 ${ orderBy(order) }
                 OFFSET ? LIMIT ?
@@ -412,14 +427,16 @@ suspend fun fetchMediaByPlaintextQuery(query : String, offset : Int, limit : Int
 /**
  * Fetches all media files with the specified tags, and between the provided dates
  * @param tags The tags to search for
+ * @param excludeTags The tags to exclude when searching for files
  * @param createdBefore The ISO date String that media files must have been created before (can be null to allow any time)
  * @param createdAfter The ISO date String that media files must have been created after (can be null to allow any time)
  * @param mime The media MIME pattern (allows % for use as wildcards, null to allow all types)
  * @param offset The offset of rows to return
  * @param limit The amount of rows to return
+ * @param order The order to return the media files
  * @since 1.0
  */
-suspend fun fetchMediaByTagsAndDateRange(tags : JsonArray, createdBefore : String?, createdAfter : String?, mime: String?, offset : Int, limit : Int): ResultSet? {
+suspend fun fetchMediaListByTagsAndDateRange(tags : JsonArray?, excludeTags : JsonArray?, createdBefore : String?, createdAfter : String?, mime: String?, offset : Int, limit : Int, order : Int): ResultSet? {
     val params = JsonArray()
 
     val beforeSql = if(createdBefore == null) {
@@ -440,11 +457,21 @@ suspend fun fetchMediaByTagsAndDateRange(tags : JsonArray, createdBefore : Strin
         params.add(mime)
         "AND media_mime LIKE ?"
     }
-    var tagsSql = ""
 
-    for(tag in tags) {
-        tagsSql += "AND media_tags ? '?' "
-        params.add(tags.toString())
+    var tagsSql = ""
+    if(tags != null) {
+        for(tag in tags) {
+            tagsSql += "AND media_tags::jsonb ?? ?"
+            params.add(tag)
+        }
+    }
+
+    var excludeTagsSql = ""
+    if(excludeTags != null) {
+        for(tag in excludeTags) {
+            excludeTagsSql += "AND NOT media_tags::jsonb ?? ?"
+            params.add(tag)
+        }
     }
 
     return client?.queryWithParamsAwait(
@@ -459,8 +486,8 @@ suspend fun fetchMediaByTagsAndDateRange(tags : JsonArray, createdBefore : Strin
                 	media_creator AS creator,
                 	media_file_hash AS file_hash,
                 	media_thumbnail AS thumbnail,
-                	media_processing AS processing,
-                	media_process_error AS media_process,
+                    media_processing AS processing,
+                    media_process_error AS media_process,
                 	account_name AS creator_name
                 FROM media
                 LEFT JOIN accounts ON accounts.id = media_creator
@@ -468,8 +495,10 @@ suspend fun fetchMediaByTagsAndDateRange(tags : JsonArray, createdBefore : Strin
                 AND media_parent IS NULL
                 $beforeSql
                 $afterSql
-                $mime
+                $mimeSql
                 $tagsSql
+                $excludeTagsSql
+                ${ orderBy(order) }
                 OFFSET ? LIMIT ?
             """.trimIndent(),
             params
@@ -504,9 +533,9 @@ suspend fun fetchMediaListByListId(offset : Int, limit : Int, list : Int, order 
                     media_process_error AS media_process,
                     account_name AS creator_name
                 FROM listitems
+                LEFT JOIN media ON media.id = item_media
                 LEFT JOIN accounts ON accounts.id = media_creator
-                WHERE media_parent IS NULL AND
-                item_list = ?
+                WHERE item_list = ?
                 ${ orderBy(order) }
                 OFFSET ? LIMIT ?
             """.trimIndent(),

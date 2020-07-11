@@ -43,6 +43,17 @@ class Module : TwineModule {
 
     override fun preinitialize() {
         if(!specialRun) {
+            // Setup config
+            logger.info("Loading config...")
+            val cfg = File("configs/twinemedia.json")
+            if (cfg.exists()) {
+                config = Json.decodeValue(Reader.read(cfg), TwineMediaConfig::class.java)
+                if (!config.upload_location.endsWith('/'))
+                    config.upload_location += '/'
+            } else {
+                Writer.write("configs/twinemedia.json", Json.encodePrettily(config))
+            }
+
             logger.info("Setting up uploader routes and middleware...")
             headersMiddleware()
             authMiddleware()
@@ -498,16 +509,7 @@ class Module : TwineModule {
             }
         } else {
             try {
-                // Setup config
                 logger.info("Setting up filesystem...")
-                val cfg = File("configs/twinemedia.json")
-                if (cfg.exists()) {
-                    config = Json.decodeValue(Reader.read(cfg), TwineMediaConfig::class.java)
-                    if (!config.upload_location.endsWith('/'))
-                        config.upload_location += '/'
-                } else {
-                    Writer.write("configs/twinemedia.json", Json.encodePrettily(config))
-                }
                 val uploadLoc = File(config.upload_location)
                 if (!uploadLoc.exists() || !uploadLoc.isDirectory) {
                     uploadLoc.mkdirs()

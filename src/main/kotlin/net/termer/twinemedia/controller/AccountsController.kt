@@ -2,6 +2,7 @@ package net.termer.twinemedia.controller
 
 import io.vertx.core.json.JsonArray
 import io.vertx.core.json.JsonObject
+import io.vertx.kotlin.core.json.get
 import io.vertx.kotlin.coroutines.dispatcher
 import kotlinx.coroutines.GlobalScope
 import kotlinx.coroutines.launch
@@ -123,10 +124,16 @@ fun accountsController() {
 
                 if(validEmail(email)) {
                     try {
-                        // Check if account with that email already exists
-                        val emailRes = fetchAccountByEmail(email)
+                        var emailExists = false
 
-                        if (emailRes != null && emailRes.rows.size > 0) {
+                        if(email != r.account()["account_email"]) {
+                            // Check if account with that email already exists
+                            val emailRes = fetchAccountByEmail(email)
+
+                            emailExists = emailRes != null && emailRes.rows.size > 0
+                        }
+
+                        if (emailExists) {
                             r.error("Account with that email already exists")
                         } else {
                             try {
@@ -172,7 +179,7 @@ fun accountsController() {
         GlobalScope.launch(vertx().dispatcher()) {
             if(r.protectWithPermission("accounts.edit")) {
                 try {
-                    var id = -1
+                    var id: Int
                     try {
                         id = r.pathParam("id").toInt()
                     } catch(e : Exception) {
@@ -181,7 +188,7 @@ fun accountsController() {
                     }
 
                     // Fetch account
-                    val accountRes = fetchAccountInfoById(id)
+                    val accountRes = fetchAccountById(id)
 
                     // Check if it exists
                     if(accountRes != null && accountRes.rows.size > 0) {
@@ -189,16 +196,16 @@ fun accountsController() {
                         val account = accountRes.rows[0]
 
                         // Check if editor has permission to edit account
-                        if((account.getBoolean("admin") && r.account().getBoolean("account_admin")) || !account.getBoolean("admin")) {
+                        if((account.getBoolean("account_admin") && r.account().getBoolean("account_admin")) || !account.getBoolean("account_admin")) {
                             try {
                                 // Resolve edit values
                                 val name = if(params["name"].length > 64) params["name"].substring(0, 64) else params["name"]
                                 val email = if(params["email"].length > 64) params["email"].substring(0, 64) else params["email"]
-                                val perms = if (params["permissions"] != null) JsonArray(params["permissions"]) else JsonArray(account.getString("permissions"))
+                                val perms = if (params["permissions"] != null) JsonArray(params["permissions"]) else JsonArray(account.getString("account_permissions"))
                                 val admin = if (r.account().getBoolean("account_admin") && r.account().getInteger("id") != id) {
                                     if (params["admin"] != null) params["admin"].toBoolean() else account.getBoolean("admin")
                                 } else {
-                                    account.getBoolean("admin")
+                                    account.getBoolean("account_admin")
                                 }
 
                                 // Make sure non-admin cannot create an admin account
@@ -209,10 +216,19 @@ fun accountsController() {
 
                                 if(validEmail(email)) {
                                     try {
-                                        // Check if account with that email already exists
-                                        val emailRes = fetchAccountByEmail(email)
+                                        var emailExists = false
 
-                                        if (emailRes != null && emailRes.rows.size > 0) {
+                                        if(email != account.getString("account_email")) {
+                                            // Check if account with that email already exists
+                                            val emailRes = fetchAccountByEmail(email)
+
+                                            emailExists = if (emailRes != null && emailRes.rows.size > 0)
+                                                account.getInteger("id") != emailRes.rows[0].getInteger("id")
+                                            else
+                                                false
+                                        }
+
+                                        if (emailExists) {
                                             r.error("Account with that email already exists")
                                         } else {
                                             try {

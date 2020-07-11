@@ -19,9 +19,15 @@ fun accountController() {
     // Protect all routes in /api/v1/account/
     handler("/api/v1/account/*", domain) { r ->
         GlobalScope.launch(vertx().dispatcher()) {
-            // Pass to next handler only if authenticated
-            if(r.protectRoute())
-                r.next()
+            try {
+                r.authenticate()
+
+                // Pass to next handler only if authenticated
+                if (r.protectRoute())
+                    r.next()
+            } catch(e : AuthException) {
+                r.unauthorized()
+            }
         }
     }
 

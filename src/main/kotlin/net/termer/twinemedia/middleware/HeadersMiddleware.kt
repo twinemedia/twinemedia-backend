@@ -4,14 +4,17 @@ import io.vertx.core.http.HttpMethod
 import net.termer.twine.ServerManager.handler
 import net.termer.twine.Twine.domains
 import net.termer.twinemedia.Module.Companion.config
+import net.termer.twinemedia.util.appDomain
 
 /**
  * Sets up CORS and other headers for all requests to /api/
  * @since 1.0
  */
 fun headersMiddleware() {
+    val domain = appDomain()
+
     // Handle all /api/ routes on the configured domain
-    handler("/api/*", domains().byName(config.domain).domain()) { r ->
+    handler("/api/*", domain) { r ->
         r.response().headers()["Content-Type"] = "application/json"
         r.response().headers()["Accept"] = "application/json, application/x-www-form-urlencoded"
         r.response().headers()["Access-Control-Allow-Credentials"] = "true"

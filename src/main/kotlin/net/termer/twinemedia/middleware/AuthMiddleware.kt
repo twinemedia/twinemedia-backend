@@ -8,6 +8,7 @@ import net.termer.twine.ServerManager.vertx
 import net.termer.twine.Twine
 import net.termer.twinemedia.Module
 import net.termer.twinemedia.exception.AuthException
+import net.termer.twinemedia.util.appDomain
 import net.termer.twinemedia.util.authenticate
 
 /**
@@ -15,8 +16,10 @@ import net.termer.twinemedia.util.authenticate
  * @since 1.0
  */
 fun authMiddleware() {
+    val domain = appDomain()
+
     // Handle all /api/ routes on the configured domain
-    ServerManager.handler("/api/*", Twine.domains().byName(Module.config.domain).domain()) { r ->
+    ServerManager.handler("/api/*", domain) { r ->
         GlobalScope.launch(vertx().dispatcher()) {
             // Authenticate route
             try {
