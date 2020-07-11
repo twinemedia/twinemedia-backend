@@ -1,6 +1,5 @@
 package net.termer.twinemedia.model
 
-import com.sun.org.apache.xpath.internal.operations.Bool
 import io.vertx.core.json.JsonArray
 import io.vertx.ext.sql.ResultSet
 import io.vertx.kotlin.ext.sql.queryWithParamsAwait

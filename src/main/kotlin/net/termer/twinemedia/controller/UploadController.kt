@@ -85,7 +85,7 @@ fun uploadController() {
                             it.printStackTrace()
                             upload = false
                             error = "Internal error"
-                            
+
                             GlobalScope.launch(vertx().dispatcher()) {
                                 logger.info("Deleting file $saveLoc")
                                 vertx().fileSystem().deleteAwait(saveLoc)
