@@ -5,7 +5,7 @@ package net.termer.twinemedia
  * @since 1.0
  */
 class TwineMediaConfig {
-    var domain = "default"
+    var domain = "*"
 
     var upload_location = "file-uploads/"
     var max_upload = 1073741824
