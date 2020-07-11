@@ -253,8 +253,6 @@ fun mediaController() {
                         // Add children (empty JSON array if there are no children)
                         media.put("children", children)
 
-                        println(media)
-
                         // Convert tags to real JSON array
                         media.put("tags", JsonArray(media.getString("tags")))
 
