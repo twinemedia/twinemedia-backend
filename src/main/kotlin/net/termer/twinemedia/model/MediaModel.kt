@@ -42,16 +42,17 @@ private fun orderBy(order : Int) : String {
  * @param thumbnailFile The filename of the media's generated thumbnail, null if none
  * @since 1.0
  */
-suspend fun createMedia(id : String, filename : String, size : Long, mime : String, file : String, creator : Int, hash : String, thumbnailFile : String?, meta : JsonObject) {
+suspend fun createMedia(id : String, name : String?, filename : String, size : Long, mime : String, file : String, creator : Int, hash : String, thumbnailFile : String?, meta : JsonObject) {
     client?.queryWithParamsAwait(
             """
                 INSERT INTO media
-                ( media_id, media_filename, media_size, media_mime, media_file, media_creator, media_file_hash, media_thumbnail, media_thumbnail_file, media_meta )
+                ( media_id, media_name, media_filename, media_size, media_mime, media_file, media_creator, media_file_hash, media_thumbnail, media_thumbnail_file, media_meta )
                 VALUES
-                ( ?, ?, ?, ?, ?, ?, ?, ?, ?, CAST( ? AS jsonb ) )
+                ( ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, CAST( ? AS jsonb ) )
             """.trimIndent(),
             JsonArray()
                     .add(id)
+                    .add(name)
                     .add(filename)
                     .add(size)
                     .add(mime)

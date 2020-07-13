@@ -156,6 +156,21 @@ fun uploadController() {
                                         // Generate thumbnail ID
                                         val thumbId = generateString(10)
 
+                                        // Probe audio for metadata
+                                        if(type.startsWith("audio/")) {
+                                            try {
+                                                // Probe file
+                                                val probe = probeFile(saveLoc)
+
+                                                if (probe != null) {
+                                                    // Collect metadata from probe
+                                                    meta = ffprobeToJsonMeta(probe)
+                                                }
+                                            } catch (thumbEx: Exception) {
+                                                // Failed to generate thumbnail
+                                            }
+                                        }
+
                                         try {
                                             // Generate preview
                                             createImagePreview(saveLoc, "${config.upload_location}thumbnails/$thumbId.jpg")
@@ -165,9 +180,11 @@ fun uploadController() {
                                         }
                                     }
 
+                                    // Process name
+                                    var mediaName : String? = null
                                     
                                     // Create database entry
-                                    createMedia(id, filename, length, type, file, r.userId(), hash, thumbnail, meta)
+                                    createMedia(id, mediaName, filename, length, type, file, r.userId(), hash, thumbnail, meta)
 
                                     // Check if uploaded file is media
                                     if(type.startsWith("video/") || type.startsWith("audio/")) {
