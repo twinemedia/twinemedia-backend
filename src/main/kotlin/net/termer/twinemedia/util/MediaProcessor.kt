@@ -654,7 +654,17 @@ fun ffprobeToJsonMeta(probe : FFmpegProbeResult) : JsonObject {
             .put("format_name", format.format_name)
             .put("format_long_name", format.format_long_name)
             .put("stream_count", format.nb_streams)
+            .put("program_count", format.nb_programs)
             .put("start_time", format.start_time)
+            .put("size", format.size)
+            .put("probe_score", format.probe_score)
+            .put("tags", JsonObject())
+
+    // Put tags
+    for ((key, value) in format.tags.entries)
+        meta.getJsonObject("tags").put(key, value)
+
+    // Put streams
     val streams = JsonArray()
     for(stream in probe.streams) {
         val strm = JsonObject()
