@@ -280,7 +280,7 @@ fun processesController() {
                                 settings.put("video_bitrate", params["video_bitrate"].toInt())
                             else
                                 settings.put("video_bitrate", 0)
-                        } else {
+                        } else if(!mime.startsWith("audio/")) {
                             r.error("Mime must be either video or audio")
                             return@launch
                         }
