@@ -10,6 +10,8 @@ import net.termer.twinemedia.db.Database.client
  * Order key:
  * 0 = Alphabetically, ascending
  * 1 = Alphabetically, descending
+ * 2 = Tag length, ascending
+ * 3 = Tag length, descending
  * @param order The order
  * @return The appropriate "ORDER BY" SQL for the selected order
  * @since 1.0
@@ -17,6 +19,8 @@ import net.termer.twinemedia.db.Database.client
 private fun orderBy(order : Int) : String {
     return "ORDER BY " + when(order) {
         1 -> "tag_name DESC"
+        2 -> "CHAR_LENGTH(tag_name) ASC"
+        3 -> "CHAR_LENGTH(tag_name) DESC"
         else -> "tag_name ASC"
     }
 }

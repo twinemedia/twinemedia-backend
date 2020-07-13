@@ -29,7 +29,7 @@ fun tagsController() {
     //  - query (optional): String, the tag pattern to search for, can use % as a wildcard character
     //  - offset: Integer at least 0 that sets the offset of returned results
     //  - limit: Integer from 0 to 100, sets the amount of results to return
-    //  - order: Integer from 0 to 1, denotes the type of sorting to use (alphabetically ascending, alphabetically descending)
+    //  - order: Integer from 0 to 3, denotes the type of sorting to use (alphabetically ascending, alphabetically descending, tag length ascending, tag length descending)
     get("/api/v1/tags", domain) { r ->
         val params = r.request().params()
         GlobalScope.launch(vertx().dispatcher()) {
@@ -39,7 +39,7 @@ fun tagsController() {
                     val query = if(params.contains("query")) params["query"] else ""
                     val offset = (if(params.contains("offset")) params["offset"].toInt() else 0).coerceAtLeast(0)
                     val limit = (if(params.contains("limit")) params["limit"].toInt() else 100).coerceIn(0, 100)
-                    val order = (if(params.contains("order")) params["order"].toInt() else 0).coerceIn(0, 1)
+                    val order = (if(params.contains("order")) params["order"].toInt() else 0).coerceIn(0, 3)
 
                     try {
                         val tags = when(query.isEmpty()) {
