@@ -133,7 +133,7 @@ fun uploadController() {
                                         logger.info("Deleting file $saveLoc")
                                         vertx().fileSystem().deleteAwait(saveLoc)
                                         logger.info("Deleted")
-                                    } else if(type.startsWith("video/")) {
+                                    } else if(type.startsWith("video/") || type == "image/gif") {
                                         // Generate thumbnail ID
                                         val thumbId = generateString(10)
 
