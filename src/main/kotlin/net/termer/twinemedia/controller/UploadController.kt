@@ -122,6 +122,7 @@ fun uploadController() {
                                 } else {
                                     // Check if a file with the generated hash already exists
                                     val filesRes = fetchMediaByHash(hash)
+
                                     if(filesRes != null && filesRes.rows.size > 0) {
                                         // Get already uploaded file's filename
                                         file = filesRes.rows[0].getString("media_file")

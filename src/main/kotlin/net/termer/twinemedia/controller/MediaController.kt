@@ -384,7 +384,12 @@ fun mediaController() {
 
                         // Check if media is a child
                         if(media.getInteger("media_parent") == null) {
-                            delete = true
+                            // Check if files with the same hash exist
+                            val hashMediaRes = fetchMediaByHash(media.getString("media_file_hash"))
+
+                            if (hashMediaRes != null && hashMediaRes.rows.size < 2) {
+                                delete = true
+                            }
 
                             try {
                                 // Fetch children
@@ -433,12 +438,7 @@ fun mediaController() {
                                 return@launch
                             }
                         } else {
-                            // Check if files with the same hash exist
-                            val hashMediaRes = fetchMediaByHash(media.getString("media_file_hash"))
-
-                            if (hashMediaRes != null && hashMediaRes.rows.size < 2) {
-                                delete = true
-                            }
+                            delete = true
                         }
 
                         if(delete) {
