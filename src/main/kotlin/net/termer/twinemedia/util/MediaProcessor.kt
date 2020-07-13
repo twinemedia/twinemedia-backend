@@ -661,8 +661,9 @@ fun ffprobeToJsonMeta(probe : FFmpegProbeResult) : JsonObject {
             .put("tags", JsonObject())
 
     // Put tags
-    for ((key, value) in format.tags.entries)
-        meta.getJsonObject("tags").put(key, value)
+    if(format.tags != null)
+        for ((key, value) in format.tags.entries)
+            meta.getJsonObject("tags").put(key, value)
 
     // Put streams
     val streams = JsonArray()
