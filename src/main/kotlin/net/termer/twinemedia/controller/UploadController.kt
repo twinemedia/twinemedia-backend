@@ -180,11 +180,78 @@ fun uploadController() {
                                         }
                                     }
 
-                                    // Process name
-                                    var mediaName : String? = null
-                                    
-                                    // Create database entry
-                                    createMedia(id, mediaName, filename, length, type, file, r.userId(), hash, thumbnail, meta)
+                                    /* Process name and description */
+                                    var mediaName = filenameToTitle(filename)
+                                    var mediaDesc = ""
+
+                                    // Handle tags
+                                    if(meta.containsKey("tags")) {
+                                        val tags = meta.getJsonObject("tags")
+
+                                        if(tags.containsKey("title")) {
+                                            val title = tags.getString("title")
+                                            mediaName = title.toLength(256)
+                                            mediaDesc += "Title: $title\n"
+                                        }
+                                        if(tags.containsKey("artist")) {
+                                            val artist = tags.getString("artist")
+                                            mediaDesc += "Artist: $artist\n"
+                                        }
+                                        if(tags.containsKey("album")) {
+                                            val album = tags.getString("album")
+                                            mediaDesc += "Album: $album\n"
+                                        }
+                                        if(tags.containsKey("album_artist")) {
+                                            val albumArtist = tags.getString("album_artist")
+                                            mediaDesc += "Album Artist: $albumArtist\n"
+                                        }
+                                        if(tags.containsKey("genre")) {
+                                            val genre = tags.getString("genre")
+                                            mediaDesc += "Genre: $genre\n"
+                                        }
+                                        if(tags.containsKey("label")) {
+                                            val label = tags.getString("label")
+                                            mediaDesc += "Label: $label\n"
+                                        }
+                                        if(tags.containsKey("media")) {
+                                            val mediaType = tags.getString("media")
+                                            mediaDesc += "Media Type: $mediaType\n"
+                                        }
+                                        if(tags.containsKey("track")) {
+                                            val track = tags.getString("track")
+                                            mediaDesc += "Track: $track\n"
+                                        }
+                                        if(tags.containsKey("tracktotal")) {
+                                            val trackTotal = tags.getString("tracktotal")
+                                            mediaDesc += "Track Total: $trackTotal\n"
+                                        }
+                                        if(tags.containsKey("disc")) {
+                                            val disc = tags.getString("disc")
+                                            mediaDesc += "Disc: $disc\n"
+                                        }
+                                        if(tags.containsKey("date")) {
+                                            val date = tags.getString("date")
+                                            mediaDesc += "Date: $date\n"
+                                        }
+                                    }
+
+                                    // Correct media description
+                                    mediaDesc = mediaDesc.trim().toLength(1024)
+
+                                    /* Create database entry */
+                                    createMedia(
+                                            id,
+                                            mediaName,
+                                            filename,
+                                            mediaDesc.nullIfEmpty(),
+                                            length,
+                                            type,
+                                            file,
+                                            r.userId(),
+                                            hash,
+                                            thumbnail,
+                                            meta
+                                    )
 
                                     // Check if uploaded file is media
                                     if(type.startsWith("video/") || type.startsWith("audio/")) {

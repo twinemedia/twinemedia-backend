@@ -33,3 +33,27 @@ fun appDomain() : String {
 
     return domain
 }
+
+/**
+ * Formats a filename as a title, stripping out extension, trimming, and replacing underscores and dashes with spaces
+ * @param filename The filename to format
+ * @return The filename formatted as a title
+ * @since 1.0
+ */
+fun filenameToTitle(filename : String) : String {
+    var name = filename
+
+    // Cut off extension if present
+    if(filename.lastIndexOf('.') > 0)
+        name = filename.substring(0, filename.lastIndexOf('.'))
+
+    // Replace underscores and dashes with spaces with spaces
+    name = name
+            .replace('_', ' ')
+            .replace('-', ' ')
+
+    // Capitalize first letter
+    name = name[0].toUpperCase()+name.substring(1)
+
+    return name.trim()
+}
