@@ -2,6 +2,10 @@ package net.termer.twinemedia.util
 
 import net.termer.twine.Twine.domains
 import net.termer.twinemedia.Module.Companion.config
+import java.text.SimpleDateFormat
+import java.util.*
+
+private val simpleDateFormat = SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss.SSS'Z'")
 
 /**
  * Trims a String down to the specified length
@@ -15,6 +19,13 @@ fun String.toLength(len : Int) = if(this.length > len) this.substring(0, len) el
  * @since 1.0
  */
 fun String.nullIfEmpty() = if(this == "") null else this
+
+/**
+ * Creates an ISO date String that represents this Date object
+ * @return An ISO date String representing this Date object
+ * @since 1.2.0
+ */
+fun Date.toISOString(): String = simpleDateFormat.format(this)
 
 /**
  * Returns the domain this application should bind its routes to
