@@ -2,7 +2,6 @@ package net.termer.twinemedia.util
 
 import io.vertx.core.http.HttpMethod
 import io.vertx.core.http.impl.MimeMapping
-import io.vertx.core.json.Json
 import io.vertx.core.json.JsonObject
 import io.vertx.ext.web.RoutingContext
 import io.vertx.kotlin.core.json.json
@@ -12,22 +11,22 @@ import net.termer.twine.Twine
 import net.termer.twinemedia.Module.Companion.config
 import net.termer.twinemedia.exception.AuthException
 import net.termer.twinemedia.jwt.JWT
-import net.termer.twinemedia.model.fetchAccountById
+import net.termer.twinemedia.model.AccountsModel
 import java.io.File
 import java.text.SimpleDateFormat
 import java.util.*
 import java.util.regex.Pattern
 
 // Authorization header content regex
-val authPattern : Pattern = Pattern.compile("Bearer (.+)")
-
+private val authPattern: Pattern = Pattern.compile("Bearer (.+)")
+private val accountsModel = AccountsModel()
 
 /**
  * Sends an error API response with the provided message
  * @param msg The error message
  * @since 1.0
  */
-fun RoutingContext.error(msg : String) {
+fun RoutingContext.error(msg: String) {
     response().headers()["Content-Type"] = "application/json"
     response().end(json {
         obj("status" to "error", "error" to msg)
@@ -50,7 +49,7 @@ fun RoutingContext.success() {
  * @param json The JSON to send along with the success status
  * @since 1.0
  */
-fun RoutingContext.success(json : JsonObject) {
+fun RoutingContext.success(json: JsonObject) {
     response().headers()["Content-Type"] = "application/json"
     response().end(json.put("status", "success").encode())
 }
@@ -79,7 +78,7 @@ suspend fun RoutingContext.authenticate() {
             try {
                 // Set the User object for this RoutingContext
                 setUser(JWT.provider?.authenticateAwait(JsonObject().put("jwt", matcher.group(1))))
-            } catch (e : Exception) {
+            } catch (e: Exception) {
                 throw AuthException("Invalid JWT token provided")
             }
         } else {
@@ -104,7 +103,7 @@ fun RoutingContext.authenticated() = user() != null
  * @return Whether the request is authorized
  * @since 1.0
  */
-fun RoutingContext.protectRoute() : Boolean {
+fun RoutingContext.protectRoute(): Boolean {
     if(!authenticated())
         unauthorized()
 
@@ -116,7 +115,7 @@ fun RoutingContext.protectRoute() : Boolean {
  * @return The ID of this request's user
  * @since 1.0
  */
-fun RoutingContext.userId() : Int {
+fun RoutingContext.userId(): Int {
 
     return user().principal().getInteger("sub")
 }
@@ -126,7 +125,7 @@ fun RoutingContext.userId() : Int {
  * @return The ID of this request's token
  * @since 1.0
  */
-fun RoutingContext.tokenId() : String {
+fun RoutingContext.tokenId(): String {
     return user().principal().getString("id")
 }
 
@@ -136,20 +135,19 @@ fun RoutingContext.tokenId() : String {
  * @return The account corresponding to this request
  * @since 1.0
  */
-suspend fun RoutingContext.account() : JsonObject {
+suspend fun RoutingContext.account(): UserAccount {
     if(authenticated()) {
-        // Fetch account from database
-        val accountRes = fetchAccountById(userId())
+        if(get("account") as UserAccount? == null) {
+            // Fetch account from database
+            val accountRes = accountsModel.fetchAccountById(userId())
 
-        // Check if account exists
-        if(accountRes?.numRows != null && accountRes.numRows > 0) {
-            // Set account
-            put("account", accountRes.rows[0])
-
-            // Convert permissions JSON String into proper JSON
-            (get("account") as JsonObject).put("account_permissions", Json.decodeValue(accountRes.rows[0].getString("account_permissions")))
-        } else {
-            throw AuthException("This request's token does not have a corresponding account")
+            // Check if account exists
+            if (accountRes?.numRows != null && accountRes.numRows > 0) {
+                // Set account
+                put("account", accountJsonToObject(accountRes.rows[0]))
+            } else {
+                throw AuthException("This request's token does not have a corresponding account")
+            }
         }
     } else {
         throw AuthException("Cannot fetch account of unauthenticated request")
@@ -163,33 +161,11 @@ suspend fun RoutingContext.account() : JsonObject {
  * @param permission The permission to check
  * @since 1.0
  */
-suspend fun RoutingContext.hasPermission(permission : String) : Boolean {
+suspend fun RoutingContext.hasPermission(permission: String): Boolean {
     var has = false
 
     if(authenticated()) {
-        // Check if permission is present, or user is an administrator
-        if(account().getBoolean("account_admin")) {
-            has = true
-        } else {
-            // Check if the user has the permission
-            if(account().getJsonArray("account_permissions").contains(permission) || account().getJsonArray("account_permissions").contains("*")) {
-                has = true
-            } else if(permission.contains('.')) {
-                // Check permission tree
-                val permissions = account().getJsonArray("account_permissions")
-                var perm = StringBuilder()
-                for(child in permission.split('.')) {
-                    perm.append("$child.")
-                    for(p in permissions)
-                        if(p == "$perm*") {
-                            has = true
-                            break
-                        }
-                    if(has)
-                        break
-                }
-            }
-        }
+        has = account().hasPermission(permission)
     }
 
     return has
@@ -201,7 +177,7 @@ suspend fun RoutingContext.hasPermission(permission : String) : Boolean {
  * @return Whether the request is authenticated and the user has the specified permission
  * @since 1.0
  */
-suspend fun RoutingContext.protectWithPermission(permission : String) : Boolean {
+suspend fun RoutingContext.protectWithPermission(permission: String): Boolean {
     var has = false
 
     if(authenticated() && hasPermission(permission))
@@ -217,7 +193,7 @@ suspend fun RoutingContext.protectWithPermission(permission : String) : Boolean 
  * @param msg The message to send
  * @since 1.0
  */
-fun RoutingContext.publish(msg : Any) {
+fun RoutingContext.publish(msg: Any) {
     vertx().eventBus().publish("twinemedia.${tokenId()}", msg)
 }
 
@@ -229,14 +205,14 @@ val cacheDateFormat = SimpleDateFormat("EEE, dd MMM yyyy HH:mm:ss zzz")
  * @param file The path of the file to send
  * @since 1.0
  */
-fun RoutingContext.sendFileRanged(file : String) = sendFileRanged(File(file))
+fun RoutingContext.sendFileRanged(file: String) = sendFileRanged(File(file))
 
 /**
  * Sends a file and respects byte range requests
  * @param f The file to send
  * @since 1.0
  */
-fun RoutingContext.sendFileRanged(f : File) {
+fun RoutingContext.sendFileRanged(f: File) {
     if(!response().closed()) {
         // Advertise range support
         response().putHeader("Accept-Ranges", "bytes")
@@ -288,7 +264,7 @@ fun RoutingContext.sendFileRanged(f : File) {
  * @return The IP address that this request connected from
  * @since 1.0
  */
-fun RoutingContext.ip() = if(config.reverse_proxy) {
+fun RoutingContext.ip(): String = if(config.reverse_proxy) {
     if(request().headers().contains("X-Forwarded-For")) {
         request().getHeader("X-Forwarded-For")
     } else {
