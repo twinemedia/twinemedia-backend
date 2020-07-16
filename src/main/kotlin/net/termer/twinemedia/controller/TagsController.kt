@@ -7,13 +7,8 @@ import kotlinx.coroutines.GlobalScope
 import kotlinx.coroutines.launch
 import net.termer.twine.ServerManager.*
 import net.termer.twinemedia.Module.Companion.logger
-import net.termer.twinemedia.model.fetchAllTags
-import net.termer.twinemedia.model.fetchTagInfo
-import net.termer.twinemedia.model.fetchTagsByTerm
-import net.termer.twinemedia.util.appDomain
-import net.termer.twinemedia.util.error
-import net.termer.twinemedia.util.protectWithPermission
-import net.termer.twinemedia.util.success
+import net.termer.twinemedia.model.TagsModel
+import net.termer.twinemedia.util.*
 
 /**
  * Sets up all routes for retrieving tags and tag-related information
@@ -29,22 +24,24 @@ fun tagsController() {
     //  - query (optional): String, the tag pattern to search for, can use % as a wildcard character
     //  - offset: Integer at least 0 that sets the offset of returned results
     //  - limit: Integer from 0 to 100, sets the amount of results to return
-    //  - order: Integer from 0 to 3, denotes the type of sorting to use (alphabetically ascending, alphabetically descending, tag length ascending, tag length descending)
+    //  - order: Integer from 0 to 5, denotes the type of sorting to use (alphabetically ascending, alphabetically descending, tag length ascending, tag length descending, tag uses ascending, tag uses descending)
     get("/api/v1/tags", domain) { r ->
         val params = r.request().params()
         GlobalScope.launch(vertx().dispatcher()) {
             if(r.protectWithPermission("tags.list")) {
+                val tagsModel = TagsModel(r.account())
+
                 try {
                     // Collect parameters
                     val query = if(params.contains("query")) params["query"] else ""
                     val offset = (if(params.contains("offset")) params["offset"].toInt() else 0).coerceAtLeast(0)
                     val limit = (if(params.contains("limit")) params["limit"].toInt() else 100).coerceIn(0, 100)
-                    val order = (if(params.contains("order")) params["order"].toInt() else 0).coerceIn(0, 3)
+                    val order = (if(params.contains("order")) params["order"].toInt() else 0).coerceIn(0, 5)
 
                     try {
                         val tags = when(query.isEmpty()) {
-                            true -> fetchAllTags(offset, limit, order)
-                            else -> fetchTagsByTerm(query, offset, limit, order)
+                            true -> tagsModel.fetchAllTags(offset, limit, order)
+                            else -> tagsModel.fetchTagsByTerm(query, offset, limit, order)
                         }
 
                         // Create JSON array of tags
@@ -76,8 +73,10 @@ fun tagsController() {
         val tag = r.pathParam("tag")
         GlobalScope.launch(vertx().dispatcher()) {
             if(r.protectWithPermission("tags.info")) {
+                val tagsModel = TagsModel(r.account())
+
                 try {
-                    val infoRes = fetchTagInfo(tag)
+                    val infoRes = tagsModel.fetchTagInfo(tag)
 
                     // Check if a row has been returned
                     if (infoRes != null && infoRes.rows.size > 0) {

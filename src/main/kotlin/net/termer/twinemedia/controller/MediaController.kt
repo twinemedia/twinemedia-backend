@@ -34,6 +34,8 @@ fun mediaController() {
         val params = r.request().params()
         GlobalScope.launch(vertx().dispatcher()) {
             if(r.protectWithPermission("files.list")) {
+                val mediaModel = MediaModel(r.account())
+
                 try {
                     // Collect parameters
                     val offset = (if(params.contains("offset")) params["offset"].toInt() else 0).coerceAtLeast(0)
@@ -43,7 +45,7 @@ fun mediaController() {
 
                     try {
                         // Fetch files
-                        val media = fetchMediaList(offset, limit, mime, order)
+                        val media = mediaModel.fetchMediaList(offset, limit, mime, order)
 
                         // Create JSON array of files
                         val arr = JsonArray()
@@ -53,12 +55,12 @@ fun mediaController() {
 
                         // Send files
                         r.success(JsonObject().put("files", arr))
-                    } catch(e : Exception) {
+                    } catch(e: Exception) {
                         logger.error("Failed to fetch files:")
                         e.printStackTrace()
                         r.error("Database error")
                     }
-                } catch(e : Exception) {
+                } catch(e: Exception) {
                     r.error("Invalid parameters")
                 }
             }
@@ -82,6 +84,8 @@ fun mediaController() {
         val params = r.request().params()
         GlobalScope.launch(vertx().dispatcher()) {
             if(r.protectWithPermission("files.list")) {
+                val mediaModel = MediaModel(r.account())
+
                 try {
                     // Collect parameters
                     val offset = (if(params.contains("offset")) params["offset"].toInt() else 0).coerceAtLeast(0)
@@ -99,14 +103,14 @@ fun mediaController() {
                         // Fetch files
                         val media = when(query.isNotEmpty()) {
                             true -> {
-                                fetchMediaByPlaintextQuery(query, offset, limit, order, mime,
+                                mediaModel.fetchMediaByPlaintextQuery(query, offset, limit, order, mime,
                                         searchItems.getBoolean("name"),
                                         searchItems.getBoolean("filename"),
                                         searchItems.getBoolean("tag"),
                                         searchItems.getBoolean("description")
                                 )
                             }
-                            else -> fetchMediaList(offset, limit, mime, order)
+                            else -> mediaModel.fetchMediaList(offset, limit, mime, order)
                         }
 
                         // Create JSON array of files
@@ -117,12 +121,12 @@ fun mediaController() {
 
                         // Send files
                         r.success(JsonObject().put("files", arr))
-                    } catch(e : Exception) {
+                    } catch(e: Exception) {
                         logger.error("Failed to fetch files:")
                         e.printStackTrace()
                         r.error("Database error")
                     }
-                } catch(e : Exception) {
+                } catch(e: Exception) {
                     r.error("Invalid parameters")
                 }
             }
@@ -143,6 +147,8 @@ fun mediaController() {
         val params = r.request().params()
         GlobalScope.launch(vertx().dispatcher()) {
             if(r.protectWithPermission("files.list")) {
+                val mediaModel = MediaModel(r.account())
+
                 if(params.contains("tags")) {
                     try {
                         val tags = JsonArray(params["tags"])
@@ -154,7 +160,7 @@ fun mediaController() {
 
                         try {
                             // Fetch files
-                            val filesRes = fetchMediaListByTags(tags, excludeTags, mime, order, offset, limit)
+                            val filesRes = mediaModel.fetchMediaListByTags(tags, excludeTags, mime, order, offset, limit)
 
                             // Compose response
                             val files = JsonArray()
@@ -162,12 +168,12 @@ fun mediaController() {
                                 files.add(row)
 
                             r.success(JsonObject().put("files", files))
-                        } catch(e : Exception) {
+                        } catch(e: Exception) {
                             logger.error("Failed to fetch file list by tags:")
                             e.printStackTrace()
                             r.error("Database error")
                         }
-                    } catch(e : Exception) {
+                    } catch(e: Exception) {
                         // Tags are not a JSON array
                         r.error("Tags must be a JSON array")
                     }
@@ -186,11 +192,12 @@ fun mediaController() {
     get("/api/v1/media/:file", domain) { r ->
         GlobalScope.launch(vertx().dispatcher()) {
             if(r.protectWithPermission("files.view")) {
+                val mediaModel = MediaModel(r.account())
                 val fileId = r.pathParam("file")
 
                 try {
                     // Fetch media file
-                    val mediaRes = fetchMediaInfo(fileId)
+                    val mediaRes = mediaModel.fetchMediaInfo(fileId)
 
                     // Check if it exists
                     if(mediaRes != null && mediaRes.rows.size > 0) {
@@ -215,7 +222,7 @@ fun mediaController() {
                         if(parent == null) {
                             try {
                                 // Fetch children
-                                val childrenRes = fetchMediaChildrenInfo(id)
+                                val childrenRes = mediaModel.fetchMediaChildrenInfo(id)
 
                                 // If there wasn't an error in fetching, this will never be null
                                 if (childrenRes != null) {
@@ -225,7 +232,7 @@ fun mediaController() {
                                 } else {
                                     r.error("Internal error")
                                 }
-                            } catch(e : Exception) {
+                            } catch(e: Exception) {
                                 logger.error("Failed to fetch children for file:")
                                 e.printStackTrace()
                                 r.error("Database error")
@@ -234,7 +241,7 @@ fun mediaController() {
                         } else {
                             try {
                                 // Fetch parent
-                                val parentRes = fetchMediaInfo(parent)
+                                val parentRes = mediaModel.fetchMediaInfo(parent)
                                 if (parentRes != null && parentRes.rows.size > 0) {
                                     media.put("parent", parentRes.rows[0])
                                     media.getJsonObject("parent").remove("internal_id")
@@ -242,7 +249,7 @@ fun mediaController() {
                                 } else {
                                     media.put("parent", null as String?)
                                 }
-                            } catch(e : Exception) {
+                            } catch(e: Exception) {
                                 logger.error("Failed to fetch parent for file:")
                                 e.printStackTrace()
                                 r.error("Database error")
@@ -261,7 +268,7 @@ fun mediaController() {
                     } else {
                         r.error("File does not exist")
                     }
-                } catch(e : Exception) {
+                } catch(e: Exception) {
                     logger.error("Failed to fetch file info:")
                     e.printStackTrace()
                     r.error("Database error")
@@ -283,27 +290,36 @@ fun mediaController() {
         val params = r.request().params()
         GlobalScope.launch(vertx().dispatcher()) {
             if(r.protectWithPermission("files.edit")) {
+                val tagsModel = TagsModel(r.account())
+                val mediaModel = MediaModel(r.account())
                 val fileId = r.pathParam("file")
 
                 try {
                     // Fetch media file
-                    val mediaRes = fetchMediaInfo(fileId)
+                    val mediaRes = mediaModel.fetchMediaInfo(fileId)
 
                     // Check if it exists
                     if(mediaRes != null && mediaRes.rows.size > 0) {
                         // Fetch media info
                         val media = mediaRes.rows[0]
 
+                        // Check if media was created by the user
+                        if(media.getInteger("creator") != r.userId() && !r.hasPermission("files.edit.all")) {
+                            r.unauthorized()
+                            return@launch
+                        }
+
                         try {
                             // Resolve edit values
-                            val name : String? = if(params["name"] != null) params["name"].nullIfEmpty() else media.getString("name")
-                            val desc : String? = if(params["description"] != null) params["description"].nullIfEmpty() else media.getString("description")
+                            val name: String? = if(params["name"] != null) params["name"].nullIfEmpty() else media.getString("name")
+                            val desc: String? = if(params["description"] != null) params["description"].nullIfEmpty() else media.getString("description")
                             val tags = if(params["tags"] != null) JsonArray(params["tags"]) else JsonArray(media.getString("tags"))
 
                             // Validate tags
                             var badType = false
                             var dash = false
                             var space = false
+                            var quote = false
                             for(tag in tags) {
                                 if(tag !is String) {
                                     badType = true
@@ -313,6 +329,9 @@ fun mediaController() {
                                     break
                                 } else if(tag.contains(' ')) {
                                     space = true
+                                    break
+                                } else if(tag.contains('"')) {
+                                    quote = true
                                     break
                                 }
                             }
@@ -325,35 +344,38 @@ fun mediaController() {
                             } else if(space) {
                                 r.error("Tags must not contain spaces")
                                 return@launch
+                            } else if(quote) {
+                                r.error("Tags must not contain double quotes")
+                                return@launch
                             }
 
                             try {
                                 // Update media info
-                                updateMediaInfo(media.getInteger("internal_id"), name, desc, tags)
+                                mediaModel.updateMediaInfo(media.getInteger("internal_id"), name, desc, tags)
 
                                 try {
                                     // Update tags
-                                    refreshTags()
+                                    tagsModel.refreshTags()
 
                                     r.success()
-                                } catch(e : Exception) {
+                                } catch(e: Exception) {
                                     logger.error("Failed to update tags:")
                                     e.printStackTrace()
                                     r.error("Database error")
                                 }
-                            } catch(e : Exception) {
+                            } catch(e: Exception) {
                                 logger.error("Failed to edit file info:")
                                 e.printStackTrace()
                                 r.error("Database error")
                             }
-                        } catch(e : Exception) {
+                        } catch(e: Exception) {
                             // Invalid tags JSON array
                             r.error("Tags must be a JSON array")
                         }
                     } else {
                         r.error("File does not exist")
                     }
-                } catch(e : Exception) {
+                } catch(e: Exception) {
                     logger.error("Failed to fetch file:")
                     e.printStackTrace()
                     r.error("Database error")
@@ -370,13 +392,23 @@ fun mediaController() {
     post("/api/v1/media/:file/delete", domain) { r ->
         GlobalScope.launch(vertx().dispatcher()) {
             if(r.protectWithPermission("files.delete")) {
+                val tagsModel = TagsModel(r.account())
+                val listsModel = ListsModel(r.account())
+                val mediaModel = MediaModel(r.account())
                 val fileId = r.pathParam("file")
 
                 try {
-                    val mediaRes = fetchMedia(fileId)
+                    val mediaRes = mediaModel.fetchMedia(fileId)
 
                     if(mediaRes != null && mediaRes.rows.size > 0) {
                         val media = mediaRes.rows[0]
+
+                        // Check if media was created by the user
+                        if(media.getInteger("media_creator") != r.userId() && !r.hasPermission("files.delete.all")) {
+                            r.unauthorized()
+                            return@launch
+                        }
+
                         val fs = vertx().fileSystem()
 
                         // Whether this media's files should be deleted
@@ -385,7 +417,7 @@ fun mediaController() {
                         // Check if media is a child
                         if(media.getInteger("media_parent") == null) {
                             // Check if files with the same hash exist
-                            val hashMediaRes = fetchMediaByHash(media.getString("media_file_hash"))
+                            val hashMediaRes = mediaModel.fetchMediaByHash(media.getString("media_file_hash"))
 
                             if (hashMediaRes != null && hashMediaRes.rows.size < 2) {
                                 delete = true
@@ -393,7 +425,7 @@ fun mediaController() {
 
                             try {
                                 // Fetch children
-                                val children = fetchMediaChildren(media.getInteger("id"))
+                                val children = mediaModel.fetchMediaChildren(media.getInteger("id"))
 
                                 // Delete children
                                 for(child in children?.rows.orEmpty()) {
@@ -413,25 +445,25 @@ fun mediaController() {
                                         }
 
                                         // Delete entry
-                                        deleteMedia(child.getString("media_id"))
+                                        mediaModel.deleteMedia(child.getString("media_id"))
 
                                         try {
                                             // Delete entries linking to the file in lists
-                                            deleteListItemsByMediaId(child.getInteger("id"))
-                                        } catch(e : Exception) {
+                                            listsModel.deleteListItemsByMediaId(child.getInteger("id"))
+                                        } catch(e: Exception) {
                                             logger.error("Failed to delete list references to child ID ${child.getString("")}:")
                                             e.printStackTrace()
                                             r.error("Database error")
                                             return@launch
                                         }
-                                    } catch(e : Exception) {
+                                    } catch(e: Exception) {
                                         logger.error("Failed to delete child ID ${child.getString("")}:")
                                         e.printStackTrace()
                                         r.error("Database error")
                                         return@launch
                                     }
                                 }
-                            } catch(e : Exception) {
+                            } catch(e: Exception) {
                                 logger.error("Failed to fetch media children:")
                                 e.printStackTrace()
                                 r.error("Database error")
@@ -475,12 +507,12 @@ fun mediaController() {
 
                         try {
                             // Delete database entry
-                            deleteMedia(fileId)
+                            mediaModel.deleteMedia(fileId)
 
                             try {
                                 // Delete entries linking to the file in lists
-                                deleteListItemsByMediaId(media.getInteger("id"))
-                            } catch(e : Exception) {
+                                listsModel.deleteListItemsByMediaId(media.getInteger("id"))
+                            } catch(e: Exception) {
                                 logger.error("Failed to delete list references to media ID $fileId:")
                                 e.printStackTrace()
                                 r.error("Database error")
@@ -499,13 +531,13 @@ fun mediaController() {
 
                     try {
                         // Update tags
-                        refreshTags()
-                    } catch(e : Exception) {
+                        tagsModel.refreshTags()
+                    } catch(e: Exception) {
                         logger.error("Failed to update tags:")
                         e.printStackTrace()
                         r.error("Database error")
                     }
-                } catch(e : Exception) {
+                } catch(e: Exception) {
                     logger.error("Failed to delete file:")
                     e.printStackTrace()
                     r.error("Database error")
@@ -527,14 +559,21 @@ fun mediaController() {
         val params = r.request().params()
         val listId = r.pathParam("id")
         GlobalScope.launch(vertx().dispatcher()) {
+            val mediaModel = MediaModel()
+            val listsModel = ListsModel()
+
             try {
+                // Set model account if authenticated
+                if(r.authenticated())
+                    mediaModel.account = r.account()
+
                 // Collect parameters
                 val offset = (if(params.contains("offset")) params["offset"].toInt() else 0).coerceAtLeast(0)
                 val limit = (if(params.contains("limit")) params["limit"].toInt() else 100).coerceIn(0, 100)
                 val order = (if(params.contains("order")) params["order"].toInt() else 0).coerceIn(0, 5)
 
                 try {
-                    val listRes = fetchList(listId)
+                    val listRes = listsModel.fetchList(listId)
 
                     if(listRes != null && listRes.rows.size > 0) {
                         val list = listRes.rows[0]
@@ -551,10 +590,10 @@ fun mediaController() {
                                         val createdAfter = list.getString("list_source_created_after")
                                         val mime = list.getString("list_source_mime")
 
-                                        fetchMediaListByTagsAndDateRange(tags, excludeTags, createdBefore, createdAfter, mime, offset, limit, order)
+                                        mediaModel.fetchMediaListByTagsAndDateRange(tags, excludeTags, createdBefore, createdAfter, mime, offset, limit, order)
                                     }
                                     else -> {
-                                        fetchMediaListByListId(offset, limit, list.getInteger("id"), order)
+                                        mediaModel.fetchMediaListByListId(offset, limit, list.getInteger("id"), order)
                                     }
                                 }
 
@@ -568,7 +607,7 @@ fun mediaController() {
                                 r.success(json {
                                     obj("files" to arr)
                                 })
-                            } catch(e : Exception) {
+                            } catch(e: Exception) {
                                 logger.error("Failed to fetch files:")
                                 e.printStackTrace()
                                 r.error("Database error")
@@ -581,12 +620,12 @@ fun mediaController() {
                     } else {
                         r.unauthorized()
                     }
-                } catch(e : Exception) {
+                } catch(e: Exception) {
                     logger.error("Failed to fetch list:")
                     e.printStackTrace()
                     r.error("Database error")
                 }
-            } catch(e : Exception) {
+            } catch(e: Exception) {
                 r.error("Invalid parameters")
             }
         }

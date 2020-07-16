@@ -1,11 +1,14 @@
 package net.termer.twinemedia.controller
 
+import io.vertx.core.json.JsonArray
 import io.vertx.kotlin.core.json.json
 import io.vertx.kotlin.core.json.obj
 import io.vertx.kotlin.coroutines.dispatcher
 import kotlinx.coroutines.GlobalScope
 import kotlinx.coroutines.launch
 import net.termer.twine.ServerManager.*
+import net.termer.twinemedia.Module
+import net.termer.twinemedia.Module.Companion.config
 import net.termer.twinemedia.exception.AuthException
 import net.termer.twinemedia.util.*
 
@@ -36,14 +39,25 @@ fun accountController() {
         GlobalScope.launch(vertx().dispatcher()) {
             // Check if account exists
             try {
+                val perms = JsonArray()
+                for(perm in r.account().permissions)
+                    perms.add(perm)
+
                 // Collect properties
                 val account = json {
                     obj(
-                            "id" to r.account().getInteger("id"),
-                            "permissions" to r.account().getJsonArray("account_permissions"),
-                            "name" to r.account().getString("account_name"),
-                            "email" to r.account().getString("account_email"),
-                            "admin" to r.account().getBoolean("account_admin")
+                            "id" to r.account().id,
+                            "permissions" to perms,
+                            "name" to r.account().name,
+                            "email" to r.account().email,
+                            "admin" to r.account().admin,
+                            "creation_date" to r.account().creationDate.toISOString(),
+                            "exclude_tags" to JsonArray(r.account().excludeTags.asList()),
+                            "exclude_other_media" to r.account().excludeOtherMedia,
+                            "exclude_other_lists" to r.account().excludeOtherLists,
+                            "exclude_other_tags" to r.account().excludeOtherTags,
+                            "exclude_other_processes" to r.account().excludeOtherProcesses,
+                            "max_upload" to config.max_upload
                     )
                 }
 

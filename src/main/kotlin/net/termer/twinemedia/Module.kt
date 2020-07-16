@@ -20,10 +20,8 @@ import net.termer.twinemedia.db.dbMigrate
 import net.termer.twinemedia.jwt.jwtInit
 import net.termer.twinemedia.middleware.authMiddleware
 import net.termer.twinemedia.middleware.headersMiddleware
-import net.termer.twinemedia.model.createAccountEntry
-import net.termer.twinemedia.model.fetchAccountByEmail
-import net.termer.twinemedia.model.fetchAdminAccounts
-import net.termer.twinemedia.model.refreshTags
+import net.termer.twinemedia.model.AccountsModel
+import net.termer.twinemedia.model.TagsModel
 import net.termer.twinemedia.util.*
 import org.slf4j.Logger
 import org.slf4j.LoggerFactory
@@ -31,14 +29,17 @@ import java.io.File
 import java.io.IOException
 import kotlin.Exception
 
-class Module : TwineModule {
+class Module: TwineModule {
+    // Instantiated models
+    private val accountsModel = AccountsModel()
+
     // Whether this is a special run, e.g. whether special command line arguments are supplied
     val specialRun = serverArgs().option("twinemedia-install") || serverArgs().option("twinemedia-reset-admin")
 
     companion object {
-        val logger : Logger = LoggerFactory.getLogger(Module::class.java)
+        val logger: Logger = LoggerFactory.getLogger(Module::class.java)
         var config = TwineMediaConfig()
-        val crypt : Crypt = Crypt()
+        val crypt: Crypt = Crypt()
     }
 
     override fun preinitialize() {
@@ -75,7 +76,7 @@ class Module : TwineModule {
                 if(validEmail(addr)) {
                     runBlocking {
                         // Check if account with that email already exists
-                        val emailRes = fetchAccountByEmail(addr)
+                        val emailRes = accountsModel.fetchAccountByEmail(addr)
 
                         if (emailRes != null && emailRes.rows!!.isNotEmpty())
                             println("Account with that email already exists")
@@ -376,7 +377,7 @@ class Module : TwineModule {
                         println("Setting up schema...")
                         dbMigrate()
                         println("Checking for an admin account...")
-                        val admins = fetchAdminAccounts()
+                        val admins = accountsModel.fetchAdminAccounts()
                         if (admins != null && admins.rows != null && admins.rows.size > 0) {
                             println("An admin account already exists")
                         } else {
@@ -415,7 +416,7 @@ class Module : TwineModule {
 
                 runBlocking {
                     println("Fetching admin accounts...")
-                    val adminsRes = fetchAdminAccounts()
+                    val adminsRes = accountsModel.fetchAdminAccounts()
 
                     if(adminsRes != null && adminsRes.rows.isNotEmpty()) {
                         println("Select the ID of the account you want to reset the password of:")
@@ -480,7 +481,7 @@ class Module : TwineModule {
                                         println("Updating password...")
                                         updateAccountPassword(id, pass)
                                         println("Updated!")
-                                    } catch(e : Exception) {
+                                    } catch(e: Exception) {
                                         System.err.println("Failed to update password because of error:")
                                         e.printStackTrace()
                                     }
@@ -490,7 +491,7 @@ class Module : TwineModule {
                             } else {
                                 println("Invalid ID")
                             }
-                        } catch(e : Exception) {
+                        } catch(e: Exception) {
                             println("Invalid ID")
                         }
                     } else {
@@ -559,13 +560,15 @@ class Module : TwineModule {
                 }
 
                 runBlocking {
+                    val tagsModel = TagsModel()
+
                     // Refresh tags
                     logger.info("Refreshing tags...")
-                    refreshTags()
+                    tagsModel.refreshTags()
 
                     logger.info("Started!")
                 }
-            } catch(e : IOException) {
+            } catch(e: IOException) {
                 logger.error("Failed to initialize TwineMedia:")
                 e.printStackTrace()
             }

@@ -10,7 +10,7 @@ import net.termer.twine.ServerManager.post
 import net.termer.twine.ServerManager.vertx
 import net.termer.twine.utils.StringFilter.generateString
 import net.termer.twinemedia.Module.Companion.logger
-import net.termer.twinemedia.model.fetchMedia
+import net.termer.twinemedia.model.MediaModel
 import net.termer.twinemedia.util.*
 
 /**
@@ -36,12 +36,20 @@ fun mediaChildController() {
         val params = r.request().params()
         GlobalScope.launch(vertx().dispatcher()) {
             if(r.protectWithPermission("files.child")) {
+                val mediaModel = MediaModel(r.account())
+
                 try {
-                    val mediaRes = fetchMedia(id)
+                    val mediaRes = mediaModel.fetchMedia(id)
 
                     // Check if media exists
                     if(mediaRes != null && mediaRes.rows.size > 0) {
                         val media = mediaRes.rows[0]
+
+                        // Check if media was created by the user
+                        if(media.getInteger("creator") != r.userId() && !r.hasPermission("files.child.all")) {
+                            r.unauthorized()
+                            return@launch
+                        }
 
                         // Check if media is a child
                         if(media.getInteger("media_parent") != null) {

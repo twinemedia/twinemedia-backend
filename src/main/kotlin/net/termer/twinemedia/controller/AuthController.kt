@@ -13,7 +13,7 @@ import net.termer.twinemedia.Module.Companion.config
 import net.termer.twinemedia.Module.Companion.crypt
 import net.termer.twinemedia.Module.Companion.logger
 import net.termer.twinemedia.jwt.jwtCreateToken
-import net.termer.twinemedia.model.fetchAccountByEmail
+import net.termer.twinemedia.model.AccountsModel
 import net.termer.twinemedia.util.appDomain
 import net.termer.twinemedia.util.error
 import net.termer.twinemedia.util.ip
@@ -24,6 +24,8 @@ import net.termer.twinemedia.util.success
  * @since 1.0
  */
 fun authController() {
+    val accountsModel = AccountsModel()
+
     // Enforce max attempts per minute for authentication
     val attempts = HashMap<String, Int>()
     vertx().setPeriodic(config.auth_timeout_period.toLong()) {
@@ -59,7 +61,7 @@ fun authController() {
             GlobalScope.launch(vertx().dispatcher()) {
                 try {
                     // Fetch account info
-                    val accountRes = fetchAccountByEmail(email)
+                    val accountRes = accountsModel.fetchAccountByEmail(email)
 
                     // Check if account exists
                     if (accountRes != null && accountRes.numRows > 0) {

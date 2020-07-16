@@ -24,10 +24,7 @@ import net.termer.twine.utils.StringFilter.generateString
 import net.termer.twinemedia.Module.Companion.config
 import net.termer.twinemedia.exception.MediaNotFoundException
 import net.termer.twinemedia.exception.WrongMediaTypeException
-import net.termer.twinemedia.model.createMedia
-import net.termer.twinemedia.model.fetchMedia
-import net.termer.twinemedia.model.updateMediaInfo
-import net.termer.twinemedia.model.updateMediaProcessError
+import net.termer.twinemedia.model.*
 import org.slf4j.Logger
 import org.slf4j.LoggerFactory
 import java.util.Base64
@@ -39,6 +36,8 @@ import java.security.MessageDigest
 import java.util.concurrent.CopyOnWriteArrayList
 import kotlin.concurrent.thread
 import kotlin.random.Random
+
+private val mediaModel = MediaModel()
 
 private val ffmpeg = FFmpeg(config.ffmpeg_path)
 private val ffprobe = FFprobe(config.ffprobe_path)
@@ -207,7 +206,7 @@ fun startMediaProcessor() : Thread {
                         // Attempt to record processing error
                         try {
                             runBlocking(vertx().dispatcher()) {
-                                updateMediaProcessError(id, "Processing failed due to encoding error")
+                                mediaModel.updateMediaProcessError(id, "Processing failed due to encoding error")
                             }
                         } catch (e: Exception) {
                             procLogger.error("Failed to update media file's process error field:")
@@ -271,7 +270,7 @@ fun startMediaProcessor() : Thread {
                     try {
                         // Update media info
                         runBlocking(vertx().dispatcher()) {
-                            updateMediaInfo(id, false, fileSize, hash, thumbnail, meta)
+                            mediaModel.updateMediaInfo(id, false, fileSize, hash, thumbnail, meta)
                         }
 
                         // Broadcast success
@@ -300,7 +299,7 @@ fun startMediaProcessor() : Thread {
                         // Attempt to record processing error
                         try {
                             runBlocking(vertx().dispatcher()) {
-                                updateMediaProcessError(id, "Processing failed due to database error")
+                                mediaModel.updateMediaProcessError(id, "Processing failed due to database error")
                             }
                         } catch (e: Exception) {
                             procLogger.error("Failed to update media file's process error field:")
@@ -457,7 +456,7 @@ suspend fun queueMediaProcessJobAwait(job : MediaProcessorJob) {
  */
 suspend fun queueMediaProcessJobFromMedia(sourceId : String, newId : String, extension : String, creator : Int, settings : JsonObject, callback : Handler<AsyncResult<Unit>>?) {
     // Fetch source media
-    val sourceRes = fetchMedia(sourceId)
+    val sourceRes = mediaModel.fetchMedia(sourceId)
 
     // Check if it exists
     if(sourceRes != null && sourceRes.rows.size > 0) {
@@ -488,7 +487,7 @@ suspend fun queueMediaProcessJobFromMedia(sourceId : String, newId : String, ext
         val newFilename = oldFilename.substring(0, oldFilename.length-(filenameParts[filenameParts.size-1].length))+extension
 
         // Create new media entry
-        createMedia(
+        mediaModel.createMedia(
                 id = newId,
                 name = source.getString("media_name"),
                 filename = newFilename,

@@ -15,9 +15,8 @@ import net.termer.twine.ServerManager.vertx
 import net.termer.twine.utils.StringFilter.generateString
 import net.termer.twinemedia.Module.Companion.config
 import net.termer.twinemedia.Module.Companion.logger
-import net.termer.twinemedia.model.createMedia
-import net.termer.twinemedia.model.fetchMediaByHash
-import net.termer.twinemedia.model.fetchProcessesForMime
+import net.termer.twinemedia.model.MediaModel
+import net.termer.twinemedia.model.ProcessesModel
 import net.termer.twinemedia.util.*
 import java.util.Base64
 import java.io.File
@@ -39,6 +38,9 @@ fun uploadController() {
         r.request().pause()
         GlobalScope.launch(vertx().dispatcher()) {
             if (r.protectWithPermission("upload")) {
+                val processesModel = ProcessesModel(r.account())
+                val mediaModel = MediaModel(r.account())
+
                 // Check file size header
                 val length = r.request().getHeader("content-length").toLong()
 
@@ -109,6 +111,7 @@ fun uploadController() {
                                 // Thumbnail file
                                 var thumbnail : String? = null
 
+
                                 // Metadata
                                 var meta = JsonObject()
 
@@ -121,7 +124,7 @@ fun uploadController() {
                                     logger.info("Deleted")
                                 } else {
                                     // Check if a file with the generated hash already exists
-                                    val filesRes = fetchMediaByHash(hash)
+                                    val filesRes = mediaModel.fetchMediaByHash(hash)
 
                                     if(filesRes != null && filesRes.rows.size > 0) {
                                         // Get already uploaded file's filename
@@ -194,9 +197,41 @@ fun uploadController() {
                                             mediaName = title.toLength(256)
                                             mediaDesc += "Title: $title\n"
                                         }
+                                        if(tags.containsKey("author")) {
+                                            val author = tags.getString("author")
+                                            mediaDesc += "Author: $author\n"
+                                        }
+                                        if(tags.containsKey("description")) {
+                                            val description = tags.getString("description")
+                                            mediaDesc += "Description: $description\n"
+                                        }
+                                        if(tags.containsKey("comment")) {
+                                            val comment = tags.getString("comment")
+                                            mediaDesc += "Comment: $comment\n"
+                                        }
+                                        if(tags.containsKey("synopsis")) {
+                                            val synopsis = tags.getString("synopsis")
+                                            mediaDesc += "Synopsis: $synopsis\n"
+                                        }
+                                        if(tags.containsKey("show")) {
+                                            val show = tags.getString("show")
+                                            mediaDesc += "Show: $show\n"
+                                        }
+                                        if(tags.containsKey("season")) {
+                                            val season = tags.getString("season")
+                                            mediaDesc += "Season: $season\n"
+                                        }
+                                        if(tags.containsKey("episode")) {
+                                            val episode = tags.getString("episode")
+                                            mediaDesc += "Episode: $episode\n"
+                                        }
                                         if(tags.containsKey("artist")) {
                                             val artist = tags.getString("artist")
                                             mediaDesc += "Artist: $artist\n"
+                                        }
+                                        if(tags.containsKey("composer")) {
+                                            val composer = tags.getString("composer")
+                                            mediaDesc += "Composer: $composer\n"
                                         }
                                         if(tags.containsKey("album")) {
                                             val album = tags.getString("album")
@@ -234,13 +269,17 @@ fun uploadController() {
                                             val date = tags.getString("date")
                                             mediaDesc += "Date: $date\n"
                                         }
+                                        if(tags.containsKey("copyright")) {
+                                            val copyright = tags.getString("copyright")
+                                            mediaDesc += "Copyright: $copyright\n"
+                                        }
                                     }
 
                                     // Correct media description
                                     mediaDesc = mediaDesc.trim().toLength(1024)
 
                                     /* Create database entry */
-                                    createMedia(
+                                    mediaModel.createMedia(
                                             id,
                                             mediaName,
                                             filename,
@@ -257,8 +296,8 @@ fun uploadController() {
                                     // Check if uploaded file is media
                                     if(type.startsWith("video/") || type.startsWith("audio/")) {
                                         try {
-                                            // Fetch processes for this type
-                                            val processes = fetchProcessesForMime(type)
+                                            // Fetch processes created by the uploader for this type
+                                            val processes = processesModel.fetchProcessesForMimeAndAccount(type, r.userId())
 
                                             // Queue processing jobs
                                             for(process in processes?.rows.orEmpty()) {

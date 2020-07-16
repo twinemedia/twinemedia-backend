@@ -36,6 +36,8 @@ fun listsController() {
         val params = r.request().params()
         GlobalScope.launch(vertx().dispatcher()) {
             if(r.protectWithPermission("lists.list")) {
+                val listsModel = ListsModel(r.account())
+
                 try {
                     // Collect parameters
                     val offset = (if(params.contains("offset")) params["offset"].toInt() else 0).coerceAtLeast(0)
@@ -46,7 +48,7 @@ fun listsController() {
 
                     try {
                         // Fetch lists
-                        val lists = fetchLists(offset, limit, order, type, media)
+                        val lists = listsModel.fetchLists(offset, limit, order, type, media)
 
                         // Create JSON array of lists
                         val arr = JsonArray()
@@ -58,12 +60,12 @@ fun listsController() {
                         r.success(json {
                             obj("lists" to arr)
                         })
-                    } catch(e : Exception) {
+                    } catch(e: Exception) {
                         logger.error("Failed to fetch lists:")
                         e.printStackTrace()
                         r.error("Database error")
                     }
-                } catch(e : Exception) {
+                } catch(e: Exception) {
                     r.error("Invalid parameters")
                 }
             }
@@ -86,6 +88,8 @@ fun listsController() {
         val params = r.request().params()
         GlobalScope.launch(vertx().dispatcher()) {
             if(r.protectWithPermission("lists.list")) {
+                val listsModel = ListsModel(r.account())
+
                 try {
                     // Collect parameters
                     val offset = (if(params.contains("offset")) params["offset"].toInt() else 0).coerceAtLeast(0)
@@ -108,12 +112,12 @@ fun listsController() {
                         // Fetch lists
                         val lists = when(query.isNotEmpty()) {
                             true -> {
-                                fetchListsByPlaintextQuery(query, offset, limit, order, type, media,
+                                listsModel.fetchListsByPlaintextQuery(query, offset, limit, order, type, media,
                                         searchItems.getBoolean("name"),
                                         searchItems.getBoolean("description")
                                 )
                             }
-                            else -> fetchLists(offset, limit, order, type, media)
+                            else -> listsModel.fetchLists(offset, limit, order, type, media)
                         }
 
                         // Create JSON array of lists
@@ -133,12 +137,12 @@ fun listsController() {
                         r.success(json {
                             obj("lists" to arr)
                         })
-                    } catch(e : Exception) {
+                    } catch(e: Exception) {
                         logger.error("Failed to fetch lists:")
                         e.printStackTrace()
                         r.error("Database error")
                     }
-                } catch(e : Exception) {
+                } catch(e: Exception) {
                     r.error("Invalid parameters")
                 }
             }
@@ -161,6 +165,8 @@ fun listsController() {
         val params = r.request().params()
         GlobalScope.launch(vertx().dispatcher()) {
             if(r.protectWithPermission("lists.create")) {
+                val listsModel = ListsModel(r.account())
+
                 if(params.contains("name") && params.contains("type") && params.contains("visibility")) {
                     try {
                         val name = if(params["name"].length > 256) params["name"].substring(0, 256) else params["name"]
@@ -172,8 +178,8 @@ fun listsController() {
                         val visibility = params["visibility"].toInt()
                         val sourceTags = if(type == AUTOMATICALLY_POPULATED && params.contains("sourceTags")) JsonArray(params["sourceTags"]) else null
                         val sourceExcludeTags = if(type == AUTOMATICALLY_POPULATED && params.contains("sourceExcludeTags")) JsonArray(params["sourceExcludeTags"]) else null
-                        val sourceCreatedBefore = if(type == AUTOMATICALLY_POPULATED && params.contains("sourceCreatedBefore")) simpleDateFormat.format(simpleDateFormat.parse(params["sourceCreatedBefore"])) else null
-                        val sourceCreatedAfter = if(type == AUTOMATICALLY_POPULATED && params.contains("sourceCreatedAfter")) simpleDateFormat.format(simpleDateFormat.parse(params["sourceCreatedAfter"])) else null
+                        val sourceCreatedBefore = if(type == AUTOMATICALLY_POPULATED && params.contains("sourceCreatedBefore")) simpleDateFormat.parse(params["sourceCreatedBefore"]).toISOString() else null
+                        val sourceCreatedAfter = if(type == AUTOMATICALLY_POPULATED && params.contains("sourceCreatedAfter")) simpleDateFormat.parse(params["sourceCreatedAfter"]).toISOString() else null
                         val sourceMime = if(type == AUTOMATICALLY_POPULATED && params.contains("sourceMime")) params["sourceMime"] else null
 
                         // Validate tags
@@ -215,7 +221,7 @@ fun listsController() {
                         if(isValidListType(type)) {
                             try {
                                 // Create list
-                                createList(id, name, description, r.userId(), visibility, type, sourceTags, sourceExcludeTags, sourceCreatedBefore, sourceCreatedAfter, sourceMime)
+                                listsModel.createList(id, name, description, r.userId(), visibility, type, sourceTags, sourceExcludeTags, sourceCreatedBefore, sourceCreatedAfter, sourceMime)
 
                                 // Send ID
                                 r.success(json {
@@ -229,7 +235,7 @@ fun listsController() {
                         } else {
                             r.error("Invalid list type")
                         }
-                    } catch(e : Exception) {
+                    } catch(e: Exception) {
                         // Invalid tags JSON array, invalid type int, or invalid date string
                         r.error("Invalid parameters")
                     }
@@ -248,9 +254,15 @@ fun listsController() {
     get("/api/v1/list/:id", domain) { r ->
         val id = r.pathParam("id")
         GlobalScope.launch(vertx().dispatcher()) {
+            val listsModel = ListsModel()
+
             try {
+                // Set model account if authenticated
+                if(r.authenticated())
+                    listsModel.account = r.account()
+
                 // Fetch list
-                val listRes = fetchListInfo(id)
+                val listRes = listsModel.fetchListInfo(id)
 
                 if(listRes != null && listRes.rows.size > 0) {
                     val list = listRes.rows[0]
@@ -273,7 +285,7 @@ fun listsController() {
                 } else {
                     r.unauthorized()
                 }
-            } catch(e : Exception) {
+            } catch(e: Exception) {
                 logger.error("Failed to fetch list:")
                 e.printStackTrace()
                 r.error("Database error")
@@ -286,13 +298,21 @@ fun listsController() {
         val params = r.request().params()
         GlobalScope.launch(vertx().dispatcher()) {
             if(r.protectWithPermission("lists.edit")) {
+                val listsModel = ListsModel(r.account())
+
                 try {
                     // Fetch list
-                    val listRes = fetchList(id)
+                    val listRes = listsModel.fetchList(id)
 
                     // Check if it exists
                     if (listRes != null && listRes.rows.size > 0) {
                         val list = listRes.rows[0]
+
+                        // Check if list was created by the user
+                        if(list.getInteger("list_creator") != r.userId() && !r.hasPermission("lists.edit.all")) {
+                            r.unauthorized()
+                            return@launch
+                        }
 
                         try {
                             val oldType = list.getInteger("list_type")
@@ -316,34 +336,31 @@ fun listsController() {
                                 try {
                                     if(type == STANDARD) {
                                         // Update list
-                                        updateListToNormal(id, name, description, visibility)
+                                        listsModel.updateListToNormal(id, name, description, visibility)
 
                                         // Send success
                                         r.success()
                                     } else {
                                         // If old type is 0, delete all list items
                                         if(oldType == 0)
-                                            deleteListItemsByListId(list.getInteger("id"))
+                                            listsModel.deleteListItemsByListId(list.getInteger("id"))
 
-                                        val sourceTags = if(params.contains("sourceTags"))
-                                            JsonArray(params["sourceTags"])
-                                        else if(list.getString("list_source_tags") == null)
-                                            null
-                                        else
-                                            JsonArray(list.getString("list_source_tags"))
-
-                                        val sourceExcludeTags = if(params.contains("sourceExcludeTags"))
-                                            JsonArray(params["sourceExcludeTags"])
-                                        else if(list.getString("list_source_exclude_tags") == null)
-                                            null
-                                        else
-                                            JsonArray(list.getString("list_source_tags"))
+                                        val sourceTags = when {
+                                            params.contains("sourceTags") -> JsonArray(params["sourceTags"])
+                                            list.getString("list_source_tags") == null -> null
+                                            else -> JsonArray(list.getString("list_source_tags"))
+                                        }
+                                        val sourceExcludeTags = when {
+                                            params.contains("sourceExcludeTags") -> JsonArray(params["sourceExcludeTags"])
+                                            list.getString("list_source_exclude_tags") == null -> null
+                                            else -> JsonArray(list.getString("list_source_tags"))
+                                        }
 
                                         val sourceCreatedBefore = if(params.contains("sourceCreatedBefore"))
                                             if(params["sourceCreatedBefore"].isEmpty()) {
                                                 null
                                             } else {
-                                                simpleDateFormat.format(simpleDateFormat.parse(params["sourceCreatedBefore"]))
+                                                simpleDateFormat.parse(params["sourceCreatedBefore"]).toISOString()
                                             }
                                         else
                                             list.getString("list_source_created_before")
@@ -352,7 +369,7 @@ fun listsController() {
                                             if(params["sourceCreatedAfter"].isEmpty()) {
                                                 null
                                             } else {
-                                                simpleDateFormat.format(simpleDateFormat.parse(params["sourceCreatedAfter"]))
+                                                simpleDateFormat.parse(params["sourceCreatedAfter"]).toISOString()
                                             }
                                         else
                                             list.getString("list_source_created_after")
@@ -396,7 +413,7 @@ fun listsController() {
                                         }
 
                                         // Update list
-                                        updateListToAutomaticallyPopulated(id, name, description, visibility, sourceTags, sourceExcludeTags, sourceCreatedBefore, sourceCreatedAfter, sourceMime)
+                                        listsModel.updateListToAutomaticallyPopulated(id, name, description, visibility, sourceTags, sourceExcludeTags, sourceCreatedBefore, sourceCreatedAfter, sourceMime)
 
                                         // Send success
                                         r.success()
@@ -416,7 +433,7 @@ fun listsController() {
                     } else {
                         r.error("List does not exist")
                     }
-                } catch(e : Exception) {
+                } catch(e: Exception) {
                     logger.error("Failed to fetch list:")
                     e.printStackTrace()
                     r.error("Database error")
@@ -433,27 +450,34 @@ fun listsController() {
     post("/api/v1/list/:id/delete", domain) { r ->
         GlobalScope.launch(vertx().dispatcher()) {
             if(r.protectWithPermission("lists.delete")) {
+                val listsModel = ListsModel()
                 val id = r.pathParam("id")
 
                 try {
                     // Check if the list exists
-                    val listRes = fetchList(id)
+                    val listRes = listsModel.fetchList(id)
 
                     if(listRes != null && listRes.rows.size > 0) {
                         val list = listRes.rows[0]
 
+                        // Check if list was created by the user
+                        if(list.getInteger("list_creator") != r.userId() && !r.hasPermission("lists.delete.all")) {
+                            r.unauthorized()
+                            return@launch
+                        }
+
                         // Delete the list
-                        deleteList(id)
+                        listsModel.deleteList(id)
 
                         // Delete all if its items if it's a standard list
                         if(list.getInteger("list_type") == STANDARD)
-                            deleteListItemsByListId(list.getInteger("id"))
+                            listsModel.deleteListItemsByListId(list.getInteger("id"))
 
                         r.success()
                     } else {
                         r.error("List does not exist")
                     }
-                } catch(e : Exception) {
+                } catch(e: Exception) {
                     logger.error("Failed to fetch list:")
                     e.printStackTrace()
                     r.error("Database error")
@@ -471,28 +495,36 @@ fun listsController() {
     post("/api/v1/list/:id/add/:media", domain) { r ->
         GlobalScope.launch(vertx().dispatcher()) {
             if(r.protectWithPermission("lists.add")) {
+                val mediaModel = MediaModel(r.account())
+                val listsModel = ListsModel()
                 val id = r.pathParam("id")
                 val mediaId = r.pathParam("media")
 
                 try {
                     // Check if the list exists
-                    val listRes = fetchList(id)
+                    val listRes = listsModel.fetchList(id)
 
                     if(listRes != null && listRes.rows.size > 0) {
                         val list = listRes.rows[0]
+
+                        // Check if list was created by the user
+                        if(list.getInteger("list_creator") != r.userId() && !r.hasPermission("lists.add.all")) {
+                            r.unauthorized()
+                            return@launch
+                        }
 
                         // Check if list is STANDARD
                         if(list.getInteger("list_type") == STANDARD) {
                             try {
                                 // Check if media exists
-                                val mediaRes = fetchMedia(mediaId)
+                                val mediaRes = mediaModel.fetchMedia(mediaId)
 
                                 if (mediaRes != null && mediaRes.rows.size > 0) {
                                     val media = mediaRes.rows[0]
 
                                     try {
                                         // Check if item is already added to list
-                                        val containsRes = fetchListContainsItem(list.getInteger("id"), media.getInteger("id"))
+                                        val containsRes = listsModel.fetchListContainsItem(list.getInteger("id"), media.getInteger("id"))
 
                                         if (containsRes != null && containsRes.rows[0].getBoolean("contains_media")) {
                                             // Already has the item so nothing needs to be done
@@ -500,17 +532,17 @@ fun listsController() {
                                         } else {
                                             try {
                                                 // Create item entry
-                                                createListItem(list.getInteger("id"), media.getInteger("id"))
+                                                listsModel.createListItem(list.getInteger("id"), media.getInteger("id"))
 
                                                 // Send success
                                                 r.success()
-                                            } catch(e : Exception) {
+                                            } catch(e: Exception) {
                                                 logger.error("Failed to create new list item:")
                                                 e.printStackTrace()
                                                 r.error("Database error")
                                             }
                                         }
-                                    } catch(e : Exception) {
+                                    } catch(e: Exception) {
                                         logger.error("Failed to fetch whether list contains item:")
                                         e.printStackTrace()
                                         r.error("Database error")
@@ -518,7 +550,7 @@ fun listsController() {
                                 } else {
                                     r.error("File does not exist")
                                 }
-                            } catch(e : Exception) {
+                            } catch(e: Exception) {
                                 logger.error("Failed to fetch media to add to list:")
                                 e.printStackTrace()
                                 r.error("Database error")
@@ -529,7 +561,7 @@ fun listsController() {
                     } else {
                         r.error("List does not exist")
                     }
-                } catch(e : Exception) {
+                } catch(e: Exception) {
                     logger.error("Failed to fetch list:")
                     e.printStackTrace()
                     r.error("Database error")
@@ -547,32 +579,40 @@ fun listsController() {
     post("/api/v1/list/:id/remove/:media", domain) { r ->
         GlobalScope.launch(vertx().dispatcher()) {
             if(r.protectWithPermission("lists.remove")) {
+                val mediaModel = MediaModel(r.account())
+                val listsModel = ListsModel()
                 val id = r.pathParam("id")
                 val mediaId = r.pathParam("media")
 
                 try {
                     // Check if the list exists
-                    val listRes = fetchList(id)
+                    val listRes = listsModel.fetchList(id)
 
                     if(listRes != null && listRes.rows.size > 0) {
                         val list = listRes.rows[0]
+
+                        // Check if list was created by the user
+                        if(list.getInteger("list_creator") != r.userId() && !r.hasPermission("lists.remove.all")) {
+                            r.unauthorized()
+                            return@launch
+                        }
 
                         // Check if list is STANDARD
                         if(list.getInteger("list_type") == STANDARD) {
                             try {
                                 // Check if media exists
-                                val mediaRes = fetchMedia(mediaId)
+                                val mediaRes = mediaModel.fetchMedia(mediaId)
 
                                 if (mediaRes != null && mediaRes.rows.size > 0) {
                                     val media = mediaRes.rows[0]
 
                                     try {
                                         // Delete item entry
-                                        deleteListItemByListAndFile(list.getInteger("id"), media.getInteger("id"))
+                                        listsModel.deleteListItemByListAndFile(list.getInteger("id"), media.getInteger("id"))
 
                                         // Send success
                                         r.success()
-                                    } catch(e : Exception) {
+                                    } catch(e: Exception) {
                                         logger.error("Failed to delete list item:")
                                         e.printStackTrace()
                                         r.error("Database error")
@@ -580,7 +620,7 @@ fun listsController() {
                                 } else {
                                     r.error("File does not exist")
                                 }
-                            } catch(e : Exception) {
+                            } catch(e: Exception) {
                                 logger.error("Failed to fetch media to remove from list:")
                                 e.printStackTrace()
                                 r.error("Database error")
@@ -591,7 +631,7 @@ fun listsController() {
                     } else {
                         r.error("List does not exist")
                     }
-                } catch(e : Exception) {
+                } catch(e: Exception) {
                     logger.error("Failed to fetch list:")
                     e.printStackTrace()
                     r.error("Database error")

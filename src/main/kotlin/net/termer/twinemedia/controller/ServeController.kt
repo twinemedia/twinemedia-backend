@@ -8,7 +8,7 @@ import kotlinx.coroutines.launch
 import net.termer.twine.ServerManager.get
 import net.termer.twine.ServerManager.vertx
 import net.termer.twinemedia.Module.Companion.config
-import net.termer.twinemedia.model.fetchMedia
+import net.termer.twinemedia.model.MediaModel
 import net.termer.twinemedia.util.appDomain
 import net.termer.twinemedia.util.error
 import net.termer.twinemedia.util.sendFileRanged
@@ -31,10 +31,11 @@ fun serveController() {
 //  - id: String, the alphanumeric ID of the file to download
 private fun handleFile(r : RoutingContext) {
     GlobalScope.launch(vertx().dispatcher()) {
+        val mediaModel = MediaModel()
         val id = r.pathParam("id")
 
         // Fetch media info
-        val mediaRes = fetchMedia(id)
+        val mediaRes = mediaModel.fetchMedia(id)
         // Check if media exists
         if(mediaRes != null && mediaRes.rows.size > 0) {
             val media = mediaRes.rows[0]
@@ -59,10 +60,11 @@ private fun handleFile(r : RoutingContext) {
 //  - id: String, the alphanumeric ID of the file to download the thumbnail of
 private fun handleThumbnail(r : RoutingContext) {
     GlobalScope.launch(vertx().dispatcher()) {
+        val mediaModel = MediaModel()
         val id = r.pathParam("id")
 
         // Fetch media info
-        val mediaRes = fetchMedia(id)
+        val mediaRes = mediaModel.fetchMedia(id)
         // Check if media exists
         if(mediaRes != null && mediaRes.rows.size > 0) {
             val media = mediaRes.rows[0]

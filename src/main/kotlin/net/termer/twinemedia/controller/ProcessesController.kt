@@ -27,11 +27,13 @@ fun processesController() {
     get("/api/v1/process/:id", domain) { r ->
         GlobalScope.launch(vertx().dispatcher()) {
             if(r.protectWithPermission("processes.view")) {
+                val processesModel = ProcessesModel(r.account())
+
                 try {
                     val id = r.pathParam("id").toInt()
 
                     try {
-                        val processRes = fetchProcessInfo(id)
+                        val processRes = processesModel.fetchProcessInfo(id)
 
                         // Check if process exists
                         if(processRes?.rows != null && processRes.rows.size > 0) {
@@ -61,16 +63,26 @@ fun processesController() {
     post("/api/v1/process/:id/delete", domain) { r ->
         GlobalScope.launch(vertx().dispatcher()) {
             if(r.protectWithPermission("processes.delete")) {
+                val processesModel = ProcessesModel(r.account())
+
                 try {
                     val id = r.pathParam("id").toInt()
 
                     try {
                         // Check if process exists
-                        val processRes = fetchProcess(id)
+                        val processRes = processesModel.fetchProcess(id)
                         if (processRes?.rows != null && processRes.rows.size > 0) {
+                            val process = processRes.rows[0]
+
+                            // Check if process preset was created by the user
+                            if(process.getInteger("process_creator") != r.userId() && !r.hasPermission("processes.delete.all")) {
+                                r.unauthorized()
+                                return@launch
+                            }
+
                             try {
                                 // Delete process
-                                deleteProcess(id)
+                                processesModel.deleteProcess(id)
 
                                 // Success
                                 r.success()
@@ -109,6 +121,8 @@ fun processesController() {
             val params = r.request().params()
 
             if(r.protectWithPermission("processes.create")) {
+                val processesModel = ProcessesModel(r.account())
+
                 try {
                     val id = r.pathParam("id").toInt()
 
@@ -154,11 +168,19 @@ fun processesController() {
 
                         try {
                             // Check if process exists
-                            val processRes = fetchProcess(id)
+                            val processRes = processesModel.fetchProcess(id)
                             if (processRes?.rows != null && processRes.rows.size > 0) {
+                                val process = processRes.rows[0]
+
+                                // Check if process preset was created by the user
+                                if(process.getInteger("process_creator") != r.userId() && !r.hasPermission("processes.edit.all")) {
+                                    r.unauthorized()
+                                    return@launch
+                                }
+
                                 try {
                                     // Update entry
-                                    updateProcess(id, mime, settings)
+                                    processesModel.updateProcess(id, mime, settings)
 
                                     // Send success
                                     r.success()
@@ -195,6 +217,8 @@ fun processesController() {
         val params = r.request().params()
         GlobalScope.launch(vertx().dispatcher()) {
             if(r.protectWithPermission("processes.list")) {
+                val processesModel = ProcessesModel(r.account())
+
                 try {
                     // Collect parameters
                     val offset = (if(params.contains("offset")) params["offset"].toInt() else 0).coerceAtLeast(0)
@@ -204,7 +228,7 @@ fun processesController() {
                         val processes = JsonArray()
 
                         // Fetch processes
-                        val processesRes = fetchProcesses(offset, limit)
+                        val processesRes = processesModel.fetchProcesses(offset, limit)
 
                         // Add processes
                         for (process in processesRes?.rows.orEmpty())
@@ -244,6 +268,8 @@ fun processesController() {
             val params = r.request().params()
 
             if(r.protectWithPermission("processes.create")) {
+                val processesModel = ProcessesModel(r.account())
+
                 try {
                     // Ensure mime is specified
                     if(params.contains("mime") && params.contains("extension")) {
@@ -287,7 +313,7 @@ fun processesController() {
 
                         try {
                             // Create new entry
-                            createProcess(mime, settings, r.userId())
+                            processesModel.createProcess(mime, settings, r.userId())
 
                             // Send success
                             r.success()
