@@ -34,7 +34,7 @@ class Module: TwineModule {
     private val accountsModel = AccountsModel()
 
     // Whether this is a special run, e.g. whether special command line arguments are supplied
-    val specialRun = serverArgs().option("twinemedia-install") || serverArgs().option("twinemedia-reset-admin")
+    private val specialRun = serverArgs().option("twinemedia-install") || serverArgs().option("twinemedia-reset-admin")
 
     companion object {
         val logger: Logger = LoggerFactory.getLogger(Module::class.java)
