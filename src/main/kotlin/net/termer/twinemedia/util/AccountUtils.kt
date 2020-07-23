@@ -7,7 +7,7 @@ import net.termer.twinemedia.model.AccountsModel
 import java.text.SimpleDateFormat
 import java.util.regex.Pattern
 
-private val emailPattern : Pattern = Pattern.compile("^\\w+@[a-zA-Z_]+?\\.[a-zA-Z]{2,3}$")
+private val emailPattern : Pattern = Pattern.compile("^\\w+@[a-zA-Z_0-9\\-]+?\\.[a-zA-Z]{2,3}$")
 private val accountsModel = AccountsModel()
 private val simpleDateFormat = SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss.SSS'Z'")
 
