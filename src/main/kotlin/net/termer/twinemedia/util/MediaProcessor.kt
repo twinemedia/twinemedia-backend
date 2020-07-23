@@ -31,6 +31,7 @@ import java.util.Base64
 import java.io.BufferedInputStream
 import java.io.File
 import java.io.FileInputStream
+import java.lang.RuntimeException
 import java.net.URLConnection
 import java.security.MessageDigest
 import java.util.concurrent.CopyOnWriteArrayList
@@ -175,20 +176,8 @@ fun startMediaProcessor() : Thread {
                     }
 
 
-                    // Run job
-                    try {
-                        executor.createJob(builder.done()) { prog ->
-                            // Broadcast progress percentage
-                            val percent = ((prog.out_time_ns/10e6) / duration).toInt().coerceAtMost(100)
-
-                            vertx().eventBus().publish("twinemedia.process.$id", json {
-                                obj(
-                                        "status" to "progress",
-                                        "percent" to percent
-                                )
-                            })
-                        }.run()
-                    } catch (e: Exception) {
+                    // Store error handler in order to catch other error types with the same code
+                    val errorHandler = { e: java.lang.Exception ->
                         procLogger.error("Failed to encode media file:")
                         e.printStackTrace()
 
@@ -220,6 +209,30 @@ fun startMediaProcessor() : Thread {
                             GlobalScope.launch(vertx().dispatcher()) {
                                 job.callback?.handle(failedFuture(e))
                             }
+                    }
+
+                    // Run job
+                    try {
+                        executor.createJob(builder.done()) { prog ->
+                            // Broadcast progress percentage
+                            val percent = ((prog.out_time_ns/10e6) / duration).toInt().coerceAtMost(100)
+
+                            vertx().eventBus().publish("twinemedia.process.$id", json {
+                                obj(
+                                        "status" to "progress",
+                                        "percent" to percent
+                                )
+                            })
+                        }.run()
+                    } catch (e: Exception) {
+                        // Execute error handling code
+                        errorHandler.invoke(e)
+
+                        // Return to normal loop operation
+                        continue@loop
+                    } catch (e: RuntimeException) {
+                        // Execute error handling code
+                        errorHandler.invoke(e)
 
                         // Return to normal loop operation
                         continue@loop
