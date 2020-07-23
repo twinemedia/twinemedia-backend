@@ -46,7 +46,7 @@ fun mediaChildController() {
                         val media = mediaRes.rows[0]
 
                         // Check if media was created by the user
-                        if(media.getInteger("creator") != r.userId() && !r.hasPermission("files.child.all")) {
+                        if(media.getInteger("media_creator") != r.userId() && !r.hasPermission("files.child.all")) {
                             r.unauthorized()
                             return@launch
                         }
