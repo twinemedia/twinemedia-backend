@@ -96,6 +96,38 @@ class AccountsModel {
     }
 
     /**
+     * Fetches all info about the account associated with the specified API key ID
+     * @param keyId The key ID
+     * @return All rows from database search
+     * @since 1.3.0
+     */
+    suspend fun fetchAccountAndApiKeyByKeyId(keyId: String): ResultSet? {
+        return client?.queryWithParamsAwait(
+                """
+                SELECT
+                    accounts.id,
+                    account_email,
+                    account_name,
+                    account_admin,
+                    account_permissions,
+                    account_hash,
+                    account_creation_date,
+                    account_exclude_tags,
+                    account_exclude_other_media,
+                    account_exclude_other_lists,
+                    account_exclude_other_tags,
+                    account_exclude_other_processes,
+                    key_permissions,
+                    key_id
+                FROM accounts
+                JOIN apikeys ON key_owner = accounts.id
+                WHERE key_id = ?
+                """,
+                JsonArray().add(keyId)
+        )
+    }
+
+    /**
      * Fetches all general account info about the account with the specified ID
      * @param id The account's ID
      * @return All rows from database search

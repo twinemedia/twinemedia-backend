@@ -50,12 +50,12 @@ fun accountsController() {
 
                         // Send accounts
                         r.success(JsonObject().put("accounts", arr))
-                    } catch(e : Exception) {
+                    } catch(e: Exception) {
                         logger.error("Failed to fetch accounts:")
                         e.printStackTrace()
                         r.error("Database error")
                     }
-                } catch(e : Exception) {
+                } catch(e: Exception) {
                     r.error("Invalid parameters")
                 }
             }
@@ -73,6 +73,12 @@ fun accountsController() {
                 try {
                     // Fetch the account ID as Int
                     val id = r.pathParam("id").toInt()
+
+                    // Make sure this route cannot be accessed from API keys
+                    if(id == r.userId() && r.account().isApiKey) {
+                        r.unauthorized()
+                        return@launch
+                    }
 
                     try {
                         // Fetch the account
@@ -92,7 +98,7 @@ fun accountsController() {
                         e.printStackTrace()
                         r.error("Database error")
                     }
-                } catch(e : Exception) {
+                } catch(e: Exception) {
                     r.error("Invalid parameters")
                 }
             }
@@ -101,8 +107,8 @@ fun accountsController() {
 
     // Edits the user's account
     // Parameters:
-    //  - name (optional): String, the new name of the account
-    //  - email (optional): String, the new email address of the account
+    //  - name (optional): String with max of 64 characters, the new name of the account
+    //  - email (optional): String with max of 64 characters, the new email address of the account
     //  - password (optional): String, the new password for this account
     //  - excludeTags (optional): JSON array, tags to globally exclude when listing files (from searches, lists, or anywhere else an array of files would be returned other than file children)
     //  - excludeOtherMedia (optional): Bool, whether to globally exclude media created by other users when viewing or listing any media
@@ -112,7 +118,7 @@ fun accountsController() {
     post("/api/v1/account/self/edit", domain) { r ->
         val params = r.request().params()
         GlobalScope.launch(vertx().dispatcher()) {
-            if(r.protectRoute()) {
+            if(r.protectNonApiKey()) {
                 try {
                     val acc = r.account()
 
@@ -197,8 +203,8 @@ fun accountsController() {
     // Route parameters:
     //  - id: Integer, the ID of the account to edit
     // Parameters:
-    //  - name (optional): String, the new name of the account
-    //  - email (optional): String, the new email address of the account
+    //  - name (optional): String with max of 64 characters, the new name of the account
+    //  - email (optional): String with max of 64 characters, the new email address of the account
     //  - admin (optional): Bool, whether the account will be an administrator (requires administrator privileges to change)
     //  - permissions (optional): JSON array, the new permissions for the account
     post("/api/v1/account/:id/edit", domain) { r ->
@@ -209,8 +215,14 @@ fun accountsController() {
                     val id: Int
                     try {
                         id = r.pathParam("id").toInt()
-                    } catch(e : Exception) {
+                    } catch(e: Exception) {
                         r.error("Invalid account ID")
+                        return@launch
+                    }
+
+                    // Make sure this route cannot be accessed from API keys
+                    if(id == r.userId() && r.account().isApiKey) {
+                        r.unauthorized()
                         return@launch
                     }
 
@@ -268,7 +280,7 @@ fun accountsController() {
                                                 r.error("Database error")
                                             }
                                         }
-                                    } catch(e : Exception) {
+                                    } catch(e: Exception) {
                                         logger.error("Failed to fetch account by email:")
                                         e.printStackTrace()
                                         r.error("Database error")
@@ -286,7 +298,7 @@ fun accountsController() {
                     } else {
                         r.error("Account does not exist")
                     }
-                } catch(e : Exception) {
+                } catch(e: Exception) {
                     logger.error("Failed to fetch account:")
                     e.printStackTrace()
                     r.error("Database error")
@@ -299,8 +311,8 @@ fun accountsController() {
     // Permissions:
     //  - Administrator privileges
     // Parameters:
-    //  - name: String, the name of the new account
-    //  - email: String, the email address of the new account
+    //  - name: String with max of 64 characters, the name of the new account
+    //  - email: String with max of 64 characters, the email address of the new account
     //  - admin: Bool, whether the new account will be an administrator
     //  - permissions: JSON array, the permissions the new account will have
     //  - password: String, the password for the new account
@@ -375,6 +387,18 @@ fun accountsController() {
                 try {
                     val id = r.pathParam("id").toInt()
 
+                    // Make sure this route cannot be accessed from API keys
+                    if(id == r.userId() && r.account().isApiKey) {
+                        r.unauthorized()
+                        return@launch
+                    }
+
+                    // Stop user from deleting their own account
+                    if(id == r.userId()) {
+                        r.error("Cannot delete your own account")
+                        return@launch
+                    }
+
                     try {
                         // Fetch account
                         val accountRes = accountsModel.fetchAccountById(id)
@@ -387,7 +411,7 @@ fun accountsController() {
 
                                 // Send success
                                 r.success()
-                            } catch(e : Exception) {
+                            } catch(e: Exception) {
                                 logger.error("Failed to delete account:")
                                 e.printStackTrace()
                                 r.error("Database error")
@@ -395,7 +419,7 @@ fun accountsController() {
                         } else {
                             r.error("Account does not exist")
                         }
-                    } catch(e : Exception) {
+                    } catch(e: Exception) {
                         logger.error("Failed to fetch account:")
                         e.printStackTrace()
                         r.error("Database error")

@@ -7,7 +7,6 @@ import io.vertx.kotlin.coroutines.dispatcher
 import kotlinx.coroutines.GlobalScope
 import kotlinx.coroutines.launch
 import net.termer.twine.ServerManager.*
-import net.termer.twinemedia.Module
 import net.termer.twinemedia.Module.Companion.config
 import net.termer.twinemedia.exception.AuthException
 import net.termer.twinemedia.util.*
@@ -40,8 +39,13 @@ fun accountController() {
             // Check if account exists
             try {
                 val perms = JsonArray()
-                for(perm in r.account().permissions)
-                    perms.add(perm)
+                if(r.account().isApiKey) {
+                    for(perm in r.account().keyPermissions?.filter { r.account().hasPermission(it) }.orEmpty())
+                        perms.add(perm)
+                } else {
+                    for(perm in r.account().permissions)
+                        perms.add(perm)
+                }
 
                 // Collect properties
                 val account = json {
@@ -57,7 +61,8 @@ fun accountController() {
                             "exclude_other_lists" to r.account().excludeOtherLists,
                             "exclude_other_tags" to r.account().excludeOtherTags,
                             "exclude_other_processes" to r.account().excludeOtherProcesses,
-                            "max_upload" to config.max_upload
+                            "max_upload" to config.max_upload,
+                            "api_token" to r.account().isApiKey
                     )
                 }
 

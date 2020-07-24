@@ -28,6 +28,35 @@ fun String.nullIfEmpty() = if(this == "") null else this
 fun Date.toISOString(): String = simpleDateFormat.format(this)
 
 /**
+ * Returns whether this array contains the provided permission
+ * @param permission The permission to check for
+ * @since 1.3.0
+ */
+fun Array<String>.containsPermission(permission: String): Boolean {
+    var has = false
+
+    // Check if the user has the permission
+    if(contains(permission) || contains("$permission.all") || contains("*")) {
+        has = true
+    } else if(permission.contains('.')) {
+        // Check permission tree
+        val perm = StringBuilder()
+        for(child in permission.split('.')) {
+            perm.append("$child.")
+            for (p in this)
+                if (p == "$perm*") {
+                    has = true
+                    break
+                }
+            if (has)
+                break
+        }
+    }
+
+    return has
+}
+
+/**
  * Returns the domain this application should bind its routes to
  * @return The domain this application should bind its routes to
  * @since 1.0

@@ -11,6 +11,8 @@ import java.util.*
  * @param admin Whether the account is an admin
  * @param hash The account's password hash
  * @param creationDate The date this account was created on
+ * @param isApiKey Whether this account is being accessed by an API key
+ * @param keyPermissions An array of permissions that this key is authorized to use
  * @since 1.2.0
  */
 class UserAccount(
@@ -84,34 +86,29 @@ class UserAccount(
      * Whether to globally exclude process presets created by other accounts
      * @since 1.2.0
      */
-    val excludeOtherProcesses: Boolean
-) { 
+    val excludeOtherProcesses: Boolean,
+
     /**
-     * Returns if the user for this request has the specified permission. Will fail if request is not authenticated.
+     * Whether this account is being accessed by an API key
+     * @since 1.3.0
+     */
+    val isApiKey: Boolean = false,
+
+    /**
+     * An array of permissions that this key is authorized to use
+     * @since 1.3.0
+     */
+    val keyPermissions: Array<String>? = null
+) {
+    /**
+     * Returns if this user account has the specified permission
      * @param permission The permission to check
      * @since 1.0
      */
     fun hasPermission(permission: String): Boolean {
-        var has = false
-
-        // Check if the user has the permission
-        if(admin || permissions.contains(permission) || permissions.contains("$permission.all") || permissions.contains("*")) {
-            has = true
-        } else if(permission.contains('.')) {
-            // Check permission tree
-            val perm = StringBuilder()
-            for(child in permission.split('.')) {
-                perm.append("$child.")
-                for (p in permissions)
-                    if (p == "$perm*") {
-                        has = true
-                        break
-                    }
-                if (has)
-                    break
-            }
-        }
-
-        return has
+        return if(isApiKey && keyPermissions != null)
+            (admin || permissions.containsPermission(permission)) && keyPermissions.containsPermission(permission)
+        else
+            admin || permissions.containsPermission(permission)
     }
 }

@@ -37,13 +37,23 @@ fun jwtInit() {
 }
 
 /**
- * Creates a new JWT token wit the provided data and expiration time
+ * Creates a new JWT token with the provided data and expiration time
  * @param data The data to store in the token
  * @return The newly generated token
  * @since 1.0
  */
 fun jwtCreateToken(data : JsonObject) : String? {
     return JWT.provider?.generateToken(data, JWTOptions().setExpiresInMinutes(config.jwt_expire_minutes))
+}
+
+/**
+ * Creates a new JWT token without an expiration date
+ * @param data The data to store in the token
+ * @return The newly generated token
+ * @since 1.3.0
+ */
+fun jwtCreateUnexpiringToken(data : JsonObject) : String? {
+    return JWT.provider?.generateToken(data)
 }
 
 /**

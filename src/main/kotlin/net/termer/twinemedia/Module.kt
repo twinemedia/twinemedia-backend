@@ -549,6 +549,7 @@ class Module: TwineModule {
                 mediaChildController()
                 processesController()
                 listsController()
+                apiKeysController()
 
                 // Allow upload status event bus channels over websocket
                 ws().outboundRegex("twinemedia\\..*")

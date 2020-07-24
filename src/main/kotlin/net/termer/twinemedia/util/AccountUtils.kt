@@ -20,17 +20,27 @@ private val simpleDateFormat = SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss.SSS'Z'")
 fun accountJsonToObject(accountJson: JsonObject): UserAccount {
     // Add permissions
     val permsArray = JsonArray(accountJson.getString("account_permissions"))
-    val permissions = arrayOfNulls<String>(permsArray.size())
+    val permissions = arrayOfNulls<String>(permsArray.size()).apply {
+        for((index, item) in permsArray.list.withIndex())
+            this[index] = item.toString()
+    }
 
-    for((index, item) in permsArray.list.withIndex())
-        permissions[index] = item.toString()
-
-    // Add permissions
+    // Add exclude tags
     val excludeArray = JsonArray(accountJson.getString("account_exclude_tags"))
-    val excludeTags = arrayOfNulls<String>(excludeArray.size())
+    val excludeTags = arrayOfNulls<String>(excludeArray.size()).apply {
+        for((index, item) in excludeArray.list.withIndex())
+            this[index] = item.toString()
+    }
 
-    for((index, item) in excludeArray.list.withIndex())
-        excludeTags[index] = item.toString()
+    // Add key permissions if present
+    var keyPermissions: Array<String?>? = null
+    if(accountJson.containsKey("key_id")) {
+        val keyPermsArray = JsonArray(accountJson.getString("key_permissions"))
+        keyPermissions = arrayOfNulls<String>(keyPermsArray.size()).apply {
+            for((index, item) in keyPermsArray.list.withIndex())
+                this[index] = item.toString()
+        }
+    }
 
     return UserAccount(
             id = accountJson.getInteger("id"),
@@ -44,7 +54,9 @@ fun accountJsonToObject(accountJson: JsonObject): UserAccount {
             excludeOtherMedia = accountJson.getBoolean("account_exclude_other_media"),
             excludeOtherLists = accountJson.getBoolean("account_exclude_other_lists"),
             excludeOtherTags = accountJson.getBoolean("account_exclude_other_tags"),
-            excludeOtherProcesses = accountJson.getBoolean("account_exclude_other_processes")
+            excludeOtherProcesses = accountJson.getBoolean("account_exclude_other_processes"),
+            isApiKey = accountJson.containsKey("key_id"),
+            keyPermissions = if(accountJson.containsKey("key_id")) keyPermissions as Array<String> else null
     )
 }
 

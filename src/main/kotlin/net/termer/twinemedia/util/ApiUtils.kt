@@ -111,6 +111,19 @@ fun RoutingContext.protectRoute(): Boolean {
 }
 
 /**
+ * Protects the current request from being accessed without a valid JWT token or from an API key
+ * @return Whether the request is authorized and not from an API key
+ * @since 1.3.0
+ */
+suspend fun RoutingContext.protectNonApiKey(): Boolean {
+    val authed = !authenticated() || account().isApiKey
+    if(authed)
+        unauthorized()
+
+    return authed
+}
+
+/**
  * Returns the ID of the user of this request. Will throw an IllegalStateException if the request is not authenticated.
  * @return The ID of this request's user
  * @since 1.0
@@ -138,8 +151,10 @@ fun RoutingContext.tokenId(): String {
 suspend fun RoutingContext.account(): UserAccount {
     if(authenticated()) {
         if(get("account") as UserAccount? == null) {
+            val principle = user().principal()
+
             // Fetch account from database
-            val accountRes = accountsModel.fetchAccountById(userId())
+            val accountRes = if(principle.containsKey("token")) accountsModel.fetchAccountAndApiKeyByKeyId(principle.getString("token")) else accountsModel.fetchAccountById(userId())
 
             // Check if account exists
             if (accountRes?.numRows != null && accountRes.numRows > 0) {
