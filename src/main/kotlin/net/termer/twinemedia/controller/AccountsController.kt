@@ -235,20 +235,20 @@ fun accountsController() {
                         val account = accountJsonToObject(accountRes.rows[0])
 
                         // Check if editor has permission to edit account
-                        if((account.admin && r.account().admin) || !account.admin) {
+                        if((account.admin && r.account().hasAdminPermission()) || !account.admin) {
                             try {
                                 // Resolve edit values
                                 val name = if(params["name"].length > 64) params["name"].substring(0, 64) else params["name"]
                                 val email = if(params["email"].length > 64) params["email"].substring(0, 64) else params["email"]
                                 val perms = if (params["permissions"] != null) JsonArray(params["permissions"]) else JsonArray(account.permissions.asList())
-                                val admin = if (r.account().admin && r.account().id != id) {
+                                val admin = if (r.account().hasAdminPermission() && r.account().id != id) {
                                     if (params["admin"] != null) params["admin"]!!.toBoolean() else account.admin
                                 } else {
                                     account.admin
                                 }
 
                                 // Make sure non-admin cannot create an admin account
-                                if(admin && !r.account().admin) {
+                                if(admin && !r.account().hasAdminPermission()) {
                                     r.error("Must be an administrator to make an administrator account")
                                     return@launch
                                 }
@@ -331,7 +331,7 @@ fun accountsController() {
                         val password = params["password"]
 
                         // Make sure non-admin cannot create an admin account
-                        if(admin && !r.account().admin) {
+                        if(admin && !r.account().hasAdminPermission()) {
                             r.error("Must be an administrator to make an administrator account")
                             return@launch
                         }
@@ -383,7 +383,7 @@ fun accountsController() {
     //  - id: Integer, the ID of the account to delete
     post("/api/v1/account/:id/delete", domain) { r ->
         GlobalScope.launch(vertx().dispatcher()) {
-            if(r.account().admin) {
+            if(r.account().hasAdminPermission()) {
                 try {
                     val id = r.pathParam("id").toInt()
 

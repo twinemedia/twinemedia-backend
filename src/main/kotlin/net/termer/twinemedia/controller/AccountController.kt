@@ -54,7 +54,7 @@ fun accountController() {
                             "permissions" to perms,
                             "name" to r.account().name,
                             "email" to r.account().email,
-                            "admin" to r.account().admin,
+                            "admin" to r.account().hasAdminPermission(),
                             "creation_date" to r.account().creationDate.toISOString(),
                             "exclude_tags" to JsonArray(r.account().excludeTags.asList()),
                             "exclude_other_media" to r.account().excludeOtherMedia,

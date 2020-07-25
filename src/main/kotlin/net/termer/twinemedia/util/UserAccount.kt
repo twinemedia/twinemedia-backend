@@ -103,6 +103,7 @@ class UserAccount(
     /**
      * Returns if this user account has the specified permission
      * @param permission The permission to check
+     * @return Whether this user account has the specified permission
      * @since 1.0
      */
     fun hasPermission(permission: String): Boolean {
@@ -111,4 +112,11 @@ class UserAccount(
         else
             admin || permissions.containsPermission(permission)
     }
+
+    /**
+     * Returns whether this user has administrator permissions
+     * @return whether this user has administrator permissions
+     * @since 1.3.0
+     */
+    fun hasAdminPermission() = !isApiKey && admin
 }

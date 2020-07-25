@@ -116,11 +116,9 @@ fun RoutingContext.protectRoute(): Boolean {
  * @since 1.3.0
  */
 suspend fun RoutingContext.protectNonApiKey(): Boolean {
-    val authed = !authenticated() || account().isApiKey
-    if(authed)
+    return if(authenticated() && !account().isApiKey) true else false.also {
         unauthorized()
-
-    return authed
+    }
 }
 
 /**
