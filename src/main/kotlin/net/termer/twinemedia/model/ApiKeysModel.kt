@@ -181,4 +181,16 @@ class ApiKeysModel {
                 JsonArray().add(id)
         )
     }
+
+    /**
+     * Deletes all API keys owned by the provided account
+     * @param accountId The account's ID to search for when deleting keys
+     * @since 1.3.0
+     */
+    suspend fun deleteApiKeysByAccount(accountId: Int) {
+        client?.queryWithParamsAwait(
+                "DELETE FROM apikeys WHERE key_owner = ?",
+                JsonArray().add(accountId)
+        )
+    }
 }

@@ -407,7 +407,7 @@ fun accountsController() {
                         if(accountRes != null && accountRes.rows.size > 0) {
                             try {
                                 // Delete account
-                                accountsModel.deleteAccount(id)
+                                deleteAccount(id)
 
                                 // Send success
                                 r.success()

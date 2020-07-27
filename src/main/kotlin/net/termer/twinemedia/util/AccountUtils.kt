@@ -4,11 +4,13 @@ import io.vertx.core.json.JsonArray
 import io.vertx.core.json.JsonObject
 import net.termer.twinemedia.Module.Companion.crypt
 import net.termer.twinemedia.model.AccountsModel
+import net.termer.twinemedia.model.ApiKeysModel
 import java.text.SimpleDateFormat
 import java.util.regex.Pattern
 
 private val emailPattern : Pattern = Pattern.compile("^\\w+@[a-zA-Z_0-9\\-]+?\\.[a-zA-Z]{2,3}$")
 private val accountsModel = AccountsModel()
+private val keysModel = ApiKeysModel()
 private val simpleDateFormat = SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss.SSS'Z'")
 
 /**
@@ -85,6 +87,16 @@ suspend fun updateAccountPassword(id : Int, newPassword : String) {
     val hash = crypt.hashPassword(newPassword).orEmpty()
 
     accountsModel.updateAccountHash(id, hash)
+}
+
+/**
+ * Deletes an account and all of its API keys
+ * @param id The ID of the account to delete
+ * @since 1.3.0
+ */
+suspend fun deleteAccount(id: Int) {
+    accountsModel.deleteAccount(id)
+    keysModel.deleteApiKeysByAccount(id)
 }
 
 /**
