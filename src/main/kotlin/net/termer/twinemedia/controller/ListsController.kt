@@ -256,11 +256,9 @@ fun listsController() {
         GlobalScope.launch(vertx().dispatcher()) {
             val listsModel = ListsModel()
 
-            try {
-                // Set model account if authenticated
-                if(r.authenticated())
-                    listsModel.account = r.account()
+            // Intentionally do not associate an account with this model in order to avoid some users not being able to view public lists
 
+            try {
                 // Fetch list
                 val listRes = listsModel.fetchListInfo(id)
 
@@ -268,7 +266,7 @@ fun listsController() {
                     val list = listRes.rows[0]
 
                     // Check if the user has permission to view the list, or it's a public list
-                    if(list.getInteger("visibility") == 1 || r.hasPermission("lists.view")) {
+                    if(list.getInteger("visibility") == 1 || (r.hasPermission("lists.view") && (list.getInteger("creator") == r.userId() || r.hasPermission("lists.view.all")))) {
                         // Convert tags if not null
                         if(list.getString("source_tags") != null)
                             list.put("source_tags", JsonArray(list.getString("source_tags")))
