@@ -254,9 +254,8 @@ fun listsController() {
     get("/api/v1/list/:id", domain) { r ->
         val id = r.pathParam("id")
         GlobalScope.launch(vertx().dispatcher()) {
-            val listsModel = ListsModel()
-
             // Intentionally do not associate an account with this model in order to avoid some users not being able to view public lists
+            val listsModel = ListsModel()
 
             try {
                 // Fetch list
@@ -275,6 +274,8 @@ fun listsController() {
 
                         // Send list and success
                         r.success(list)
+                    } else if(r.authenticated()) {
+                        r.error("List does not exist")
                     } else {
                         r.unauthorized()
                     }
