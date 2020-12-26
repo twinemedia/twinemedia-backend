@@ -57,22 +57,27 @@ fun Array<String>.containsPermission(permission: String): Boolean {
 }
 
 /**
- * Returns the domain this application should bind its routes to
- * @return The domain this application should bind its routes to
+ * Sets all entries to lowercase and removes duplicates and blanks, then returns the result
+ * @return An array of lowercase Strings without any duplicates or blanks
+ * @since 1.3.1
+ */
+fun Array<String>.removeDuplicatesBlanksAndToLowercase(): Array<String> {
+    return ArrayList<String>().apply {
+        for(str in this.map { it.toLowerCase() })
+            if(str.trim().isNotBlank() && !contains(str))
+                add(str)
+    }.toTypedArray()
+}
+
+/**
+ * Returns the hostnames this application should bind its routes to
+ * @return The hostnames this application should bind its routes to
  * @since 1.0
  */
-fun appDomain() : String {
-    var domain = "*"
-    if(config.domain != "*") {
-        val dom = domains().byName(config.domain).domain()
-
-        if(dom != "default") {
-            domain = dom
-        }
-    }
-
-    return domain
-}
+fun appHostnames(): Array<String> = if(config.domain != "*")
+        domains().byNameOrDefault(config.domain).hostnames()
+    else
+        arrayOf("*")
 
 /**
  * Formats a filename as a title, stripping out extension, trimming, and replacing underscores and dashes with spaces
@@ -90,7 +95,7 @@ fun filenameToTitle(filename : String) : String {
     // Replace underscores and dashes with spaces with spaces
     name = name
             .replace('_', ' ')
-            .replace('-', ' ')
+            .replace(Regex("-(?! )"), " ")
 
     // Capitalize first letter
     name = name[0].toUpperCase()+name.substring(1)

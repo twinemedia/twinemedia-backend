@@ -5,8 +5,6 @@ import kotlinx.coroutines.GlobalScope
 import kotlinx.coroutines.launch
 import net.termer.twine.ServerManager
 import net.termer.twine.ServerManager.vertx
-import net.termer.twine.Twine
-import net.termer.twinemedia.Module
 import net.termer.twinemedia.exception.AuthException
 import net.termer.twinemedia.util.*
 
@@ -15,7 +13,7 @@ import net.termer.twinemedia.util.*
  * @since 1.0
  */
 fun authMiddleware() {
-    val domain = appDomain()
+    val domain = appHostnames()
 
     // Handle all /api/ routes on the configured domain
     ServerManager.handler("/api/*", domain) { r ->

@@ -2,16 +2,15 @@ package net.termer.twinemedia.middleware
 
 import io.vertx.core.http.HttpMethod
 import net.termer.twine.ServerManager.handler
-import net.termer.twine.Twine.domains
 import net.termer.twinemedia.Module.Companion.config
-import net.termer.twinemedia.util.appDomain
+import net.termer.twinemedia.util.appHostnames
 
 /**
  * Sets up CORS and other headers for all requests to /api/
  * @since 1.0
  */
 fun headersMiddleware() {
-    val domain = appDomain()
+    val domain = appHostnames()
 
     // Handle all /api/ routes on the configured domain
     handler("/api/*", domain) { r ->

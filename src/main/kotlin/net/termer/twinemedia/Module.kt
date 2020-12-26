@@ -9,10 +9,10 @@ import net.termer.twine.Twine
 import net.termer.twine.Twine.serverArgs
 import net.termer.twine.modules.TwineModule
 import net.termer.twine.modules.TwineModule.Priority.LOW
-import net.termer.twine.utils.FileChecker
-import net.termer.twine.utils.Reader
+import net.termer.twine.utils.files.BlockingReader
+import net.termer.twine.utils.files.BlockingFileChecker
+import net.termer.twine.utils.files.BlockingWriter
 import net.termer.twine.utils.StringFilter.generateString
-import net.termer.twine.utils.Writer
 import net.termer.twinemedia.controller.*
 import net.termer.twinemedia.db.dbClose
 import net.termer.twinemedia.db.dbInit
@@ -48,11 +48,11 @@ class Module: TwineModule {
             logger.info("Loading config...")
             val cfg = File("configs/twinemedia.json")
             if (cfg.exists()) {
-                config = Json.decodeValue(Reader.read(cfg), TwineMediaConfig::class.java)
+                config = Json.decodeValue(BlockingReader.read(cfg), TwineMediaConfig::class.java)
                 if (!config.upload_location.endsWith('/'))
                     config.upload_location += '/'
             } else {
-                Writer.write("configs/twinemedia.json", Json.encodePrettily(config))
+                BlockingWriter.write("configs/twinemedia.json", Json.encodePrettily(config))
             }
 
             logger.info("Setting up uploader routes and middleware...")
@@ -106,7 +106,7 @@ class Module: TwineModule {
             if(serverArgs().option("twinemedia-install")) {
                 val cfg = File("configs/twinemedia.json")
                 if (cfg.exists()) {
-                    config = Json.decodeValue(Reader.read(cfg), TwineMediaConfig::class.java)
+                    config = Json.decodeValue(BlockingReader.read(cfg), TwineMediaConfig::class.java)
                     if (!config.upload_location.endsWith('/'))
                         config.upload_location += '/'
                 }
@@ -117,7 +117,7 @@ class Module: TwineModule {
                 print("Show advanced install options? [y/N]: ")
                 val advanced = cons.readLine()?.toLowerCase()?.startsWith("y") == true
 
-                println("Which domain do you want TwineMedia to run on (can select \"*\" for all)? (${config.domain}): ")
+                println("Which Twine domain do you want TwineMedia to run on (can select \"*\" for all)? (${config.domain}): ")
                 ln = cons.readLine()
 
                 if (ln != null && ln.trim().isNotBlank())
@@ -362,10 +362,10 @@ class Module: TwineModule {
                 if (cfg.exists()) {
                     println("A configuration file already exists, replace it? [y/N]: ")
                     if (cons.readLine().toLowerCase().startsWith("y")) {
-                        Writer.write("configs/twinemedia.json", Json.encodePrettily(config))
+                        BlockingWriter.write("configs/twinemedia.json", Json.encodePrettily(config))
                     }
                 } else {
-                    Writer.write("configs/twinemedia.json", Json.encodePrettily(config))
+                    BlockingWriter.write("configs/twinemedia.json", Json.encodePrettily(config))
                 }
 
                 runBlocking {
@@ -398,7 +398,7 @@ class Module: TwineModule {
             } else if(serverArgs().option("twinemedia-reset-admin")) {
                 val cfg = File("configs/twinemedia.json")
                 if (cfg.exists()) {
-                    config = Json.decodeValue(Reader.read(cfg), TwineMediaConfig::class.java)
+                    config = Json.decodeValue(BlockingReader.read(cfg), TwineMediaConfig::class.java)
                     if (!config.upload_location.endsWith('/'))
                         config.upload_location += '/'
                 } else {
@@ -519,7 +519,7 @@ class Module: TwineModule {
                 }
 
                 // Ensure directories exist
-                FileChecker.createIfNotPresent(arrayOf(
+                BlockingFileChecker.createIfNotPresent(arrayOf(
                         config.upload_location,
                         config.upload_location + "/thumbnails/"
                 ))
@@ -584,5 +584,5 @@ class Module: TwineModule {
 
     override fun name() = "TwineMedia"
     override fun priority() = LOW
-    override fun twineVersion() = "1.5+"
+    override fun twineVersion() = "2.0+"
 }

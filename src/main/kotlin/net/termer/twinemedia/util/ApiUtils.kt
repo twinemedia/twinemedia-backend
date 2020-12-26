@@ -8,6 +8,8 @@ import io.vertx.kotlin.core.json.json
 import io.vertx.kotlin.core.json.obj
 import io.vertx.kotlin.ext.auth.authenticateAwait
 import net.termer.twine.Twine
+import net.termer.twine.utils.RequestUtils
+import net.termer.twine.utils.ResponseUtils
 import net.termer.twinemedia.Module.Companion.config
 import net.termer.twinemedia.exception.AuthException
 import net.termer.twinemedia.jwt.JWT
@@ -210,66 +212,14 @@ fun RoutingContext.publish(msg: Any) {
     vertx().eventBus().publish("twinemedia.${tokenId()}", msg)
 }
 
-// The format for HTTP cache headers
-val cacheDateFormat = SimpleDateFormat("EEE, dd MMM yyyy HH:mm:ss zzz")
-
 /**
  * Sends a file and respects byte range requests
- * @param file The path of the file to send
+ * @param path The path to the file to send
  * @since 1.0
  */
-fun RoutingContext.sendFileRanged(file: String) = sendFileRanged(File(file))
-
-/**
- * Sends a file and respects byte range requests
- * @param f The file to send
- * @since 1.0
- */
-fun RoutingContext.sendFileRanged(f: File) {
-    if(!response().closed()) {
-        // Advertise range support
-        response().putHeader("Accept-Ranges", "bytes")
-        response().putHeader("vary", "accept-encoding")
-
-        // Write caching headers if enabled
-        if (Twine.config()["staticCaching"] as Boolean) {
-            response().putHeader("date", cacheDateFormat.format(Date()))
-            response().putHeader("cache-control", "public, max-age=86400")
-            response().putHeader("last-modified", cacheDateFormat.format(Date(f.lastModified())))
-        }
-        // Check if range requested
-        if (request().headers()["Range"] == null) { // Send file length on HEAD
-            if (request().method() == HttpMethod.HEAD)
-                response().putHeader("content-length", f.length().toString())
-
-            // Correct plain text header
-            if (MimeMapping.getMimeTypeForFilename(f.name) === "text/plain") {
-                response().putHeader("Content-Type", "text/plain;charset=UTF-8")
-            }
-
-            // Send full file
-            response().sendFile(f.absolutePath)
-        } else { // Resolve range parameters
-            val rangeStr = request().headers()["Range"].substring(6)
-            val off = rangeStr.split("-".toRegex()).toTypedArray()[0].toLong()
-            var end: Long = f.length()
-            val len = end
-
-            if (!rangeStr.endsWith("-"))
-                end = rangeStr.split("-".toRegex()).toTypedArray()[1].toLong()
-
-            // Send segment length on HEAD
-            if (request().method() == HttpMethod.HEAD)
-                response().putHeader("content-length", (end - off + 1).toString())
-
-            // Send headers
-            response().statusCode = 206
-            response().putHeader("Content-Range", "bytes " + off + "-" + (end - 1) + "/" + len)
-
-            // Send file part
-            response().sendFile(f.absolutePath, off, (end + 1).coerceAtMost(len))
-        }
-    }
+fun RoutingContext.sendFileRanged(path: String) {
+    if(!response().closed())
+        ResponseUtils.sendFileRanged(this, path, Twine.config().getNode("server.static.caching") as Boolean)
 }
 
 /**
@@ -277,12 +227,4 @@ fun RoutingContext.sendFileRanged(f: File) {
  * @return The IP address that this request connected from
  * @since 1.0
  */
-fun RoutingContext.ip(): String = if(config.reverse_proxy) {
-    if(request().headers().contains("X-Forwarded-For")) {
-        request().getHeader("X-Forwarded-For")
-    } else {
-        request().connection().remoteAddress().host()
-    }
-} else {
-    request().connection().remoteAddress().host()
-}
+fun RoutingContext.ip(): String = RequestUtils.resolveIp(request())

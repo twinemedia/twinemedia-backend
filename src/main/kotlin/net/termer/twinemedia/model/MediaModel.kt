@@ -173,6 +173,7 @@ class MediaModel {
      * @param name The name of the file (can be null)
      * @param filename The media's original filename
      * @param description The description for the entry (can be null)
+     * @param tags The tags for the entry
      * @param size The size of the media (in bytes)
      * @param mime The mime type of the media
      * @param file The name of the saved media file
@@ -180,19 +181,20 @@ class MediaModel {
      * @param thumbnailFile The filename of the media's generated thumbnail, null if none
      * @since 1.0
      */
-    suspend fun createMedia(id: String, name: String?, filename: String, description: String?, size: Long, mime: String, file: String, creator: Int, hash: String, thumbnailFile: String?, meta: JsonObject) {
+    suspend fun createMedia(id: String, name: String?, filename: String, description: String?, tags: JsonArray, size: Long, mime: String, file: String, creator: Int, hash: String, thumbnailFile: String?, meta: JsonObject) {
         client?.queryWithParamsAwait(
                 """
                 INSERT INTO media
-                ( media_id, media_name, media_filename, media_description, media_size, media_mime, media_file, media_creator, media_file_hash, media_thumbnail, media_thumbnail_file, media_meta )
+                ( media_id, media_name, media_filename, media_description, media_tags, media_size, media_mime, media_file, media_creator, media_file_hash, media_thumbnail, media_thumbnail_file, media_meta )
                 VALUES
-                ( ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, CAST( ? AS jsonb ) )
+                ( ?, ?, ?, ?, CAST( ? AS jsonb ), ?, ?, ?, ?, ?, ?, ?, CAST( ? AS jsonb ) )
             """.trimIndent(),
                 JsonArray()
                         .add(id)
                         .add(name)
                         .add(filename)
                         .add(description)
+                        .add(tags.toString())
                         .add(size)
                         .add(mime)
                         .add(file)
@@ -657,7 +659,7 @@ class MediaModel {
                 $afterSql
                 $mimeSql
                 $tagsSql
-                $excludeTagsSql
+                $excludeTagsSql AND
                 ${excludeTagsFilter(params)}
                 ${orderBy(order)}
                 OFFSET ? LIMIT ?
