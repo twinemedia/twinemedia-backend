@@ -26,11 +26,14 @@ dependencies {
     compileOnly("org.jetbrains.kotlin:kotlin-stdlib-jdk8")
 
     // Normal dependencies
-    implementation("io.vertx:vertx-auth-jwt:3.9.1")
-    implementation("de.mkammerer:argon2-jvm:2.7")
+    implementation("io.vertx:vertx-auth-jwt:4.0.0")
+    implementation("de.mkammerer:argon2-jvm:2.8")
     implementation("net.bramp.ffmpeg:ffmpeg:0.6.2")
-    implementation("org.flywaydb:flyway-core:6.5.1")
+
+    // Database migration
+    implementation("org.flywaydb:flyway-core:7.3.2")
+    implementation("postgresql:postgresql:9.1-901-1.jdbc4")
 
     // Twine, does not get packaged
-    compileOnly("net.termer.twine:twine:1.5b")
+    compileOnly("net.termer.twine:twine:2.0")
 }
