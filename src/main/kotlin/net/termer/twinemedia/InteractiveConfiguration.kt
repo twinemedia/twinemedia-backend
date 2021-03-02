@@ -5,6 +5,7 @@ import kotlinx.coroutines.runBlocking
 import net.termer.twine.utils.StringFilter
 import net.termer.twine.utils.files.BlockingReader
 import net.termer.twine.utils.files.BlockingWriter
+import net.termer.twinemedia.Module.Companion.config
 import net.termer.twinemedia.db.dbInit
 import net.termer.twinemedia.db.dbMigrate
 import net.termer.twinemedia.model.AccountsModel
@@ -39,7 +40,7 @@ private fun createAdminPrompt() {
 				val emailRes = accountsModel.fetchAccountByEmail(addr)
 
 				if(emailRes.count() > 0)
-					println("Account with that email already exists")
+					println("!!! Account with that email already exists !!!")
 				else
 					email = addr
 			}
@@ -68,9 +69,9 @@ private fun createAdminPrompt() {
 fun interactiveInstall() {
 	val cfg = File("configs/twinemedia.json")
 	if(cfg.exists()) {
-		Module.config = Json.decodeValue(BlockingReader.read(cfg), TwineMediaConfig::class.java)
-		if(!Module.config.upload_location.endsWith('/'))
-			Module.config.upload_location += '/'
+		config = Json.decodeValue(BlockingReader.read(cfg), TwineMediaConfig::class.java)
+		if(!config.upload_location.endsWith('/'))
+			config.upload_location += '/'
 	}
 
 	println("Welcome to TwineMedia. You are about to install and configure this module.")
@@ -79,22 +80,22 @@ fun interactiveInstall() {
 	print("Show advanced install options? [y/N]: ")
 	val advanced = cons.readLine()?.toLowerCase()?.startsWith("y") == true
 
-	println("Which Twine domain do you want TwineMedia to run on (can select \"*\" for all)? (${Module.config.domain}): ")
+	println("Which Twine domain do you want TwineMedia to run on (can select \"*\" for all)? (${config.domain}): ")
 	ln = cons.readLine()
 
 	if(ln != null && ln.trim().isNotBlank())
-		Module.config.domain = ln.trim()
+		config.domain = ln.trim()
 
-	println("What directory do you want uploaded files to be stored? (${Module.config.upload_location}): ")
+	println("What directory do you want uploaded files to be stored? (${config.upload_location}): ")
 	ln = cons.readLine()
 
 	if(ln != null && ln.trim().isNotBlank())
-		Module.config.upload_location = ln.trim()
+		config.upload_location = ln.trim()
 
 	// Check if dir exists, if not, ask to create
-	val dir = File(Module.config.upload_location)
+	val dir = File(config.upload_location)
 	if(!dir.exists()) {
-		println("Directory \"${Module.config.upload_location}\" doesn't exist, create it? [Y/n]: ")
+		println("Directory \"${config.upload_location}\" doesn't exist, create it? [Y/n]: ")
 
 		if(cons.readLine()?.toLowerCase()?.startsWith("n") == false)
 			dir.mkdirs()
@@ -102,7 +103,7 @@ fun interactiveInstall() {
 
 	var size: Int? = null
 	while(size == null) {
-		println("What maximum upload size do you want (in MB)? (${Module.config.max_upload / 1024 / 1024}): ")
+		println("What maximum upload size do you want (in MB)? (${config.max_upload / 1024 / 1024}): ")
 		ln = cons.readLine()
 
 		if(ln != null && ln.trim().isNotBlank()) {
@@ -112,10 +113,10 @@ fun interactiveInstall() {
 				println("!!! Value must be an integer !!!")
 			}
 		} else {
-			size = Module.config.max_upload
+			size = config.max_upload
 		}
 	}
-	Module.config.max_upload = size
+	config.max_upload = size
 
 	var jwtSecret = StringFilter.generateString(32)
 
@@ -128,7 +129,7 @@ fun interactiveInstall() {
 
 		var jwtExpire: Int? = null
 		while(jwtExpire == null) {
-			println("In how many minutes should JWT tokens expire? (${Module.config.jwt_expire_minutes}): ")
+			println("In how many minutes should JWT tokens expire? (${config.jwt_expire_minutes}): ")
 			ln = cons.readLine()
 
 			if(ln != null && ln.trim().isNotBlank()) {
@@ -138,23 +139,23 @@ fun interactiveInstall() {
 					println("!!! Value must be an integer !!!")
 				}
 			} else {
-				jwtExpire = Module.config.jwt_expire_minutes
+				jwtExpire = config.jwt_expire_minutes
 			}
 		}
-		Module.config.jwt_expire_minutes = jwtExpire
+		config.jwt_expire_minutes = jwtExpire
 	}
 
-	Module.config.jwt_secret = jwtSecret
+	config.jwt_secret = jwtSecret
 
-	println("What address is the PostgreSQL database running on? (${Module.config.db_address}): ")
+	println("What address is the PostgreSQL database running on? (${config.db_address}): ")
 	ln = cons.readLine()
 
 	if(ln != null && ln.trim().isNotBlank())
-		Module.config.db_address
+		config.db_address
 
 	var dbPort: Int? = null
 	while(dbPort == null) {
-		println("What port is the PostgreSQL database running on? (${Module.config.db_port}): ")
+		println("What port is the PostgreSQL database running on? (${config.db_port}): ")
 		ln = cons.readLine()
 
 		if(ln != null && ln.trim().isNotBlank()) {
@@ -164,33 +165,33 @@ fun interactiveInstall() {
 				println("!!! Value must be an integer !!!")
 			}
 		} else {
-			dbPort = Module.config.db_port
+			dbPort = config.db_port
 		}
 	}
-	Module.config.db_port = dbPort
+	config.db_port = dbPort
 
-	println("What is the name of the database TwineMedia will use? (${Module.config.db_name}): ")
+	println("What is the name of the database TwineMedia will use? (${config.db_name}): ")
 	ln = cons.readLine()
 
 	if(ln != null && ln.trim().isNotBlank())
-		Module.config.db_name = ln.trim()
+		config.db_name = ln.trim()
 
-	println("What username are you using to authenticate with the database? (${Module.config.db_user}): ")
+	println("What username are you using to authenticate with the database? (${config.db_user}): ")
 	ln = cons.readLine()
 
 	if(ln != null && ln.trim().isNotBlank())
-		Module.config.db_user = ln.trim()
+		config.db_user = ln.trim()
 
 	println("What password are you using to authenticate with the database? (<leave blank to use existing/default value>): ")
 	ln = cons.readPassword().joinToString("")
 
 	if(ln.isNotBlank())
-		Module.config.db_pass = ln
+		config.db_pass = ln
 
 	if(advanced) {
 		var dbPool: Int? = null
 		while(dbPool == null) {
-			println("What should the max database connection pool size be? (${Module.config.db_max_pool_size}): ")
+			println("What should the max database connection pool size be? (${config.db_max_pool_size}): ")
 			ln = cons.readLine()
 
 			if(ln != null && ln.trim().isNotBlank()) {
@@ -200,17 +201,17 @@ fun interactiveInstall() {
 					println("!!! Value must be an integer !!!")
 				}
 			} else {
-				dbPool = Module.config.db_max_pool_size
+				dbPool = config.db_max_pool_size
 			}
 		}
-		Module.config.db_max_pool_size = dbPool
+		config.db_max_pool_size = dbPool
 
 		println("Should migrations automatically be run when TwineMedia starts? [Y/n]: ")
-		Module.config.db_auto_migrate = cons.readLine()?.startsWith("n") == false
+		config.db_auto_migrate = cons.readLine()?.startsWith("n") == false
 
 		var cryptCount: Int? = null
 		while(cryptCount == null) {
-			println("How many processors should be used to hash passwords? (${Module.config.crypt_processor_count}): ")
+			println("How many processors should be used to hash passwords? (${config.crypt_processor_count}): ")
 			ln = cons.readLine()
 
 			if(ln != null && ln.trim().isNotBlank()) {
@@ -220,14 +221,14 @@ fun interactiveInstall() {
 					println("!!! Value must be an integer !!!")
 				}
 			} else {
-				cryptCount = Module.config.crypt_processor_count
+				cryptCount = config.crypt_processor_count
 			}
 		}
-		Module.config.crypt_processor_count = cryptCount
+		config.crypt_processor_count = cryptCount
 
 		var cryptMem: Int? = null
 		while(cryptMem == null) {
-			println("How many kilobytes of memory should be used to hash passwords? (${Module.config.crypt_memory_kb}): ")
+			println("How many kilobytes of memory should be used to hash passwords? (${config.crypt_memory_kb}): ")
 			ln = cons.readLine()
 
 			if(ln != null && ln.trim().isNotBlank()) {
@@ -237,39 +238,39 @@ fun interactiveInstall() {
 					println("!!! Value must be an integer !!!")
 				}
 			} else {
-				cryptMem = Module.config.crypt_memory_kb
+				cryptMem = config.crypt_memory_kb
 			}
 		}
-		Module.config.crypt_memory_kb = cryptMem
+		config.crypt_memory_kb = cryptMem
 
-		println("What host will the frontend be running on? (${Module.config.frontend_host}): ")
+		println("What host will the frontend be running on? (${config.frontend_host}): ")
 		ln = cons.readLine()
 
 		if(ln != null && ln.trim().isNotBlank())
-			Module.config.frontend_host = ln.trim()
+			config.frontend_host = ln.trim()
 	}
 
 	println("Will TwineMedia be running behind a reverse proxy (such as Nginx)? [y/N]: ")
 	ln = cons.readLine()
 
 	if(ln != null && ln.trim().isNotBlank())
-		Module.config.reverse_proxy = ln.toLowerCase().startsWith("n") == false
+		config.reverse_proxy = ln.toLowerCase().startsWith("n") == false
 
-	println("Where is ffmpeg located? (${Module.config.ffmpeg_path}): ")
+	println("Where is ffmpeg located? (${config.ffmpeg_path}): ")
 	ln = cons.readLine()
 
 	if(ln != null && ln.trim().isNotBlank())
-		Module.config.ffmpeg_path = ln.trim()
+		config.ffmpeg_path = ln.trim()
 
-	println("Where is ffprobe located? (${Module.config.ffprobe_path}): ")
+	println("Where is ffprobe located? (${config.ffprobe_path}): ")
 	ln = cons.readLine()
 
 	if(ln != null && ln.trim().isNotBlank())
-		Module.config.ffprobe_path = ln.trim()
+		config.ffprobe_path = ln.trim()
 
 	var procCount: Int? = null
 	while(procCount == null) {
-		println("How many files should TwineMedia be able to process at once? (${Module.config.media_processor_count}): ")
+		println("How many files should TwineMedia be able to process at once? (${config.media_processor_count}): ")
 		ln = cons.readLine()
 
 		if(ln != null && ln.trim().isNotBlank()) {
@@ -279,15 +280,15 @@ fun interactiveInstall() {
 				println("!!! Value must be an integer !!!")
 			}
 		} else {
-			procCount = Module.config.media_processor_count
+			procCount = config.media_processor_count
 		}
 	}
-	Module.config.media_processor_count = procCount
+	config.media_processor_count = procCount
 
 	if(advanced) {
 		var authMax: Int? = null
 		while(authMax == null) {
-			println("How many attempts can a user make to authenticate before they will be throttled? (${Module.config.max_auth_attempts}): ")
+			println("How many attempts can a user make to authenticate before they will be throttled? (${config.max_auth_attempts}): ")
 			ln = cons.readLine()
 
 			if(ln != null && ln.trim().isNotBlank()) {
@@ -297,14 +298,14 @@ fun interactiveInstall() {
 					println("!!! Value must be an integer !!!")
 				}
 			} else {
-				authMax = Module.config.max_auth_attempts
+				authMax = config.max_auth_attempts
 			}
 		}
-		Module.config.max_auth_attempts = authMax
+		config.max_auth_attempts = authMax
 
 		var authTimeout: Int? = null
 		while(authTimeout == null) {
-			println("How many milliseconds will users be throttled after hitting their max auth attempts? (${Module.config.auth_timeout_period}): ")
+			println("How many milliseconds will users be throttled after hitting their max auth attempts? (${config.auth_timeout_period}): ")
 			ln = cons.readLine()
 
 			if(ln != null && ln.trim().isNotBlank()) {
@@ -314,20 +315,20 @@ fun interactiveInstall() {
 					println("!!! Value must be an integer !!!")
 				}
 			} else {
-				authTimeout = Module.config.auth_timeout_period
+				authTimeout = config.auth_timeout_period
 			}
 		}
-		Module.config.auth_timeout_period = authTimeout
+		config.auth_timeout_period = authTimeout
 	}
 
 	// Check if config exists, ask for overwrite confirmation if it does
 	if(cfg.exists()) {
 		println("A configuration file already exists, replace it? [y/N]: ")
 		if(cons.readLine().toLowerCase().startsWith("y")) {
-			BlockingWriter.write("configs/twinemedia.json", Json.encodePrettily(Module.config))
+			BlockingWriter.write("configs/twinemedia.json", Json.encodePrettily(config))
 		}
 	} else {
-		BlockingWriter.write("configs/twinemedia.json", Json.encodePrettily(Module.config))
+		BlockingWriter.write("configs/twinemedia.json", Json.encodePrettily(config))
 	}
 
 	runBlocking {
@@ -336,8 +337,10 @@ fun interactiveInstall() {
 		try {
 			dbInit()
 			println("Database connection successful!")
-			println("Setting up schema...")
-			dbMigrate()
+			if(config.db_auto_migrate) {
+				println("Setting up schema...")
+				dbMigrate()
+			}
 			println("Checking for an admin account...")
 			val admins = accountsModel.fetchAdminAccounts()
 			if(admins.count() > 0) {
@@ -366,9 +369,9 @@ fun interactiveInstall() {
 fun interactiveResetAdminPassword() {
 	val cfg = File("configs/twinemedia.json")
 	if(cfg.exists()) {
-		Module.config = Json.decodeValue(BlockingReader.read(cfg), TwineMediaConfig::class.java)
-		if(!Module.config.upload_location.endsWith('/'))
-			Module.config.upload_location += '/'
+		config = Json.decodeValue(BlockingReader.read(cfg), TwineMediaConfig::class.java)
+		if(!config.upload_location.endsWith('/'))
+			config.upload_location += '/'
 	} else {
 		println("TwineMedia is not configured, please run Twine with the --twinemedia-install option to configure and install everything")
 		return
