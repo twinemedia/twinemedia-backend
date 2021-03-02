@@ -46,6 +46,8 @@ class Module : TwineModule {
 				config = Json.decodeValue(BlockingReader.read(cfg), TwineMediaConfig::class.java)
 				if(!config.upload_location.endsWith('/'))
 					config.upload_location += '/'
+				if(!config.processing_location.endsWith('/'))
+					config.processing_location += '/'
 			} else {
 				BlockingWriter.write("configs/twinemedia.json", Json.encodePrettily(config))
 			}
@@ -84,7 +86,8 @@ class Module : TwineModule {
 				// Ensure directories exist
 				BlockingFileChecker.createIfNotPresent(arrayOf(
 						config.upload_location,
-						config.upload_location + "/thumbnails/"
+						config.upload_location+"/thumbnails/",
+						config.processing_location
 				))
 
 				// Setup database

@@ -8,6 +8,7 @@ class TwineMediaConfig {
     var domain = "*"
 
     var upload_location = "file-uploads/"
+    var processing_location = "processing-media/"
     var max_upload = 1073741824
 
     var db_address = "localhost"

@@ -72,6 +72,8 @@ fun interactiveInstall() {
 		config = Json.decodeValue(BlockingReader.read(cfg), TwineMediaConfig::class.java)
 		if(!config.upload_location.endsWith('/'))
 			config.upload_location += '/'
+		if(!config.processing_location.endsWith('/'))
+			config.processing_location += '/'
 	}
 
 	println("Welcome to TwineMedia. You are about to install and configure this module.")
@@ -89,8 +91,8 @@ fun interactiveInstall() {
 	println("What directory do you want uploaded files to be stored? (${config.upload_location}): ")
 	ln = cons.readLine()
 
-	if(ln != null && ln.trim().isNotBlank())
-		config.upload_location = ln.trim()
+	if(ln != null && ln.also { ln = ln.trim() }.isNotBlank())
+		config.upload_location = if(ln.endsWith('/')) ln else "$ln/"
 
 	// Check if dir exists, if not, ask to create
 	val dir = File(config.upload_location)
@@ -99,6 +101,23 @@ fun interactiveInstall() {
 
 		if(cons.readLine()?.toLowerCase()?.startsWith("n") == false)
 			dir.mkdirs()
+	}
+
+	if(advanced) {
+		println("What directory do you want currently processing files to be temporarily stored in? (${config.processing_location}): ")
+		ln = cons.readLine()
+
+		if(ln != null && ln.also { ln = ln.trim() }.isNotBlank())
+			config.processing_location = if(ln.endsWith('/')) ln else "$ln/"
+
+		// Check if dir exists, if not, ask to create
+		val procDir = File(config.processing_location)
+		if(!procDir.exists()) {
+			println("Directory \"${config.processing_location}\" doesn't exist, create it? [Y/n]: ")
+
+			if(cons.readLine()?.toLowerCase()?.startsWith("n") == false)
+				procDir.mkdirs()
+		}
 	}
 
 	var size: Int? = null
@@ -206,8 +225,10 @@ fun interactiveInstall() {
 		}
 		config.db_max_pool_size = dbPool
 
-		println("Should migrations automatically be run when TwineMedia starts? [Y/n]: ")
-		config.db_auto_migrate = cons.readLine()?.startsWith("n") == false
+		println("Should migrations automatically be run when TwineMedia starts? [${if(config.db_auto_migrate) "Y/n" else "y/N"}]: ")
+		ln = cons.readLine().trim()
+		if(ln.isNotEmpty())
+			config.db_auto_migrate = ln.toLowerCase().startsWith('y')
 
 		var cryptCount: Int? = null
 		while(cryptCount == null) {
@@ -250,11 +271,10 @@ fun interactiveInstall() {
 			config.frontend_host = ln.trim()
 	}
 
-	println("Will TwineMedia be running behind a reverse proxy (such as Nginx)? [y/N]: ")
-	ln = cons.readLine()
-
-	if(ln != null && ln.trim().isNotBlank())
-		config.reverse_proxy = ln.toLowerCase().startsWith("n") == false
+	println("Will TwineMedia be running behind a reverse proxy (such as Nginx)? [${if(config.reverse_proxy) "Y/n" else "y/N"}]: ")
+	ln = cons.readLine().trim()
+	if(ln.isNotEmpty())
+		config.reverse_proxy = ln.toLowerCase().startsWith("y")
 
 	println("Where is ffmpeg located? (${config.ffmpeg_path}): ")
 	ln = cons.readLine()
@@ -372,6 +392,8 @@ fun interactiveResetAdminPassword() {
 		config = Json.decodeValue(BlockingReader.read(cfg), TwineMediaConfig::class.java)
 		if(!config.upload_location.endsWith('/'))
 			config.upload_location += '/'
+		if(!config.processing_location.endsWith('/'))
+			config.processing_location += '/'
 	} else {
 		println("TwineMedia is not configured, please run Twine with the --twinemedia-install option to configure and install everything")
 		return

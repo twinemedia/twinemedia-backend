@@ -6,9 +6,9 @@ import io.vertx.core.Future.succeededFuture
 import io.vertx.core.Handler
 import io.vertx.core.json.JsonArray
 import io.vertx.core.json.JsonObject
-import io.vertx.kotlin.core.executeBlockingAwait
 import io.vertx.kotlin.core.json.json
 import io.vertx.kotlin.core.json.obj
+import io.vertx.kotlin.coroutines.await
 import io.vertx.kotlin.coroutines.awaitEvent
 import io.vertx.kotlin.coroutines.dispatcher
 import kotlinx.coroutines.GlobalScope
@@ -95,7 +95,7 @@ fun startMediaProcessor() : Thread {
         Thread.sleep(Random.nextLong(0, 1000))
 
         // Infinite processing loop
-        loop@ while(true) {
+        loop@while(true) {
             try {
                 // Sleep for 1 second to avoid checking queue too frequently
                 Thread.sleep(1000)
@@ -121,12 +121,16 @@ fun startMediaProcessor() : Thread {
                     val type = job.type
                     val source = job.source
                     val out = job.out
+                    val tmpOut = config.processing_location+if(job.out.contains('/'))
+                        job.out.substring(job.out.lastIndexOf('/')+1)
+                    else
+                        job.out
                     val settings = job.settings
 
                     // Setup ffmpeg job
                     val builder = FFmpegBuilder()
                             .setInput(source)
-                            .addOutput(out)
+                            .addOutput(tmpOut)
                     if(type == MediaProcessorJobType.VIDEO) {
                         // Job is for video, set video bitrate as well as audio
                         val videoBitrate = settings.getInteger("video_bitrate").coerceIn(-1, 51200)
@@ -158,7 +162,7 @@ fun startMediaProcessor() : Thread {
 
                         // If frame rate was specified, set video frame rate
                         if(settings.containsKey("frame_rate")) {
-                            var frameRate = settings.getInteger("frame_rate").coerceIn(-1, 512)
+                            val frameRate = settings.getInteger("frame_rate").coerceIn(-1, 512)
 
                             if(frameRate > -1)
                                 builder
@@ -177,12 +181,12 @@ fun startMediaProcessor() : Thread {
 
 
                     // Store error handler in order to catch other error types with the same code
-                    val errorHandler = { e: java.lang.Exception ->
+                    val errorHandler = { e: Exception ->
                         procLogger.error("Failed to encode media file:")
                         e.printStackTrace()
 
                         // Delete output file
-                        File(out).delete()
+                        File(tmpOut).delete()
 
                         // Broadcast encoding error
                         vertx().eventBus().publish("twinemedia.process.$id", json {
@@ -205,14 +209,15 @@ fun startMediaProcessor() : Thread {
                         }
 
                         // Run callback
-                        if(job.callback != null)
+                        if(job.callback != null) {
                             GlobalScope.launch(vertx().dispatcher()) {
                                 job.callback?.handle(failedFuture(e))
                             }
+                        }
                     }
 
-                    // Run job
                     try {
+                        // Run job
                         executor.createJob(builder.done()) { prog ->
                             // Broadcast progress percentage
                             val percent = ((prog.out_time_ns/10e6) / duration).toInt().coerceAtMost(100)
@@ -224,6 +229,9 @@ fun startMediaProcessor() : Thread {
                                 )
                             })
                         }.run()
+
+                        // Once job is finished, move file from tmp directory into true output path
+                        File(tmpOut).renameTo(File(out))
                     } catch (e: Exception) {
                         // Execute error handling code
                         errorHandler.invoke(e)
@@ -444,7 +452,7 @@ suspend fun queueMediaProcessJobAwait(job : MediaProcessorJob) {
             override val duration = job.duration
             override val type = job.type
             override val settings = job.settings
-            override val callback: Handler<AsyncResult<Unit>>? = it
+            override val callback: Handler<AsyncResult<Unit>> = it
         })
     }
 }
@@ -472,12 +480,12 @@ suspend fun queueMediaProcessJobFromMedia(sourceId : String, newId : String, ext
     val sourceRes = mediaModel.fetchMedia(sourceId)
 
     // Check if it exists
-    if(sourceRes != null && sourceRes.rows.size > 0) {
-        val source = sourceRes.rows[0]
-        val sourcePath = config.upload_location+source.getString("media_file")
+    if(sourceRes.count() > 0) {
+        val source = sourceRes.iterator().next()
+        val sourcePath = config.upload_location+source.file
 
         // Check if media type is video or audio
-        val mime = source.getString("media_mime")
+        val mime = source.mime
         if(!mime.startsWith("video/") && !mime.startsWith("audio/"))
             throw WrongMediaTypeException("Media type is $mime, not audio or video")
 
@@ -495,14 +503,14 @@ suspend fun queueMediaProcessJobFromMedia(sourceId : String, newId : String, ext
         val outMime = fileNameMap.getContentTypeFor(filename)?: mimeFor(extension)
 
         // Generate new filename
-        val oldFilename = source.getString("media_filename")
+        val oldFilename = source.filename
         val filenameParts = oldFilename.split(".")
         val newFilename = oldFilename.substring(0, oldFilename.length-(filenameParts[filenameParts.size-1].length))+extension
 
         // Create new media entry
         mediaModel.createMedia(
                 id = newId,
-                name = source.getString("media_name"),
+                name = source.name,
                 filename = newFilename,
                 size = -1,
                 mime = outMime,
@@ -511,7 +519,7 @@ suspend fun queueMediaProcessJobFromMedia(sourceId : String, newId : String, ext
                 hash = "PROCESSING",
                 thumbnailFile = null,
                 meta = JsonObject(),
-                parent = source.getInteger("id"),
+                parent = source.internalId,
                 processing = true
         )
 
@@ -585,7 +593,7 @@ suspend fun queueMediaProcessJobFromMediaAwait(sourceId: String, newId: String, 
  * @since 1.0
  */
 suspend fun probeFile(filePath : String) : FFmpegProbeResult? {
-    return vertx().executeBlockingAwait<FFmpegProbeResult> {
+    return vertx().executeBlocking<FFmpegProbeResult> {
         try {
             val probe = ffprobe.probe(filePath)
 
@@ -597,7 +605,7 @@ suspend fun probeFile(filePath : String) : FFmpegProbeResult? {
         } catch(e : Exception) {
             it.fail(e)
         }
-    }
+    }.await()
 }
 
 /**
@@ -608,7 +616,7 @@ suspend fun probeFile(filePath : String) : FFmpegProbeResult? {
  * @since 1.0
  */
 suspend fun createVideoThumbnail(filePath : String, duration : Int, outPath : String) {
-    vertx().executeBlockingAwait<Unit> {
+    vertx().executeBlocking<Unit> {
         try {
             // Get thumbnail snapshot time
             val thumbTime = ((duration / 2) + Random.nextInt(-5, 5)).coerceIn(0, duration)
@@ -625,7 +633,7 @@ suspend fun createVideoThumbnail(filePath : String, duration : Int, outPath : St
         } catch(e : Exception) {
             it.fail(e)
         }
-    }
+    }.await()
 }
 
 /**
@@ -635,7 +643,7 @@ suspend fun createVideoThumbnail(filePath : String, duration : Int, outPath : St
  * @since 1.0
  */
 suspend fun createImagePreview(filePath : String, outPath : String) {
-    vertx().executeBlockingAwait<Unit> {
+    vertx().executeBlocking<Unit> {
         try {
             val builder = FFmpegBuilder()
                     .setInput(filePath)
@@ -647,7 +655,7 @@ suspend fun createImagePreview(filePath : String, outPath : String) {
         } catch(e : Exception) {
             it.fail(e)
         }
-    }
+    }.await()
 }
 
 /**
