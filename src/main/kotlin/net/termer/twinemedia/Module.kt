@@ -123,6 +123,12 @@ class Module : TwineModule {
 				// Allow upload status event bus channels over websocket
 				ws().outboundRegex("twinemedia\\..*")
 
+				// Delete temp files
+				logger.info("Deleting temp files...")
+				runBlocking(vertx().dispatcher()) {
+					deleteFilesInProcessingDirectory()
+				}
+
 				// Start media processor threads
 				logger.info("Starting media processors...")
 				repeat(config.media_processor_count.coerceAtLeast(1)) {
