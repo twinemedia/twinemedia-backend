@@ -104,7 +104,7 @@ fun interactiveInstall() {
 	}
 
 	if(advanced) {
-		println("What directory do you want currently processing files to be temporarily stored in? (${config.processing_location}): ")
+		println("What directory do you want currently processing files to be temporarily stored in? CHOOSE A DIRECTORY THAT CAN SAFELY HAVE ALL OF ITS CONTENTS DELETED. (${config.processing_location}): ")
 		ln = cons.readLine()
 
 		if(ln != null && ln.also { ln = ln.trim() }.isNotBlank())
