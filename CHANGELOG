@@ -1,0 +1,24 @@
+=== Version 1.4.0 ===
+Config changes: Yes
+New Features: Yes
+Bugfixes: Yes
+
+This release upgrades many libraries including Twine to 2.0. It includes a few new features and more than a few bugfixes.
+
+Changes:
+ - Upgrade Twine to 2.0 (Requires Twine upgrade, see https://github.com/termermc/twine)
+ - Dropped config property "reverse_proxy", in favor of using twine.yml's "server.respectXFF" property to configure respect for X-Forwarded-For headers
+ - Providing an existing password is not required to change it
+ - Administrators can now change account passwords
+ - Added file pasting support to the frontend
+ - Added last modified dates to files, lists, and process presets
+ - Added configurable password security requirements (require specific length, special characters, etc)
+ - Added several optional headers to on the upload route to set file metadata
+ - Added more detailed API error responses for invalid/missing parameters
+ - Fixed automatically populated lists not working
+ - Fixed performance issues and freezing after editing files*
+ - Fixed some database performance issues
+ - Fixed many small bugs
+ - Many other small improvements
+
+* There is now a small delay (typically under 3 seconds) after editing a file's tags and the tags database being refreshed
