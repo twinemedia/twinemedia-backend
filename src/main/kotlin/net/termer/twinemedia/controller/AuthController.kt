@@ -16,10 +16,12 @@ import net.termer.twinemedia.util.appHostnames
 import net.termer.twinemedia.util.error
 import net.termer.twinemedia.util.ip
 import net.termer.twinemedia.util.success
+import net.termer.vertx.kotlin.validation.RequestValidator
+import net.termer.vertx.kotlin.validation.validator.*
 
 /**
  * Sets up all authentication-related routes
- * @since 1.0
+ * @since 1.0.0
  */
 fun authController() {
 	val accountsModel = AccountsModel()
@@ -36,36 +38,39 @@ fun authController() {
 		//  - email: String, the email of the account
 		//  - password: String, the password of the account
 		router().post("/api/v1/auth").virtualHost(hostname).handler { r ->
-			// Check credentials
-			val params = r.request().params()
+			GlobalScope.launch(vertx().dispatcher()) {
+				// Request validation
+				val v = RequestValidator()
+						.param("email", EmailValidator())
+						.param("password", StringValidator()
+								.noNewlinesOrControlChars())
 
-			if(params.contains("email") && params.contains("password")) {
-				// Check if max attempts reached, otherwise increment attempts
-				if(!attempts.containsKey(r.ip()))
-					attempts[r.ip()] = 0
-				if(attempts[r.ip()] != null) {
-					val count = attempts[r.ip()] ?: 0
-					attempts[r.ip()] = count + 1
-				}
-				if(attempts[r.ip()]!! > config.max_auth_attempts) {
-					r.error("Too many attempts, try again later")
-					return@handler
-				}
+				if(v.validate(r)) {
+					// Check if max attempts reached, otherwise increment attempts
+					if(!attempts.containsKey(r.ip()))
+						attempts[r.ip()] = 0
+					if(attempts[r.ip()] != null) {
+						val count = attempts[r.ip()] ?: 0
+						attempts[r.ip()] = count + 1
+					}
+					if(attempts[r.ip()]!! > config.max_auth_attempts) {
+						r.error("Too many attempts, try again later")
+						return@launch
+					}
 
-				val email = params.get("email")
-				val password = params.get("password")
+					val email = v.parsedParam("email") as String
+					val password = v.parsedParam("password") as String
 
-				GlobalScope.launch(vertx().dispatcher()) {
 					try {
 						// Fetch account info
 						val accountRes = accountsModel.fetchAccountByEmail(email)
 
 						// Check if account exists
-						if(accountRes != null && accountRes.numRows > 0) {
-							val account = accountRes.rows[0]
+						if(accountRes.count() > 0) {
+							val account = accountRes.iterator().next()
 
 							// Check if password matches
-							val matches = crypt.verifyPassword(password, account["account_hash"])
+							val matches = crypt.verifyPassword(password, account.hash)
 							if(matches != null && matches) {
 								// Generate token ID
 								val id = generateString(10)
@@ -74,7 +79,7 @@ fun authController() {
 								r.success(json {
 									obj(
 											"token" to jwtCreateToken(json {
-												obj("sub" to account["id"], "id" to id)
+												obj("sub" to account.id, "id" to id)
 											})
 									)
 								})
@@ -92,9 +97,9 @@ fun authController() {
 						e.printStackTrace()
 						r.error("Database error")
 					}
+				} else {
+					r.error(v)
 				}
-			} else {
-				r.error("You must include an email and a password field")
 			}
 		}
 	}

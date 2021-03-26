@@ -1,12 +1,13 @@
 package net.termer.twinemedia.jwt
 
 import io.vertx.core.json.JsonObject
+import io.vertx.ext.auth.JWTOptions
+import io.vertx.ext.auth.PubSecKeyOptions
 import io.vertx.ext.auth.jwt.JWTAuth
-import io.vertx.ext.jwt.JWTOptions
+import io.vertx.ext.auth.jwt.JWTAuthOptions
 import io.vertx.kotlin.core.json.json
 import io.vertx.kotlin.core.json.obj
-import io.vertx.kotlin.ext.auth.*
-import io.vertx.kotlin.ext.auth.jwt.jwtAuthOptionsOf
+import io.vertx.kotlin.coroutines.await
 import net.termer.twine.ServerManager.vertx
 import net.termer.twinemedia.Module.Companion.config
 
@@ -24,13 +25,12 @@ object JWT {
  */
 fun jwtInit() {
     // Configure provider
-    var config = jwtAuthOptionsOf(
-            pubSecKeys = listOf(pubSecKeyOptionsOf(
-                    algorithm = "HS256",
-                    publicKey = config.jwt_secret,
-                    symmetric = true
+    val config = JWTAuthOptions()
+            .setPubSecKeys(listOf(
+                    PubSecKeyOptions()
+                            .setAlgorithm("HS256")
+                            .setBuffer(config.jwt_secret)
             ))
-    )
 
     // Setup provider
     JWT.provider = JWTAuth.create(vertx(), config)
@@ -63,9 +63,9 @@ fun jwtCreateUnexpiringToken(data : JsonObject) : String? {
  */
 suspend fun jwtIsValid(jwt : String) : Boolean {
     return try {
-        JWT.provider?.authenticateAwait(json {
+        JWT.provider?.authenticate(json {
             obj("jwt" to jwt)
-        })
+        })?.await()
         true
     } catch(e : Exception) {
         false
@@ -78,7 +78,7 @@ suspend fun jwtIsValid(jwt : String) : Boolean {
  * @since 1.0
  */
 suspend fun jwtData(jwt : String) : JsonObject? {
-    return JWT.provider?.authenticateAwait(json {
+    return JWT.provider?.authenticate(json {
         obj("jwt" to jwt)
-    })?.principal()
+    })?.await()?.principal()
 }

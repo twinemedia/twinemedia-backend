@@ -2,6 +2,7 @@ package net.termer.twinemedia.controller
 
 import io.vertx.core.json.JsonArray
 import io.vertx.core.json.JsonObject
+import io.vertx.json.schema.common.dsl.Schemas.*
 import io.vertx.kotlin.coroutines.dispatcher
 import kotlinx.coroutines.GlobalScope
 import kotlinx.coroutines.launch
@@ -10,10 +11,13 @@ import net.termer.twinemedia.Module.Companion.crypt
 import net.termer.twinemedia.Module.Companion.logger
 import net.termer.twinemedia.model.*
 import net.termer.twinemedia.util.*
+import net.termer.twinemedia.util.validation.*
+import net.termer.vertx.kotlin.validation.RequestValidator
+import net.termer.vertx.kotlin.validation.validator.*
 
 /**
  * Sets up all accounts-related routes for account management
- * @since 1.0
+ * @since 1.0.0
  */
 fun accountsController() {
 	val accountsModel = AccountsModel()
@@ -23,18 +27,27 @@ fun accountsController() {
 		// Permissions:
 		//  - accounts.list
 		// Parameters:
-		//  - offset: Integer at least 0 that sets the offset of returned results
-		//  - limit: Integer from 0 to 100, sets the amount of results to return
-		//  - order: Integer from 0 to 5, denotes the type of sorting to use (date newest to oldest, date oldest to newest, name alphabetically ascending, name alphabetically descending, email alphabetically ascending, email alphabetically descending)
+		//  - offset (optional): Integer at least 0 that sets the offset of returned results
+		//  - limit (optional): Integer from 0 to 100, sets the amount of results to return
+		//  - order (optional): Integer from 0 to 5, denotes the type of sorting to use (date newest to oldest, date oldest to newest, name alphabetically ascending, name alphabetically descending, email alphabetically ascending, email alphabetically descending)
 		router().get("/api/v1/accounts").virtualHost(hostname).handler { r ->
-			val params = r.request().params()
 			GlobalScope.launch(vertx().dispatcher()) {
 				if(r.protectWithPermission("accounts.list")) {
-					try {
+					// Request validation
+					val v = RequestValidator()
+							.optionalParam("offset", Presets.resultOffsetValidator(),0)
+							.optionalParam("limit", Presets.resultLimitValidator(), 100)
+							.optionalParam("order",
+									IntValidator()
+											.coerceMin(0)
+											.coerceMax(5),
+									0)
+
+					if(v.validate(r)) {
 						// Collect parameters
-						val offset = (if(params.contains("offset")) params["offset"].toInt() else 0).coerceAtLeast(0)
-						val limit = (if(params.contains("limit")) params["limit"].toInt() else 100).coerceIn(0, 100)
-						val order = (if(params.contains("order")) params["order"].toInt() else 0).coerceIn(0, 5)
+						val offset = v.parsedParam("offset") as Int
+						val limit = v.parsedParam("limit") as Int
+						val order = v.parsedParam("order") as Int
 
 						try {
 							// Fetch accounts
@@ -43,10 +56,8 @@ fun accountsController() {
 							// Create JSON array of accounts
 							val arr = JsonArray()
 
-							for(account in accounts.rows.orEmpty()) {
-								account.put("permissions", JsonArray(account.getString("permissions")))
-								arr.add(account)
-							}
+							for(account in accounts)
+								arr.add(account.toJson())
 
 							// Send accounts
 							r.success(JsonObject().put("accounts", arr))
@@ -55,8 +66,8 @@ fun accountsController() {
 							e.printStackTrace()
 							r.error("Database error")
 						}
-					} catch(e: Exception) {
-						r.error("Invalid parameters")
+					} else {
+						r.error(v)
 					}
 				}
 			}
@@ -70,9 +81,15 @@ fun accountsController() {
 		router().get("/api/v1/account/:id").virtualHost(hostname).handler { r ->
 			GlobalScope.launch(vertx().dispatcher()) {
 				if(r.protectWithPermission("accounts.view")) {
-					try {
+					// Request validation
+					val v = RequestValidator()
+							.routeParam("id",
+									IntValidator()
+											.coerceMin(0))
+
+					if(v.validate(r)) {
 						// Fetch the account ID as Int
-						val id = r.pathParam("id").toInt()
+						val id = v.parsedRouteParam("id") as Int
 
 						// Make sure this route cannot be accessed from API keys
 						if(id == r.userId() && r.account().isApiKey) {
@@ -82,14 +99,11 @@ fun accountsController() {
 
 						try {
 							// Fetch the account
-							val accountRes = accountsModel.fetchAccountInfoById(id)
+							val account = accountsModel.fetchAccountInfoById(id).firstOrNull()
 
-							if(accountRes != null && accountRes.rows.size > 0) {
-								val account = accountRes.rows[0]
-								account.put("permissions", JsonArray(account.getString("permissions")))
-
+							if(account != null) {
 								// Send account
-								r.success(account)
+								r.success(account.toJson())
 							} else {
 								r.error("Account does not exist")
 							}
@@ -98,8 +112,8 @@ fun accountsController() {
 							e.printStackTrace()
 							r.error("Database error")
 						}
-					} catch(e: Exception) {
-						r.error("Invalid parameters")
+					} else {
+						r.error(v)
 					}
 				}
 			}
@@ -116,81 +130,75 @@ fun accountsController() {
 		//  - excludeOtherTags (optional): Bool, whether to globally exclude tags added to files created by other users
 		//  - excludeOtherProcesses (optional): Bool, whether to globally exclude processes created by other users
 		router().post("/api/v1/account/self/edit").virtualHost(hostname).handler { r ->
-			val params = r.request().params()
 			GlobalScope.launch(vertx().dispatcher()) {
 				if(r.protectNonApiKey()) {
-					try {
-						val acc = r.account()
+					val acc = r.account()
 
-						// Resolve edit values
-						val name = if(params.contains("name"))
-							if(params["name"].length > 64) params["name"].substring(0, 64) else params["name"]
-						else
-							acc.name
-						val email = if(params.contains("email"))
-							if(params["email"].length > 64) params["email"].substring(0, 64) else params["email"]
-						else
-							acc.email
-						val excludeTags = if(params.contains("excludeTags"))
-							JsonArray(params["excludeTags"])
-						else
-							JsonArray(acc.excludeTags.asList())
-						val excludeOtherMedia = if(params.contains("excludeOtherMedia"))
-							params["excludeOtherMedia"]!!.toBoolean()
-						else
-							acc.excludeOtherMedia
-						val excludeOtherLists = if(params.contains("excludeOtherLists"))
-							params["excludeOtherLists"]!!.toBoolean()
-						else
-							acc.excludeOtherLists
-						val excludeOtherTags = if(params.contains("excludeOtherTags"))
-							params["excludeOtherTags"]!!.toBoolean()
-						else
-							acc.excludeOtherTags
-						val excludeOtherProcesses = if(params.contains("excludeOtherProcesses"))
-							params["excludeOtherProcesses"]!!.toBoolean()
-						else
-							acc.excludeOtherTags
+					// Request validation
+					val v = RequestValidator()
+							.param("currentPassword", StringValidator()
+									.maxLength(64)
+									.noNewlinesOrControlChars())
+							.optionalParam("name", Presets.accountNameValidator(), acc.name)
+							.optionalParam("email", EmailValidator().trim(), acc.email)
+							.optionalParam("excludeTags", TagsValidator(), acc.excludeTags.toJsonArray())
+							.optionalParam("excludeOtherMedia", BooleanValidator(), acc.excludeOtherMedia)
+							.optionalParam("excludeOtherLists", BooleanValidator(), acc.excludeOtherLists)
+							.optionalParam("excludeOtherTags", BooleanValidator(), acc.excludeOtherTags)
+							.optionalParam("excludeOtherProcesses", BooleanValidator(), acc.excludeOtherProcesses)
+							.optionalParam("password", PasswordValidator())
 
-						if(validEmail(email)) {
-							try {
-								var emailExists = false
+					if(v.validate(r)) {
+						// Get edit values
+						val currentPassword = v.parsedParam("currentPassword") as String
+						val name = v.parsedParam("name") as String
+						val email = v.parsedParam("email") as String
+						val excludeTags = (v.parsedParam("excludeTags") as JsonArray).toStringArray()
+						val excludeOtherMedia = v.parsedParam("excludeOtherMedia") as Boolean
+						val excludeOtherLists = v.parsedParam("excludeOtherLists") as Boolean
+						val excludeOtherTags = v.parsedParam("excludeOtherTags") as Boolean
+						val excludeOtherProcesses = v.parsedParam("excludeOtherProcesses") as Boolean
+						val password = v.parsedParam("password") as String?
 
-								if(email != r.account().email) {
-									// Check if account with that email already exists
-									val emailRes = accountsModel.fetchAccountByEmail(email)
-
-									emailExists = emailRes != null && emailRes.rows.size > 0
-								}
-
-								if(emailExists) {
-									r.error("Account with that email already exists")
-								} else {
-									try {
-										// Hash password if present
-										val hash = if(params.contains("password")) crypt.hashPassword(params["password"]).orEmpty() else acc.hash
-
-										// Update info
-										accountsModel.updateAccountInfo(acc.id, name, email, hash, excludeTags, excludeOtherMedia, excludeOtherLists, excludeOtherTags, excludeOtherProcesses)
-
-										// Success
-										r.success()
-									} catch(e: Exception) {
-										logger.error("Failed to update account info:")
-										e.printStackTrace()
-										r.error("Database error")
-									}
-								}
-							} catch(e: Exception) {
-								logger.error("Failed to fetch account by email:")
-								e.printStackTrace()
-								r.error("Database error")
+						try {
+							// Validate password
+							if(!crypt.verifyPassword(currentPassword, acc.hash)!!) {
+								r.error("Password does not match existing password")
+								return@launch
 							}
-						} else {
-							r.error("Invalid email")
+
+							var emailExists = false
+							if(email != r.account().email) {
+								// Check if account with that email already exists
+								val emailRes = accountsModel.fetchAccountByEmail(email)
+
+								emailExists = emailRes.count() > 0
+							}
+
+							if(emailExists) {
+								r.error("Account with that email already exists")
+							} else {
+								try {
+									val hash = if(password == null) acc.hash else crypt.hashPassword(password)!!
+
+									// Update info
+									accountsModel.updateAccountInfo(acc.id, name, email, hash, excludeTags, excludeOtherMedia, excludeOtherLists, excludeOtherTags, excludeOtherProcesses)
+
+									// Success
+									r.success()
+								} catch(e: Exception) {
+									logger.error("Failed to update account info:")
+									e.printStackTrace()
+									r.error("Database error")
+								}
+							}
+						} catch(e: Exception) {
+							logger.error("Failed to fetch account by email:")
+							e.printStackTrace()
+							r.error("Database error")
 						}
-					} catch(e: Exception) {
-						r.error("Invalid parameters")
+					} else {
+						r.error(v)
 					}
 				}
 			}
@@ -199,6 +207,7 @@ fun accountsController() {
 		// Edits an account's info and permissions
 		// Permissions:
 		//  - accounts.edit
+		//  - accounts.password (only required if changing an account's password)
 		//  - Administrator privileges (only required if changing an account's administrator status, or if the account being edited is an administrator)
 		// Route parameters:
 		//  - id: Integer, the ID of the account to edit
@@ -220,9 +229,9 @@ fun accountsController() {
 							return@launch
 						}
 
-						// Make sure this route cannot be accessed from API keys
-						if(id == r.userId() && r.account().isApiKey) {
-							r.unauthorized()
+						// Disallow editing self
+						if(id == r.userId()) {
+							r.error("You cannot edit your own account")
 							return@launch
 						}
 
@@ -230,67 +239,85 @@ fun accountsController() {
 						val accountRes = accountsModel.fetchAccountById(id)
 
 						// Check if it exists
-						if(accountRes != null && accountRes.rows.size > 0) {
+						if(accountRes.count() > 0) {
 							// Fetch account info
-							val account = accountJsonToObject(accountRes.rows[0])
+							val account = accountRes.iterator().next()
 
 							// Check if editor has permission to edit account
 							if((account.admin && r.account().hasAdminPermission()) || !account.admin) {
-								try {
+								// Request validation
+								val v = RequestValidator()
+										.optionalParam("name", Presets.accountNameValidator(), account.name)
+										.optionalParam("email", EmailValidator().trim(), account.email)
+										.optionalParam("permissions", PermissionsValidator(), account.permissions.toJsonArray())
+										.optionalParam("admin", BooleanValidator(), account.admin)
+										.optionalParam("password", PasswordValidator())
+
+								if(v.validate(r)) {
 									// Resolve edit values
-									val name = if(params["name"].length > 64) params["name"].substring(0, 64) else params["name"]
-									val email = if(params["email"].length > 64) params["email"].substring(0, 64) else params["email"]
-									val perms = if(params["permissions"] != null) JsonArray(params["permissions"]) else JsonArray(account.permissions.asList())
-									val admin = if(r.account().hasAdminPermission() && r.account().id != id) {
-										if(params["admin"] != null) params["admin"]!!.toBoolean() else account.admin
-									} else {
+									val name = v.parsedParam("name") as String
+									val email = v.parsedParam("email") as String
+									val perms = (v.parsedParam("permissions") as JsonArray).toStringArray()
+									val admin = if(r.account().hasAdminPermission() && r.account().id != id)
+										v.parsedParam("admin") as Boolean
+									else
 										account.admin
-									}
+									val password = v.parsedParam("password") as String?
 
 									// Make sure non-admin cannot create an admin account
-									if(admin && !r.account().hasAdminPermission()) {
+									if(params.contains("admin") && admin && !r.account().hasAdminPermission()) {
 										r.error("Must be an administrator to make an administrator account")
 										return@launch
 									}
 
-									if(validEmail(email)) {
-										try {
-											var emailExists = false
+									try {
+										var emailExists = false
 
-											if(email != account.email) {
-												// Check if account with that email already exists
-												val emailRes = accountsModel.fetchAccountByEmail(email)
+										if(email != account.email) {
+											// Check if account with that email already exists
+											val emailRes = accountsModel.fetchAccountByEmail(email)
 
-												emailExists = if(emailRes != null && emailRes.rows.size > 0)
-													account.id != emailRes.rows[0].getInteger("id")
-												else
-													false
-											}
-
-											if(emailExists) {
-												r.error("Account with that email already exists")
-											} else {
-												try {
-													accountsModel.updateAccountInfo(id, name, email, admin, perms)
-
-													r.success()
-												} catch(e: Exception) {
-													logger.error("Failed to edit account info:")
-													e.printStackTrace()
-													r.error("Database error")
-												}
-											}
-										} catch(e: Exception) {
-											logger.error("Failed to fetch account by email:")
-											e.printStackTrace()
-											r.error("Database error")
+											emailExists = if(emailRes.count() > 0)
+												account.id != emailRes.iterator().next().id
+											else
+												false
 										}
-									} else {
-										r.error("Invalid email")
+
+										if(emailExists) {
+											r.error("Account with that email already exists")
+										} else {
+											try {
+												// Update info
+												accountsModel.updateAccountInfo(id, name, email, admin, perms)
+
+												// Check if password specified
+												if(password != null) {
+													// Check for permission
+													if(r.protectWithPermission("accounts.password")) {
+														// Update password
+														accountsModel.updateAccountHash(id, crypt.hashPassword(password)!!)
+													} else {
+														return@launch
+													}
+												}
+
+												r.success()
+											} catch(e: Exception) {
+												logger.error("Failed to edit account info:")
+												e.printStackTrace()
+												r.error("Database error")
+											}
+										}
+									} catch(e: Exception) {
+										logger.error("Failed to fetch account by email:")
+										e.printStackTrace()
+										r.error("Database error")
 									}
-								} catch(e: Exception) {
-									// Invalid tags JSON array, or invalid admin value
-									r.error("Invalid parameters")
+								} else {
+									if(v.validationErrorType == "INVALID_EMAIL")
+										r.error("Invalid email")
+									else
+										r.error(v)
 								}
 							} else {
 								r.error("Only administrators may edit administrator accounts")
@@ -317,18 +344,24 @@ fun accountsController() {
 		//  - permissions: JSON array, the permissions the new account will have
 		//  - password: String, the password for the new account
 		router().post("/api/v1/accounts/create").virtualHost(hostname).handler { r ->
-			val params = r.request().params()
 			GlobalScope.launch(vertx().dispatcher()) {
 				if(r.protectWithPermission("accounts.create")) {
-					// Verify proper parameters were provided
-					if(params.contains("name") && params.contains("email") && params.contains("admin") && params.contains("permissions") && params.contains("password")) {
+					// Request validation
+					val v = RequestValidator()
+							.param("name", Presets.accountNameValidator())
+							.param("email", EmailValidator())
+							.param("admin", BooleanValidator())
+							.param("permissions", PermissionsValidator())
+							.param("password", PasswordValidator())
+
+					if(v.validate(r)) {
 						try {
 							// Collect and process parameters
-							val name = if(params["name"].length > 64) params["name"].substring(0, 64) else params["name"]
-							val email = if(params["email"].length > 64) params["email"].substring(0, 64) else params["email"]
-							val perms = JsonArray(params["permissions"])
-							val admin = params["admin"]!!.toBoolean()
-							val password = params["password"]
+							val name = v.parsedParam("name") as String
+							val email = v.parsedParam("email") as String
+							val perms = (v.parsedParam("permissions") as JsonArray).toStringArray()
+							val admin = v.parsedParam("admin") as Boolean
+							val password = v.parsedParam("password") as String
 
 							// Make sure non-admin cannot create an admin account
 							if(admin && !r.account().hasAdminPermission()) {
@@ -336,33 +369,29 @@ fun accountsController() {
 								return@launch
 							}
 
-							if(validEmail(email)) {
-								// Check if account with same email already exists
-								try {
-									val accountRes = accountsModel.fetchAccountByEmail(email)
+							// Check if account with same email already exists
+							try {
+								val accountRes = accountsModel.fetchAccountByEmail(email)
 
-									if(accountRes != null && accountRes.rows.size > 0) {
-										r.error("Account with that email already exists")
-									} else {
-										try {
-											// Create account
-											createAccount(name, email, admin, perms, password)
+								if(accountRes.count() > 0) {
+									r.error("Account with that email already exists")
+								} else {
+									try {
+										// Create account
+										createAccount(name, email, admin, perms, password)
 
-											// Send success
-											r.success()
-										} catch(e: Exception) {
-											logger.error("Failed to create new account:")
-											e.printStackTrace()
-											r.error("Database error")
-										}
+										// Send success
+										r.success()
+									} catch(e: Exception) {
+										logger.error("Failed to create new account:")
+										e.printStackTrace()
+										r.error("Database error")
 									}
-								} catch(e: Exception) {
-									logger.error("Failed to fetch account:")
-									e.printStackTrace()
-									r.error("Database error")
 								}
-							} else {
-								r.error("Invalid email")
+							} catch(e: Exception) {
+								logger.error("Failed to fetch account:")
+								e.printStackTrace()
+								r.error("Database error")
 							}
 						} catch(e: Exception) {
 							// Invalid tags JSON array, or invalid admin value
@@ -370,7 +399,7 @@ fun accountsController() {
 							e.printStackTrace()
 						}
 					} else {
-						r.error("Must provide the following values: name, email, admin, permissions, password")
+						r.error(v)
 					}
 				}
 			}
@@ -404,7 +433,7 @@ fun accountsController() {
 							val accountRes = accountsModel.fetchAccountById(id)
 
 							// Check if it exists
-							if(accountRes != null && accountRes.rows.size > 0) {
+							if(accountRes.count() > 0) {
 								try {
 									// Delete account
 									deleteAccount(id)

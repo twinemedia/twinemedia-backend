@@ -13,9 +13,12 @@ import net.termer.twine.ServerManager.*
 import net.termer.twine.utils.StringFilter.generateString
 import net.termer.twinemedia.Module.Companion.config
 import net.termer.twinemedia.Module.Companion.logger
+import net.termer.twinemedia.db.scheduleTagsViewRefresh
 import net.termer.twinemedia.model.MediaModel
 import net.termer.twinemedia.model.ProcessesModel
 import net.termer.twinemedia.util.*
+import net.termer.twinemedia.util.validation.TagsValidator
+import net.termer.vertx.kotlin.validation.ParamValidator
 import java.io.File
 import java.net.URLDecoder
 import java.nio.charset.StandardCharsets
@@ -28,6 +31,18 @@ import java.util.*
  */
 fun uploadController() {
 	for(hostname in appHostnames()) {
+		// Allow headers
+		router().options("/api/v1/media/upload").virtualHost(hostname).handler { r ->
+			r.response()
+					.corsAllowHeader("X-FILE-NAME")
+					.corsAllowHeader("X-FILE-DESCRIPTION")
+					.corsAllowHeader("X-FILE-TAGS")
+					.corsAllowHeader("X-NO-THUMBNAIL")
+					.corsAllowHeader("X-NO-PROCESS")
+
+			r.next()
+		}
+
 		// Accepts media uploads
 		// Permissions:
 		//  - upload
@@ -42,12 +57,16 @@ fun uploadController() {
 		router().post("/api/v1/media/upload").virtualHost(hostname).handler { r ->
 			r.request().pause()
 			val headers = r.request().headers()
-			GlobalScope.launch(vertx().dispatcher()) {
+			GlobalScope.launch(vertx().dispatcher()) main@ {
 				if(r.protectWithPermission("upload")) {
 					val processesModel = ProcessesModel(r.account())
 					val mediaModel = MediaModel(r.account())
 
 					// Check file size header
+					if(!r.request().headers().contains("content-length")) {
+						r.error("Missing content-length")
+						return@main
+					}
 					val length = r.request().getHeader("content-length").toLong()
 
 					// Upload values
@@ -106,6 +125,12 @@ fun uploadController() {
 							GlobalScope.launch(vertx().dispatcher()) {
 								delay(100)
 
+								// Check if the file even got to the upload stage
+								if(saveLoc == "") {
+									r.error("Empty file given")
+									return@launch
+								}
+
 								try {
 									// Calculate file hash
 									val hash = vertx().executeBlocking<String> {
@@ -115,7 +140,6 @@ fun uploadController() {
 
 									// Thumbnail file
 									var thumbnail: String? = null
-
 
 									// Metadata
 									var meta = JsonObject()
@@ -131,14 +155,15 @@ fun uploadController() {
 										// Check if a file with the generated hash already exists
 										val filesRes = mediaModel.fetchMediaByHash(hash)
 
-										if(filesRes != null && filesRes.rows.size > 0) {
-											// Get already uploaded file's filename
-											file = filesRes.rows[0].getString("media_file")
+										if(filesRes.count() > 0) {
+											val fileRow = filesRes.iterator().next()
+											// Get already uploaded file's filename on disk
+											file = fileRow.file
 
 											// Ignore thumbnail setting if X-NO-THUMBNAIL is true
 											if(!(headers.contains("X-NO-THUMBNAIL") && headers["X-NO-THUMBNAIL"].toLowerCase() == "true")) {
 												// Get already uploaded file's thumbnail
-												thumbnail = filesRes.rows[0].getString("media_thumbnail_file")
+												thumbnail = fileRow.thumbnailFile
 											}
 
 											// Delete duplicate
@@ -201,7 +226,7 @@ fun uploadController() {
 										/* Figure out file info */
 										var mediaName = filenameToTitle(filename)
 										var mediaDesc = ""
-										var mediaTags = JsonArray()
+										var mediaTags = arrayOf<String>()
 
 										// Handle ffprobe media tags
 										if(meta.containsKey("tags")) {
@@ -302,9 +327,15 @@ fun uploadController() {
 										// Set tags if they're specified as a header
 										if(headers.contains("X-FILE-TAGS"))
 											try {
-												mediaTags = JsonArray(URLDecoder.decode("X-FILE-TAGS", StandardCharsets.UTF_8.toString()))
-											} catch(e: Exception) { /* Failed to parse JSON array */
-											}
+												val param = ParamValidator.Param("X-FILE-TAGS", URLDecoder.decode(headers["X-FILE-TAGS"], StandardCharsets.UTF_8.toString()), r)
+
+												// Validate param
+												val valRes = TagsValidator().validate(param)
+
+												// Set tags if valid
+												if(valRes.valid)
+													mediaTags = (valRes.result as JsonArray).toStringArray()
+											} catch(e: Exception) { /* Failed to parse JSON array */ }
 
 										/* Create database entry */
 										mediaModel.createMedia(
@@ -322,14 +353,18 @@ fun uploadController() {
                                                 meta
                                         )
 
+										// Refresh tags
+										if(mediaTags.isNotEmpty())
+											scheduleTagsViewRefresh()
+
 										// Check if uploaded file is media
-										if(!(headers.contains("X-NO-PROCESS") && headers["X-NO-PROCESS"].toLowerCase() == "true") && type.startsWith("video/") || type.startsWith("audio/")) {
+										if(!(headers.contains("X-NO-PROCESS") && headers["X-NO-PROCESS"].toLowerCase() == "true") && (type.startsWith("video/") || type.startsWith("audio/"))) {
 											try {
 												// Fetch processes created by the uploader for this type
 												val processes = processesModel.fetchProcessesForMimeAndAccount(type, r.userId())
 
 												// Queue processing jobs
-												for(process in processes.rows.orEmpty()) {
+												for(process in processes) {
 													// Generate new media's ID
 													val newId = generateString(10)
 
@@ -337,9 +372,9 @@ fun uploadController() {
 													queueMediaProcessJobFromMedia(
                                                             sourceId = id,
                                                             newId = newId,
-                                                            extension = process.getString("extension"),
+                                                            extension = process.extension,
                                                             creator = r.userId(),
-                                                            settings = JsonObject(process.getString("settings"))
+                                                            settings = process.settings
                                                     )
 												}
 											} catch(e: Exception) {

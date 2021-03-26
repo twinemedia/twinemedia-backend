@@ -11,9 +11,12 @@ import net.termer.twine.utils.StringFilter.generateString
 import net.termer.twinemedia.Module.Companion.logger
 import net.termer.twinemedia.model.MediaModel
 import net.termer.twinemedia.util.*
+import net.termer.vertx.kotlin.validation.RequestValidator
+import net.termer.vertx.kotlin.validation.validator.*
 
 /**
  * Setups up all routes for creating child media files
+ * @since 1.0.0
  */
 fun mediaChildController() {
 	for(hostname in appHostnames()) {
@@ -31,7 +34,6 @@ fun mediaChildController() {
 		//  - height (optional): Integer, the height of the child file (will be ignored if source is not a video, and if left out, aspect ratio will be kept)
 		router().post("/api/v1/media/:id/child").virtualHost(hostname).handler { r ->
 			val id = r.pathParam("id")
-			val params = r.request().params()
 			GlobalScope.launch(vertx().dispatcher()) {
 				if(r.protectWithPermission("files.child")) {
 					val mediaModel = MediaModel(r.account())
@@ -40,113 +42,103 @@ fun mediaChildController() {
 						val mediaRes = mediaModel.fetchMedia(id)
 
 						// Check if media exists
-						if(mediaRes != null && mediaRes.rows.size > 0) {
-							val media = mediaRes.rows[0]
+						if(mediaRes.count() > 0) {
+							val media = mediaRes.iterator().next()
 
 							// Check if media was created by the user
-							if(media.getInteger("media_creator") != r.userId() && !r.hasPermission("files.child.all")) {
+							if(media.creator != r.userId() && !r.hasPermission("files.child.all")) {
 								r.unauthorized()
 								return@launch
 							}
 
 							// Check if media is a child
-							if(media.getInteger("media_parent") != null) {
+							if(media.parent != null) {
 								r.error("Cannot create child of child")
 								return@launch
 							}
 
-							// Check if minimum params are met
-							if(params.contains("extension")) {
+							// Check if source is a media file
+							if(!media.mime.startsWith("video/") && !media.mime.startsWith("audio/")) {
+								r.error("Source media is not audio or video")
+								return@launch
+							}
+
+							// Request validation
+							val v = RequestValidator()
+									.param("extension", StringValidator()
+											.toLowerCase()
+											.maxLength(200)
+											.minLength(1)
+											.isInArray(if(media.mime.startsWith("video/"))
+												videoExtensions
+											else
+												audioExtensions))
+									.optionalParam("frame_rate", IntValidator()
+											.min(-1)
+											.max(512), -1)
+									.optionalParam("audio_bitrate", IntValidator()
+											.min(-1)
+											.max(51200), -1)
+									.optionalParam("video_bitrate", IntValidator()
+											.min(-1)
+											.max(51200), -1)
+									.optionalParam("width", IntValidator()
+											.min(-1)
+											.max(7680), -1)
+									.optionalParam("height", IntValidator()
+											.min(-1)
+											.max(4320), -1)
+
+							if(v.validate(r)) {
+								val extension = v.parsedParam("extension") as String
+
+								// Put settings
+								val settings = JsonObject()
+										.put("audio_bitrate", (v.parsedParam("audio_bitrate") as Int).toLong())
+
+								// Put video-specific settings
+								if(media.mime.startsWith("video/")) {
+									// Set dimensions
+									settings.put("width", (v.parsedParam("width") as Int).toLong())
+									settings.put("height", (v.parsedParam("height") as Int).toLong())
+
+									// Set framerate
+									settings.put("frame_rate", (v.parsedParam("frame_rate") as Int).toLong())
+
+									// Set bitrate
+									settings.put("video_bitrate", (v.parsedParam("video_bitrate") as Int).toLong())
+								}
+
 								try {
-									val extension = params["extension"]
-									val settings = JsonObject()
-
-									// Check if source is a media file
-									if(!media.getString("media_mime").startsWith("video/") && !media.getString("media_mime").startsWith("audio/")) {
-										r.error("Source media is not audio or video")
-										return@launch
-									}
-
-									// Check if extension is valid
-									if(
-											!(media.getString("media_mime").startsWith("video/") && videoExtensions.contains(extension))
-											&&
-											!(media.getString("media_mime").startsWith("audio/") && audioExtensions.contains(extension))
-									) {
-										r.error("Invalid extension $extension for media process")
-										return@launch
-									}
-
-									// Check if audio bitrate is specified
-									if(params.contains("audio_bitrate"))
-										settings.put("audio_bitrate", params["audio_bitrate"].toInt())
-									else
-										settings.put("audio_bitrate", 0L)
-
-
-									// Check if file is a video or audio, or reject
-									if(media.getString("media_mime").startsWith("video/")) {
-										// Set dimensions
-										if(params.contains("width"))
-											settings.put("width", params["width"].toInt())
-										else
-											settings.put("width", -1)
-
-										if(params.contains("height"))
-											settings.put("height", params["height"].toInt())
-										else
-											settings.put("height", -1)
-
-										// Set framerate
-										if(params.contains("frame_rate"))
-											settings.put("frame_rate", params["frame_rate"].toInt())
-										else
-											settings.put("frame_rate", -1)
-
-										// Set bitrate
-										if(params.contains("video_bitrate"))
-											settings.put("video_bitrate", params["video_bitrate"].toInt())
-										else
-											settings.put("video_bitrate", 0L)
-
-									} else if(!media.getString("media_mime").startsWith("audio/")) {
-										r.error("File must be audio or video")
-										return@launch
-									}
+									// Generate new media's ID
+									val newId = generateString(10)
 
 									try {
-										// Generate new media's ID
-										val newId = generateString(10)
+										// Create new processing job
+										queueMediaProcessJobFromMedia(
+												sourceId = id,
+												newId = newId,
+												extension = extension,
+												creator = r.userId(),
+												settings = settings
+										)
 
-										try {
-											// Create new processing job
-											queueMediaProcessJobFromMedia(
-													sourceId = id,
-													newId = newId,
-													extension = extension,
-													creator = r.userId(),
-													settings = settings
-											)
-
-											// Send success
-											r.success(json {
-												obj("id" to newId)
-											})
-										} catch(e: Exception) {
-											logger.error("Failed to queue new media processing job:")
-											e.printStackTrace()
-											r.error("Database error")
-										}
+										// Send success
+										r.success(json {
+											obj("id" to newId)
+										})
 									} catch(e: Exception) {
-										logger.error("Failed to create media entry:")
+										logger.error("Failed to queue new media processing job:")
 										e.printStackTrace()
 										r.error("Database error")
 									}
 								} catch(e: Exception) {
-									r.error("Invalid parameters")
+									logger.error("Failed to create media entry:")
+									e.printStackTrace()
+									r.error("Database error")
 								}
 							} else {
-								r.error("Must include extension")
+								r.error(v)
 							}
 						} else {
 							r.error("File does not exist")

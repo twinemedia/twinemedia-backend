@@ -52,7 +52,7 @@ private fun createAdminPrompt() {
 	print("Name: ")
 	val name = cons.readLine()
 
-	print("Password: ")
+	print("Password (make it strong): ")
 	val pass = cons.readPassword().joinToString("")
 
 	println("Creating account...")
@@ -271,11 +271,6 @@ fun interactiveInstall() {
 			config.frontend_host = ln.trim()
 	}
 
-	println("Will TwineMedia be running behind a reverse proxy (such as Nginx)? [${if(config.reverse_proxy) "Y/n" else "y/N"}]: ")
-	ln = cons.readLine().trim()
-	if(ln.isNotEmpty())
-		config.reverse_proxy = ln.toLowerCase().startsWith("y")
-
 	println("Where is ffmpeg located? (${config.ffmpeg_path}): ")
 	ln = cons.readLine()
 
@@ -339,6 +334,38 @@ fun interactiveInstall() {
 			}
 		}
 		config.auth_timeout_period = authTimeout
+
+		var minPass: Int? = null
+		while(minPass == null) {
+			println("What should be the minimum allowed password length? (${config.password_require_min}): ")
+			ln = cons.readLine()
+
+			if(ln != null && ln.trim().isNotBlank()) {
+				try {
+					minPass = ln.trim().toInt()
+				} catch(e: Exception) {
+					println("!!! Value must be an integer !!!")
+				}
+			} else {
+				minPass = config.password_require_min
+			}
+		}
+		config.password_require_min = minPass
+
+		println("Should passwords require an uppercase letter? [${if(config.password_require_uppercase) "Y/n" else "y/N"}]: ")
+		ln = cons.readLine().trim()
+		if(ln.isNotEmpty())
+			config.password_require_uppercase = ln.toLowerCase().startsWith("y")
+
+		println("Should passwords require a number? [${if(config.password_require_number) "Y/n" else "y/N"}]: ")
+		ln = cons.readLine().trim()
+		if(ln.isNotEmpty())
+			config.password_require_number = ln.toLowerCase().startsWith("y")
+
+		println("Should passwords require a special character? [${if(config.password_require_special) "Y/n" else "y/N"}]: ")
+		ln = cons.readLine().trim()
+		if(ln.isNotEmpty())
+			config.password_require_special = ln.toLowerCase().startsWith("y")
 	}
 
 	// Check if config exists, ask for overwrite confirmation if it does

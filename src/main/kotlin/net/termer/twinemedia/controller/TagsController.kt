@@ -9,10 +9,13 @@ import net.termer.twine.ServerManager.*
 import net.termer.twinemedia.Module.Companion.logger
 import net.termer.twinemedia.model.TagsModel
 import net.termer.twinemedia.util.*
+import net.termer.twinemedia.util.validation.*
+import net.termer.vertx.kotlin.validation.RequestValidator
+import net.termer.vertx.kotlin.validation.validator.*
 
 /**
  * Sets up all routes for retrieving tags and tag-related information
- * @since 1.0
+ * @since 1.0.0
  */
 fun tagsController() {
 	for(hostname in appHostnames()) {
@@ -20,34 +23,44 @@ fun tagsController() {
 		// Permissions:
 		//  - tags.list
 		// Parameters:
-		//  - query (optional): String, the tag pattern to search for, can use % as a wildcard character
-		//  - offset: Integer at least 0 that sets the offset of returned results
-		//  - limit: Integer from 0 to 100, sets the amount of results to return
-		//  - order: Integer from 0 to 5, denotes the type of sorting to use (alphabetically ascending, alphabetically descending, tag length ascending, tag length descending, tag uses ascending, tag uses descending)
+		//  - query: (optional) String, the tag pattern to search for, can use % as a wildcard character
+		//  - offset: (optional) Integer at least 0 that sets the offset of returned results
+		//  - limit: (optional) Integer from 0 to 100, sets the amount of results to return
+		//  - order: (optional) Integer from 0 to 5, denotes the type of sorting to use (alphabetically ascending, alphabetically descending, tag length ascending, tag length descending, tag uses ascending, tag uses descending)
 		router().get("/api/v1/tags").virtualHost(hostname).handler { r ->
-			val params = r.request().params()
 			GlobalScope.launch(vertx().dispatcher()) {
 				if(r.protectWithPermission("tags.list")) {
 					val tagsModel = TagsModel(r.account())
 
-					try {
+					// Request validation
+					val v = RequestValidator()
+							.optionalParam("query", StringValidator()
+									.noNewlinesOrControlChars()
+									.trim(), "")
+							.optionalParam("offset", Presets.resultOffsetValidator(), 0)
+							.optionalParam("limit", Presets.resultLimitValidator(), 100)
+							.optionalParam("order", IntValidator()
+									.min(0)
+									.max(5), 0)
+
+					if(v.validate(r)) {
 						// Collect parameters
-						val query = if(params.contains("query")) params["query"] else ""
-						val offset = (if(params.contains("offset")) params["offset"].toInt() else 0).coerceAtLeast(0)
-						val limit = (if(params.contains("limit")) params["limit"].toInt() else 100).coerceIn(0, 100)
-						val order = (if(params.contains("order")) params["order"].toInt() else 0).coerceIn(0, 5)
+						val query = v.parsedParam("query") as String
+						val offset = v.parsedParam("offset") as Int
+						val limit = v.parsedParam("limit") as Int
+						val order = v.parsedParam("order") as Int
 
 						try {
-							val tags = when(query.isEmpty()) {
-                                true -> tagsModel.fetchAllTags(offset, limit, order)
-								else -> tagsModel.fetchTagsByTerm(query, offset, limit, order)
-							}
+							val tags = if(query.isEmpty())
+								tagsModel.fetchAllTags(offset, limit, order)
+							else
+								tagsModel.fetchTagsByTerm(query, offset, limit, order)
 
 							// Create JSON array of tags
 							val arr = JsonArray()
 
-							for(tag in tags.rows.orEmpty())
-								arr.add(tag)
+							for(tag in tags)
+								arr.add(tag.toJson())
 
 							// Send tags
 							r.success(JsonObject().put("tags", arr))
@@ -56,8 +69,8 @@ fun tagsController() {
 							e.printStackTrace()
 							r.error("Database error")
 						}
-					} catch(e: Exception) {
-						r.error("Invalid parameters")
+					} else {
+						r.error(v)
 					}
 				}
 			}
@@ -78,10 +91,10 @@ fun tagsController() {
 						val infoRes = tagsModel.fetchTagInfo(tag)
 
 						// Check if a row has been returned
-						if(infoRes != null && infoRes.rows.size > 0) {
-							val info = infoRes.rows[0]
+						if(infoRes.count() > 0) {
+							val info = infoRes.iterator().next()
 
-							r.success(info)
+							r.success(info.toJson())
 						} else {
 							// This really shouldn't happen, but catch it if it does
 							r.error("Tag not found")

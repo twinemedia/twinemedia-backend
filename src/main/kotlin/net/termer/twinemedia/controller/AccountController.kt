@@ -1,5 +1,6 @@
 package net.termer.twinemedia.controller
 
+import io.vertx.core.http.HttpMethod
 import io.vertx.core.json.JsonArray
 import io.vertx.kotlin.core.json.json
 import io.vertx.kotlin.core.json.obj
@@ -14,7 +15,7 @@ import net.termer.twinemedia.util.*
 
 /**
  * Sets up all account routes for the user's account
- * @since 1.0
+ * @since 1.0.0
  */
 fun accountController() {
 	for(hostname in appHostnames()) {
@@ -22,11 +23,16 @@ fun accountController() {
 		router().route("/api/v1/account/*").virtualHost(hostname).handler { r ->
 			GlobalScope.launch(vertx().dispatcher()) {
 				try {
-					r.authenticate()
-
-					// Pass to next handler only if authenticated
-					if(r.protectRoute())
+					// Ignore if OPTIONS
+					if(r.request().method() == HttpMethod.OPTIONS) {
 						r.next()
+					} else {
+						r.authenticate()
+
+						// Pass to next handler only if authenticated
+						if(r.protectRoute())
+							r.next()
+					}
 				} catch(e: AuthException) {
 					r.unauthorized()
 				}
@@ -39,13 +45,12 @@ fun accountController() {
 				// Check if account exists
 				try {
 					val perms = JsonArray()
-					if(r.account().isApiKey) {
+					if(r.account().isApiKey)
 						for(perm in r.account().keyPermissions?.filter { r.account().hasPermission(it) }.orEmpty())
 							perms.add(perm)
-					} else {
+					else
 						for(perm in r.account().permissions)
 							perms.add(perm)
-					}
 
 					// Collect properties
 					val account = json {
@@ -55,7 +60,7 @@ fun accountController() {
                                 "name" to r.account().name,
                                 "email" to r.account().email,
                                 "admin" to r.account().hasAdminPermission(),
-                                "creation_date" to r.account().creationDate.toISOString(),
+                                "creation_date" to r.account().creationDate.toString(),
                                 "exclude_tags" to JsonArray(r.account().excludeTags.asList()),
                                 "exclude_other_media" to r.account().excludeOtherMedia,
                                 "exclude_other_lists" to r.account().excludeOtherLists,

@@ -26,7 +26,6 @@ class TwineMediaConfig {
     var crypt_memory_kb = 2048
 
     var frontend_host = "*"
-    var reverse_proxy = false
 
     var ffmpeg_path = "/usr/bin/ffmpeg"
     var ffprobe_path = "/usr/bin/ffprobe"
@@ -35,4 +34,9 @@ class TwineMediaConfig {
 
     var max_auth_attempts = 5
     var auth_timeout_period = 12000
+
+    var password_require_min = 8
+    var password_require_uppercase = true
+    var password_require_number = true
+    var password_require_special = true
 }

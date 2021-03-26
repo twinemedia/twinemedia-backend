@@ -9,6 +9,7 @@ import net.termer.twine.Twine
 import net.termer.twine.Twine.serverArgs
 import net.termer.twine.modules.TwineModule
 import net.termer.twine.modules.TwineModule.Priority.LOW
+import net.termer.twine.utils.TwineEvent
 import net.termer.twine.utils.files.BlockingFileChecker
 import net.termer.twine.utils.files.BlockingReader
 import net.termer.twine.utils.files.BlockingWriter
@@ -37,20 +38,28 @@ class Module : TwineModule {
 		val crypt: Crypt = Crypt()
 	}
 
+	/**
+	 * Configures the module by loading the config file from disk
+	 * @since 1.1.0
+	 */
+	fun configure() {
+		// Setup config
+		logger.info("Loading config...")
+		val cfg = File("configs/twinemedia.json")
+		if(cfg.exists()) {
+			config = Json.decodeValue(BlockingReader.read(cfg), TwineMediaConfig::class.java)
+			if(!config.upload_location.endsWith('/'))
+				config.upload_location += '/'
+			if(!config.processing_location.endsWith('/'))
+				config.processing_location += '/'
+		} else {
+			BlockingWriter.write("configs/twinemedia.json", Json.encodePrettily(config))
+		}
+	}
+
 	override fun preinitialize() {
 		if(!specialRun) {
-			// Setup config
-			logger.info("Loading config...")
-			val cfg = File("configs/twinemedia.json")
-			if(cfg.exists()) {
-				config = Json.decodeValue(BlockingReader.read(cfg), TwineMediaConfig::class.java)
-				if(!config.upload_location.endsWith('/'))
-					config.upload_location += '/'
-				if(!config.processing_location.endsWith('/'))
-					config.processing_location += '/'
-			} else {
-				BlockingWriter.write("configs/twinemedia.json", Json.encodePrettily(config))
-			}
+			configure()
 
 			logger.info("Setting up uploader routes and middleware...")
 			headersMiddleware()
@@ -119,6 +128,7 @@ class Module : TwineModule {
 				processesController()
 				listsController()
 				apiKeysController()
+				notFoundController()
 
 				// Allow upload status event bus channels over websocket
 				ws().outboundRegex("twinemedia\\..*")
@@ -143,6 +153,16 @@ class Module : TwineModule {
 					tagsModel.refreshTags()
 
 					logger.info("Started!")
+				}
+
+				// Register server config reload hook
+				Events.on(Events.Type.CONFIG_RELOAD) {
+					try {
+						configure()
+					} catch(e: IOException) {
+						logger.error("Failed to load TwineMedia config:")
+						e.printStackTrace()
+					}
 				}
 			} catch(e: IOException) {
 				logger.error("Failed to initialize TwineMedia:")

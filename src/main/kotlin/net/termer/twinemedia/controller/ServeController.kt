@@ -36,11 +36,11 @@ private fun handleFile(r: RoutingContext) {
 		// Fetch media info
 		val mediaRes = mediaModel.fetchMedia(id)
 		// Check if media exists
-		if(mediaRes != null && mediaRes.rows.size > 0) {
-			val media = mediaRes.rows[0]
+		if(mediaRes.count() > 0) {
+			val media = mediaRes.iterator().next()
 
 			// Locate file location on disk
-			val file = config.upload_location + media.getString("media_file")
+			val file = config.upload_location + media.file
 
 			if(vertx().fileSystem().exists(file).await()) {
 				r.sendFileRanged(file)
@@ -56,6 +56,7 @@ private fun handleFile(r: RoutingContext) {
 }
 
 // Handler method for serving thumbnails
+// Route parameters:
 //  - id: String, the alphanumeric ID of the file to download the thumbnail of
 private fun handleThumbnail(r: RoutingContext) {
 	GlobalScope.launch(vertx().dispatcher()) {
@@ -65,13 +66,13 @@ private fun handleThumbnail(r: RoutingContext) {
 		// Fetch media info
 		val mediaRes = mediaModel.fetchMedia(id)
 		// Check if media exists
-		if(mediaRes != null && mediaRes.rows.size > 0) {
-			val media = mediaRes.rows[0]
+		if(mediaRes.count() > 0) {
+			val media = mediaRes.iterator().next()
 
 			// Check if media has a thumbnail
-			if(media.getBoolean("media_thumbnail")) {
+			if(media.hasThumbnail) {
 				// Locate file location on disk
-				val file = config.upload_location + "thumbnails/" + media.getString("media_thumbnail_file")
+				val file = config.upload_location + "thumbnails/" + media.thumbnailFile
 
 				if(vertx().fileSystem().exists(file).await()) {
 					r.sendFileRanged(file)

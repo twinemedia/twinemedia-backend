@@ -12,6 +12,9 @@ import net.termer.twinemedia.Module.Companion.logger
 import net.termer.twinemedia.jwt.jwtCreateUnexpiringToken
 import net.termer.twinemedia.model.ApiKeysModel
 import net.termer.twinemedia.util.*
+import net.termer.twinemedia.util.validation.*
+import net.termer.vertx.kotlin.validation.RequestValidator
+import net.termer.vertx.kotlin.validation.validator.*
 
 /**
  * Sets up all API key creation and management routes
@@ -23,18 +26,26 @@ fun apiKeysController() {
 	for(hostname in appHostnames()) {
 		// Returns all API keys associated with the user's account
 		// Parameters:
-		//  - offset: Integer at least 0 that sets the offset of returned results
-		//  - limit: Integer from 0 to 100, sets the amount of results to return
-		//  - order: Integer from 0 to 5, denotes the type of sorting to use (date newest to oldest, date oldest to newest, name alphabetically ascending, name alphabetically descending)
+		//  - offset (optional): Integer at least 0 that sets the offset of returned results
+		//  - limit (optional): Integer from 0 to 100, sets the amount of results to return
+		//  - order (optional): Integer from 0 to 5, denotes the type of sorting to use (date newest to oldest, date oldest to newest, name alphabetically ascending, name alphabetically descending)
 		router().get("/api/v1/account/self/keys").virtualHost(hostname).handler { r ->
-			val params = r.request().params()
 			GlobalScope.launch(vertx().dispatcher()) {
 				if(r.protectNonApiKey()) {
-					try {
+					// Request validation
+					val v = RequestValidator()
+							.optionalParam("offset", Presets.resultOffsetValidator(), 0)
+							.optionalParam("limit", Presets.resultLimitValidator(), 100)
+							.optionalParam("order", IntValidator()
+									.coerceMin(0)
+									.coerceMax(3),
+							0)
+
+					if(v.validate(r)) {
 						// Collect parameters
-						val offset = (if(params.contains("offset")) params["offset"].toInt() else 0).coerceAtLeast(0)
-						val limit = (if(params.contains("limit")) params["limit"].toInt() else 100).coerceIn(0, 100)
-						val order = (if(params.contains("order")) params["order"].toInt() else 0).coerceIn(0, 3)
+						val offset = v.parsedParam("offset") as Int
+						val limit = v.parsedParam("limit") as Int
+						val order = v.parsedParam("order") as Int
 
 						try {
 							// Fetch keys
@@ -42,8 +53,8 @@ fun apiKeysController() {
 
 							val arr = JsonArray()
 
-							for(key in keys?.rows.orEmpty())
-								arr.add(key.put("permissions", JsonArray(key.getString("permissions"))))
+							for(key in keys)
+								arr.add(key.toJson())
 
 							// Send success
 							r.success(json {
@@ -54,8 +65,8 @@ fun apiKeysController() {
 							e.printStackTrace()
 							r.error("Database error")
 						}
-					} catch(e: Exception) {
-						r.error("Invalid parameters")
+					} else {
+						r.error("Invalid parameters", v.validationErrorType!!, v.validationErrorText!!)
 					}
 				}
 			}
@@ -72,12 +83,11 @@ fun apiKeysController() {
 						// Fetch the key's info
 						val keyRes = keysModel.fetchApiKeyInfo(id)
 
-						if(keyRes != null && keyRes.rows.size > 0) {
-							val key = keyRes.rows[0]
-							key.put("permissions", JsonArray(key.getString("permissions")))
+						if(keyRes.count() > 0) {
+							val key = keyRes.iterator().next()
 
 							// Send key info
-							r.success(key)
+							r.success(key.toJson())
 						} else {
 							r.error("Key does not exist")
 						}
@@ -92,56 +102,56 @@ fun apiKeysController() {
 
 		// Creates a new API key
 		// Parameters:
-		//  - name (optional): String with max of 64 characters, the name of the key entry
+		//  - name: String with max of 64 characters, the name of the key entry
 		//  - permissions: JSON array, the permissions that this API key will be granted
 		router().post("/api/v1/account/self/keys/create").virtualHost(hostname).handler { r ->
-			val params = r.request().params()
 			GlobalScope.launch(vertx().dispatcher()) {
 				if(r.protectNonApiKey()) {
-					if(params.contains("name") && params.contains("permissions")) {
-						try {
-							// Collect parameters
-							val name = if(params["name"].length > 64) params["name"].substring(0, 64) else params["name"]
-							val permissions = JsonArray(params["permissions"])
+					// Request validation
+					val v = RequestValidator()
+							.param("name", Presets.accountNameValidator())
+							.param("permissions", PermissionsValidator())
 
-							// Generate ID
-							val id = generateString(10)
+					if(v.validate(r)) {
+						// Collect parameters
+						val name = v.parsedParam("name") as String
+						val permissions = (v.parsedParam("permissions") as JsonArray).toStringArray()
+
+						// Generate ID
+						val id = generateString(10)
+
+						try {
+							// Generate JWT token
+							val token = jwtCreateUnexpiringToken(json {
+								obj(
+										"sub" to r.userId(),
+										"token" to id
+								)
+							})!!
 
 							try {
-								// Generate JWT token
-								val token = jwtCreateUnexpiringToken(json {
-                                    obj(
-                                            "sub" to r.userId(),
-                                            "token" to id
-                                    )
-                                })!!
+								// Create database entry
+								keysModel.createApiKey(id, name, permissions, token, r.userId())
 
-								try {
-									// Create database entry
-									keysModel.createApiKey(id, name, permissions, token, r.userId())
-
-									// Send ID and token
-									r.success(json {
-                                        obj(
-                                                "id" to id,
-                                                "token" to token
-                                        )
-                                    })
-								} catch(e: Exception) {
-									logger.error("Failed to create new API key entry:")
-									e.printStackTrace()
-									r.error("Database error")
-								}
-							} catch(e: NullPointerException) {
-								logger.error("Generated JWT token, but function returned null")
+								// Send ID and token
+								r.success(json {
+									obj(
+											"id" to id,
+											"token" to token
+									)
+								})
+							} catch(e: Exception) {
+								logger.error("Failed to create new API key entry:")
 								e.printStackTrace()
-								r.error("Failed to generate token")
+								r.error("Database error")
 							}
-						} catch(e: Exception) {
-							r.error("Invalid parameters")
+						} catch(e: NullPointerException) {
+							logger.error("Generated JWT token, but function returned null")
+							e.printStackTrace()
+							r.error("Failed to generate token")
 						}
 					} else {
-						r.error("Must provide the following values: name, permissions")
+						r.error(v)
 					}
 				}
 			}
@@ -155,34 +165,28 @@ fun apiKeysController() {
 		//  - id: String, the alphanumeric generated key ID
 		router().post("/api/v1/account/self/key/:id/edit").virtualHost(hostname).handler { r ->
 			val id = r.pathParam("id")
-			val params = r.request().params()
 			GlobalScope.launch(vertx().dispatcher()) {
 				if(r.protectNonApiKey()) {
 					try {
 						// Fetch the key's info
 						val keyRes = keysModel.fetchApiKey(id)
 
-						if(keyRes != null && keyRes.rows.size > 0) {
-							val key = keyRes.rows[0]
+						if(keyRes.count() > 0) {
+							val key = keyRes.iterator().next()
 
-							try {
+							// Request validation
+							val v = RequestValidator()
+									.optionalParam("name", Presets.accountNameValidator(), key.name)
+									.optionalParam("permissions", PermissionsValidator(), key.permissions.toJsonArray())
+
+							if(v.validate(r)) {
 								// Collect parameters
-								val name = if(params.contains("name"))
-									if(params["name"].length > 64) {
-										params["name"].substring(0, 64)
-									} else {
-										params["name"]
-									}
-								else
-									key.getString("key_name")
-								val permissions = if(params.contains("permissions"))
-									JsonArray(params["permissions"])
-								else
-									JsonArray(key.getString("key_permissions"))
+								val name = v.parsedParam("name") as String
+								val permissions = (v.parsedParam("permissions") as JsonArray).toStringArray()
 
 								try {
 									// Update database entry
-									keysModel.updateApiKeyEntry(key.getInteger("id"), name, permissions)
+									keysModel.updateApiKeyEntry(key.internalId, name, permissions)
 
 									// Send success
 									r.success()
@@ -191,8 +195,8 @@ fun apiKeysController() {
 									e.printStackTrace()
 									r.error("Database error")
 								}
-							} catch(e: Exception) {
-								r.error("Invalid parameters")
+							} else {
+								r.error("Invalid parameters", v.validationErrorType!!, v.validationErrorText!!)
 							}
 						} else {
 							r.error("Key does not exist")
@@ -217,11 +221,11 @@ fun apiKeysController() {
 						// Fetch the key's info
 						val keyRes = keysModel.fetchApiKey(id)
 
-						if(keyRes != null && keyRes.rows.size > 0) {
-							val key = keyRes.rows[0]
+						if(keyRes.count() > 0) {
+							val key = keyRes.iterator().next()
 
 							try {
-								keysModel.deleteApiKey(key.getInteger("id"))
+								keysModel.deleteApiKey(key.internalId)
 
 								// Send success
 								r.success()

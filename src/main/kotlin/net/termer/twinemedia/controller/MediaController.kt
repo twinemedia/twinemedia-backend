@@ -11,12 +11,18 @@ import kotlinx.coroutines.launch
 import net.termer.twine.ServerManager.*
 import net.termer.twinemedia.Module.Companion.config
 import net.termer.twinemedia.Module.Companion.logger
+import net.termer.twinemedia.db.scheduleTagsViewRefresh
+import net.termer.twinemedia.enumeration.ListType
+import net.termer.twinemedia.enumeration.ListVisibility
 import net.termer.twinemedia.model.*
 import net.termer.twinemedia.util.*
+import net.termer.twinemedia.util.validation.*
+import net.termer.vertx.kotlin.validation.RequestValidator
+import net.termer.vertx.kotlin.validation.validator.*
 
 /**
  * Sets up all routes for retrieving and modifying file info + processing files
- * @since 1.0
+ * @since 1.0.0
  */
 fun mediaController() {
 	for(hostname in appHostnames()) {
@@ -24,22 +30,30 @@ fun mediaController() {
 		// Permissions:
 		//  - files.list
 		// Parameters:
-		//  - offset: Integer at least 0 that sets the offset of returned results
-		//  - limit: Integer from 0 to 100, sets the amount of results to return
-		//  - mime: String, the mime pattern to search for, can use % as a wildcard character
-		//  - order: Integer from 0 to 5, denotes the type of sorting to use (date newest to oldest, date oldest to newest, alphabetically ascending, alphabetically descending, size large to small, size small to large)
+		//  - offset: (optional) Integer at least 0 that sets the offset of returned results
+		//  - limit: (optional) Integer from 0 to 100, sets the amount of results to return
+		//  - mime: (optional) String, the mime pattern to search for, can use % as a wildcard character
+		//  - order: (optional) Integer from 0 to 5, denotes the type of sorting to use (date newest to oldest, date oldest to newest, alphabetically ascending, alphabetically descending, size large to small, size small to large, modified date newest to oldest, modified date oldest to newest)
 		router().get("/api/v1/media").virtualHost(hostname).handler { r ->
-			val params = r.request().params()
 			GlobalScope.launch(vertx().dispatcher()) {
 				if(r.protectWithPermission("files.list")) {
 					val mediaModel = MediaModel(r.account())
 
-					try {
+					// Request validation
+					val v = RequestValidator()
+							.optionalParam("offset", Presets.resultOffsetValidator(), 0)
+							.optionalParam("limit", Presets.resultLimitValidator(), 100)
+							.optionalParam("mime", Presets.mimeValidator(true), "%")
+							.optionalParam("order", IntValidator()
+									.min(0)
+									.max(7), 0)
+
+					if(v.validate(r)) {
 						// Collect parameters
-						val offset = (if(params.contains("offset")) params["offset"].toInt() else 0).coerceAtLeast(0)
-						val limit = (if(params.contains("limit")) params["limit"].toInt() else 100).coerceIn(0, 100)
-						val mime = if(params.contains("mime")) params["mime"] else "%"
-						val order = (if(params.contains("order")) params["order"].toInt() else 0).coerceIn(0, 5)
+						val offset = v.parsedParam("offset") as Int
+						val limit = v.parsedParam("limit") as Int
+						val mime = v.parsedParam("mime") as String
+						val order = v.parsedParam("order") as Int
 
 						try {
 							// Fetch files
@@ -48,8 +62,8 @@ fun mediaController() {
 							// Create JSON array of files
 							val arr = JsonArray()
 
-							for(file in media.rows.orEmpty())
-								arr.add(file)
+							for(file in media)
+								arr.add(file.toJson())
 
 							// Send files
 							r.success(JsonObject().put("files", arr))
@@ -58,8 +72,8 @@ fun mediaController() {
 							e.printStackTrace()
 							r.error("Database error")
 						}
-					} catch(e: Exception) {
-						r.error("Invalid parameters")
+					} else {
+						r.error(v)
 					}
 				}
 			}
@@ -69,53 +83,58 @@ fun mediaController() {
 		// Permissions:
 		//  - files.list
 		// Parameters:
-		//  - query: String, the plaintext query to search
-		//  - offset: Integer at least 0 that sets the offset of returned results
-		//  - limit: Integer from 0 to 100, sets the amount of results to return
-		//  - mime: String, the mime pattern to search for, can use % as a wildcard character
-		//  - order: Integer from 0 to 5, denotes the type of sorting to use (date newest to oldest, date oldest to newest, alphabetically ascending, alphabetically descending, size large to small, size small to large)
+		//  - query: (optional) String, the plaintext query to search
+		//  - offset: (optional) Integer at least 0 that sets the offset of returned results
+		//  - limit: (optional) Integer from 0 to 100, sets the amount of results to return
+		//  - mime: (optional) String, the mime pattern to search for, can use % as a wildcard character
+		//  - order: (optional) Integer from 0 to 5, denotes the type of sorting to use (date newest to oldest, date oldest to newest, alphabetically ascending, alphabetically descending, size large to small, size small to large, modified date newest to oldest, modified date oldest to newest)
 		//  - searchNames (optional): Bool, whether to search file names (if not specified defaults to true)
 		//  - searchFilenames (optional): Bool, whether to search file filenames (if not specified defaults to true)
 		//  - searchTags (optional): Bool, whether to search file tags (if not specified defaults to true)
 		//  - searchDescriptions (optional): Bool, whether to search file descriptions (if not specified defaults to true)
 		router().get("/api/v1/media/search").virtualHost(hostname).handler { r ->
-			val params = r.request().params()
 			GlobalScope.launch(vertx().dispatcher()) {
 				if(r.protectWithPermission("files.list")) {
 					val mediaModel = MediaModel(r.account())
 
-					try {
+					// Request validation
+					val v = RequestValidator()
+							.optionalParam("query", StringValidator())
+							.optionalParam("offset", Presets.resultOffsetValidator(), 0)
+							.optionalParam("limit", Presets.resultLimitValidator(), 100)
+							.optionalParam("mime", Presets.mimeValidator(true), "%")
+							.optionalParam("order", IntValidator()
+									.min(0)
+									.max(7), 0)
+							.optionalParam("searchNames", BooleanValidator(), true)
+							.optionalParam("searchFilenames", BooleanValidator(), true)
+							.optionalParam("searchTags", BooleanValidator(), true)
+							.optionalParam("searchDescriptions", BooleanValidator(), true)
+
+					if(v.validate(r)) {
 						// Collect parameters
-						val offset = (if(params.contains("offset")) params["offset"].toInt() else 0).coerceAtLeast(0)
-						val limit = (if(params.contains("limit")) params["limit"].toInt() else 100).coerceIn(0, 100)
-						val mime = if(params.contains("mime")) params["mime"] else "%"
-						val order = (if(params.contains("order")) params["order"].toInt() else 0).coerceIn(0, 5)
-						val query = if(params.contains("query")) params["query"] else ""
-						val searchItems = JsonObject()
-								.put("name", if(params.contains("searchNames")) params["searchNames"]!!.toBoolean() else true)
-								.put("filename", if(params.contains("searchFilenames")) params["searchFilenames"]!!.toBoolean() else true)
-								.put("tag", if(params.contains("searchTags")) params["searchTags"]!!.toBoolean() else true)
-								.put("description", if(params.contains("searchDescriptions")) params["searchDescriptions"]!!.toBoolean() else true)
+						val offset = v.parsedParam("offset") as Int
+						val limit = v.parsedParam("limit") as Int
+						val mime = v.parsedParam("mime") as String
+						val order = v.parsedParam("order") as Int
+						val query = v.parsedParam("query") as String?
+						val searchNames = v.parsedParam("searchNames") as Boolean
+						val searchFilenames = v.parsedParam("searchFilenames") as Boolean
+						val searchTags = v.parsedParam("searchTags") as Boolean
+						val searchDescriptions = v.parsedParam("searchDescriptions") as Boolean
 
 						try {
 							// Fetch files
-							val media = when(query.isNotEmpty()) {
-                                true -> {
-                                    mediaModel.fetchMediaByPlaintextQuery(query, offset, limit, order, mime,
-                                            searchItems.getBoolean("name"),
-                                            searchItems.getBoolean("filename"),
-                                            searchItems.getBoolean("tag"),
-                                            searchItems.getBoolean("description")
-                                    )
-                                }
-								else -> mediaModel.fetchMediaList(offset, limit, mime, order)
-							}
+							val media = if(query == null)
+								mediaModel.fetchMediaList(offset, limit, mime, order)
+							else
+								mediaModel.fetchMediaByPlaintextQuery(query, offset, limit, order, mime, searchNames, searchFilenames, searchTags, searchDescriptions)
 
 							// Create JSON array of files
 							val arr = JsonArray()
 
-							for(file in media.rows.orEmpty())
-								arr.add(file)
+							for(file in media)
+								arr.add(file.toJson())
 
 							// Send files
 							r.success(JsonObject().put("files", arr))
@@ -124,8 +143,8 @@ fun mediaController() {
 							e.printStackTrace()
 							r.error("Database error")
 						}
-					} catch(e: Exception) {
-						r.error("Invalid parameters")
+					} else {
+						r.error(v)
 					}
 				}
 			}
@@ -140,21 +159,31 @@ fun mediaController() {
 		//  - offset: Integer at least 0 that sets the offset of returned results
 		//  - limit: Integer from 0 to 100, sets the amount of results to return
 		//  - mime: String, the mime pattern to search for, can use % as a wildcard character
-		//  - order: Integer from 0 to 5, denotes the type of sorting to use (date newest to oldest, date oldest to newest, alphabetically ascending, alphabetically descending, size large to small, size small to large)
+		//  - order: Integer from 0 to 5, denotes the type of sorting to use (date newest to oldest, date oldest to newest, alphabetically ascending, alphabetically descending, size large to small, size small to large, modified date newest to oldest, modified date oldest to newest)
 		router().get("/api/v1/media/tags").virtualHost(hostname).handler { r ->
-			val params = r.request().params()
 			GlobalScope.launch(vertx().dispatcher()) {
 				if(r.protectWithPermission("files.list")) {
 					val mediaModel = MediaModel(r.account())
 
-					if(params.contains("tags")) {
+					// Request validation
+					val v = RequestValidator()
+							.param("tags", JsonArrayValidator())
+							.optionalParam("excludeTags", JsonArrayValidator())
+							.optionalParam("offset", Presets.resultOffsetValidator(), 100)
+							.optionalParam("limit", Presets.resultLimitValidator(), 100)
+							.optionalParam("order", IntValidator()
+									.min(0)
+									.max(7), 0)
+							.optionalParam("mime", Presets.mimeValidator(true), "%")
+
+					if(v.validate(r)) {
 						try {
-							val tags = JsonArray(params["tags"])
-							val excludeTags = if(params.contains("excludeTags")) JsonArray(params["excludeTags"]) else null
-							val offset = if(params.contains("offset")) params["offset"].toInt().coerceAtLeast(0) else 0
-							val limit = if(params.contains("limit")) params["limit"].toInt().coerceIn(0, 100) else 100
-							val order = if(params.contains("order")) params["order"].toInt() else 0
-							val mime = if(params.contains("mime")) params["mime"] else "%"
+							val tags = (v.parsedParam("tags") as JsonArray).toStringArray()
+							val excludeTags = (v.parsedParam("excludeTags") as JsonArray?)?.toStringArray()
+							val offset = v.parsedParam("offset") as Int
+							val limit = v.parsedParam("limit") as Int
+							val order = v.parsedParam("order") as Int
+							val mime = v.parsedParam("mime") as String
 
 							try {
 								// Fetch files
@@ -162,8 +191,8 @@ fun mediaController() {
 
 								// Compose response
 								val files = JsonArray()
-								for(row in filesRes.rows.orEmpty())
-									files.add(row)
+								for(row in filesRes)
+									files.add(row.toJson())
 
 								r.success(JsonObject().put("files", files))
 							} catch(e: Exception) {
@@ -176,7 +205,7 @@ fun mediaController() {
 							r.error("Tags must be a JSON array")
 						}
 					} else {
-						r.error("Must provide tags as JSON array to search")
+						r.error(v)
 					}
 				}
 			}
@@ -198,21 +227,14 @@ fun mediaController() {
 						val mediaRes = mediaModel.fetchMediaInfo(fileId)
 
 						// Check if it exists
-						if(mediaRes != null && mediaRes.rows.size > 0) {
+						if(mediaRes.count() > 0) {
 							// Fetch media info
-							val media = mediaRes.rows[0]
+							val media = mediaRes.iterator().next()
+							val mediaJson = media.toJson()
 
-							// Fetch and remove internal values
-							val id = media.getInteger("internal_id")
-							media.remove("internal_id")
-							val parent = media.getInteger("internal_parent")
-							media.remove("internal_parent")
-
-							// JSON-ify media metadata
-							media.put("meta", JsonObject(media.getString("meta")))
-
-							// Put null parent object (will be replaced if a parent exists)
-							media.put("parent", null as JsonObject?)
+							// Fetch internal values
+							val id = media.internalId
+							val parent = media.internalParent
 
 							// JSON array of children
 							val children = JsonArray()
@@ -222,14 +244,10 @@ fun mediaController() {
 									// Fetch children
 									val childrenRes = mediaModel.fetchMediaChildrenInfo(id)
 
-									// If there wasn't an error in fetching, this will never be null
-									if(childrenRes != null) {
-										// Add child files to JSON
-										for(child in childrenRes.rows)
-											children.add(child)
-									} else {
-										r.error("Internal error")
-									}
+									// Add them
+									for(child in childrenRes)
+										children.add(child.toJson())
+
 								} catch(e: Exception) {
 									logger.error("Failed to fetch children for file:")
 									e.printStackTrace()
@@ -240,12 +258,10 @@ fun mediaController() {
 								try {
 									// Fetch parent
 									val parentRes = mediaModel.fetchMediaInfo(parent)
-									if(parentRes != null && parentRes.rows.size > 0) {
-										media.put("parent", parentRes.rows[0])
-										media.getJsonObject("parent").remove("internal_id")
-										media.getJsonObject("parent").remove("internal_parent")
+									if(parentRes.count() > 0) {
+										mediaJson.put("parent", parentRes.iterator().next().toJson())
 									} else {
-										media.put("parent", null as String?)
+										mediaJson.put("parent", null as String?)
 									}
 								} catch(e: Exception) {
 									logger.error("Failed to fetch parent for file:")
@@ -256,13 +272,10 @@ fun mediaController() {
 							}
 
 							// Add children (empty JSON array if there are no children)
-							media.put("children", children)
-
-							// Convert tags to real JSON array
-							media.put("tags", JsonArray(media.getString("tags")))
+							mediaJson.put("children", children)
 
 							// Return response
-							r.success(media)
+							r.success(mediaJson)
 						} else {
 							r.error("File does not exist")
 						}
@@ -281,79 +294,57 @@ fun mediaController() {
 		// Route parameters:
 		//  - file: String, the alphanumeric ID of the requested media file
 		// Parameters:
-		//  - name (optional): String, the new name of the media file, can be null
-		//  - desc (optional): String, the new description of the media file, can be null
+		//  - name (optional): String, the new name of the media file, can be null (or empty to be null)
+		//  - desc (optional): String, the new description of the media file, can be null (or empty to be null)
 		//  - tags (optional): JSON array, the new tags to give this media file
 		router().post("/api/v1/media/:file/edit").virtualHost(hostname).handler { r ->
-			val params = r.request().params()
 			GlobalScope.launch(vertx().dispatcher()) {
 				if(r.protectWithPermission("files.edit")) {
-					val tagsModel = TagsModel(r.account())
 					val mediaModel = MediaModel(r.account())
 					val fileId = r.pathParam("file")
 
 					try {
 						// Fetch media file
-						val mediaRes = mediaModel.fetchMediaInfo(fileId)
+						val mediaRes = mediaModel.fetchMedia(fileId)
 
 						// Check if it exists
-						if(mediaRes != null && mediaRes.rows.size > 0) {
+						if(mediaRes.count() > 0) {
 							// Fetch media info
-							val media = mediaRes.rows[0]
+							val media = mediaRes.iterator().next()
 
 							// Check if media was created by the user
-							if(media.getInteger("creator") != r.userId() && !r.hasPermission("files.edit.all")) {
+							if(media.creator != r.userId() && !r.hasPermission("files.edit.all")) {
 								r.unauthorized()
 								return@launch
 							}
 
-							try {
-								// Resolve edit values
-								val name: String? = if(params["name"] != null) params["name"].nullIfEmpty() else media.getString("name")
-								val desc: String? = if(params["description"] != null) params["description"].nullIfEmpty() else media.getString("description")
-								val tags = if(params["tags"] != null) JsonArray(params["tags"]) else JsonArray(media.getString("tags"))
+							// Request validation
+							val v = RequestValidator()
+									.optionalParam("filename", StringValidator()
+											.trim()
+											.minLength(1)
+											.maxLength(256), media.filename)
+									.optionalParam("name", StringValidator()
+											.trim()
+											.maxLength(256), media.name)
+									.optionalParam("desc", StringValidator()
+											.maxLength(1024), media.description)
+									.optionalParam("tags", TagsValidator(), media.tags.toJsonArray())
 
-								// Validate tags
-								var badType = false
-								var dash = false
-								var space = false
-								var quote = false
-								for(tag in tags) {
-									if(tag !is String) {
-										badType = true
-										break
-									} else if(tag.startsWith('-')) {
-										dash = true
-										break
-									} else if(tag.contains(' ')) {
-										space = true
-										break
-									} else if(tag.contains('"')) {
-										quote = true
-										break
-									}
-								}
-								if(badType) {
-									r.error("All tags must be strings")
-									return@launch
-								} else if(dash) {
-									r.error("Tags must not start with a dash")
-									return@launch
-								} else if(space) {
-									r.error("Tags must not contain spaces")
-									return@launch
-								} else if(quote) {
-									r.error("Tags must not contain double quotes")
-									return@launch
-								}
+							if(v.validate(r)) {
+								// Resolve edit values
+								val filename = v.parsedParam("filename") as String
+								val name = (v.parsedParam("name") as String?)?.nullIfEmpty()
+								val desc = (v.parsedParam("desc") as String?)?.nullIfEmpty()
+								val tags = (v.parsedParam("tags") as JsonArray).toStringArray()
 
 								try {
 									// Update media info
-									mediaModel.updateMediaInfo(media.getInteger("internal_id"), name, desc, tags)
+									mediaModel.updateMediaInfo(media.internalId, filename, name, desc, tags)
 
 									try {
 										// Update tags
-										tagsModel.refreshTags()
+										scheduleTagsViewRefresh()
 
 										r.success()
 									} catch(e: Exception) {
@@ -366,9 +357,9 @@ fun mediaController() {
 									e.printStackTrace()
 									r.error("Database error")
 								}
-							} catch(e: Exception) {
+							} else {
 								// Invalid tags JSON array
-								r.error("Tags must be a JSON array")
+								r.error(v)
 							}
 						} else {
 							r.error("File does not exist")
@@ -390,7 +381,6 @@ fun mediaController() {
 		router().post("/api/v1/media/:file/delete").virtualHost(hostname).handler { r ->
 			GlobalScope.launch(vertx().dispatcher()) {
 				if(r.protectWithPermission("files.delete")) {
-					val tagsModel = TagsModel(r.account())
 					val listsModel = ListsModel(r.account())
 					val mediaModel = MediaModel(r.account())
 					val fileId = r.pathParam("file")
@@ -398,11 +388,11 @@ fun mediaController() {
 					try {
 						val mediaRes = mediaModel.fetchMedia(fileId)
 
-						if(mediaRes != null && mediaRes.rows.size > 0) {
-							val media = mediaRes.rows[0]
+						if(mediaRes.count() > 0) {
+							val media = mediaRes.iterator().next()
 
 							// Check if media was created by the user
-							if(media.getInteger("media_creator") != r.userId() && !r.hasPermission("files.delete.all")) {
+							if(media.creator != r.userId() && !r.hasPermission("files.delete.all")) {
 								r.unauthorized()
 								return@launch
 							}
@@ -413,29 +403,29 @@ fun mediaController() {
 							var delete = false
 
 							// Check if media is a child
-							if(media.getInteger("media_parent") == null) {
+							if(media.parent == null) {
 								// Check if files with the same hash exist
-								val hashMediaRes = mediaModel.fetchMediaByHash(media.getString("media_file_hash"))
+								val hashMediaRes = mediaModel.fetchMediaByHash(media.hash)
 
-								if(hashMediaRes != null && hashMediaRes.rows.size < 2) {
+								if(hashMediaRes.count() < 2) {
 									delete = true
 								}
 
 								try {
 									// Fetch children
-									val children = mediaModel.fetchMediaChildren(media.getInteger("id"))
+									val children = mediaModel.fetchMediaChildren(media.internalId)
 
 									// Delete children
-									for(child in children.rows.orEmpty()) {
+									for(child in children) {
 										try {
-											val file = config.upload_location + child.getString("media_file")
+											val file = config.upload_location + child.file
 
 											// Delete file
 											if(fs.exists(file).await())
                                                 fs.delete(file).await()
 
-											if(child.getBoolean("media_thumbnail")) {
-												val thumbFile = config.upload_location + "thumnails/" + child.getString("media_thumbnail_file")
+											if(child.hasThumbnail) {
+												val thumbFile = config.upload_location + "thumbnails/" + child.thumbnailFile
 
 												// Delete thumbnail
 												if(fs.exists(thumbFile).await())
@@ -443,19 +433,19 @@ fun mediaController() {
 											}
 
 											// Delete entry
-											mediaModel.deleteMedia(child.getString("media_id"))
+											mediaModel.deleteMedia(child.id)
 
 											try {
 												// Delete entries linking to the file in lists
-												listsModel.deleteListItemsByMediaId(child.getInteger("id"))
+												listsModel.deleteListItemsByMediaId(child.internalId)
 											} catch(e: Exception) {
-												logger.error("Failed to delete list references to child ID ${child.getString("")}:")
+												logger.error("Failed to delete list references to child ID ${child.id}:")
 												e.printStackTrace()
 												r.error("Database error")
 												return@launch
 											}
 										} catch(e: Exception) {
-											logger.error("Failed to delete child ID ${child.getString("")}:")
+											logger.error("Failed to delete child ID ${child.id}:")
 											e.printStackTrace()
 											r.error("Database error")
 											return@launch
@@ -475,28 +465,28 @@ fun mediaController() {
 								// Delete media files
 								try {
 									// Delete main file
-									val file = media.getString("media_file")
+									val file = media.file
 
 									if(fs.exists(config.upload_location + file).await())
                                         fs.delete(config.upload_location + file).await()
 								} catch(e: Exception) {
 									// Failed to delete main file
-									logger.error("Failed to delete file ${media.getString("media_file")}:")
+									logger.error("Failed to delete file ${media.file}:")
 									e.printStackTrace()
 									r.error("Internal error")
 									return@launch
 								}
-								if(media.getBoolean("media_thumbnail")) {
+								if(media.hasThumbnail) {
 									try {
 										// Delete thumbnail file
-										val file = media.getString("media_thumbnail_file")
+										val file = media.thumbnailFile
 
 
 										if(fs.exists(config.upload_location + "thumbnails/" + file).await())
                                             fs.delete(config.upload_location + "thumbnails/" + file).await()
 									} catch(e: Exception) {
 										// Failed to delete thumbnail file
-										logger.error("Failed to delete file ${media.getString("media_thumbnail_file")}")
+										logger.error("Failed to delete file ${media.thumbnailFile}")
 										e.printStackTrace()
 										r.error("Internal error")
 										return@launch
@@ -510,7 +500,7 @@ fun mediaController() {
 
 								try {
 									// Delete entries linking to the file in lists
-									listsModel.deleteListItemsByMediaId(media.getInteger("id"))
+									listsModel.deleteListItemsByMediaId(media.internalId)
 								} catch(e: Exception) {
 									logger.error("Failed to delete list references to media ID $fileId:")
 									e.printStackTrace()
@@ -530,7 +520,7 @@ fun mediaController() {
 
 						try {
 							// Update tags
-							tagsModel.refreshTags()
+							scheduleTagsViewRefresh()
 						} catch(e: Exception) {
 							logger.error("Failed to update tags:")
 							e.printStackTrace()
@@ -549,58 +539,65 @@ fun mediaController() {
 		// Permissions:
 		//  - lists.view (only required if list is not public, otherwise no authentication or permissions are required)
 		// Parameters:
-		//  - offset: Integer at least 0 that sets the offset of returned results
-		//  - limit: Integer from 0 to 100, sets the amount of results to return
-		//  - order: Integer from 0 to 5, denotes the type of sorting to use (date newest to oldest, date oldest to newest, alphabetically ascending, alphabetically descending, size large to small, size small to large)
+		//  - offset: (optional) Integer at least 0 that sets the offset of returned results
+		//  - limit: (optional) Integer from 0 to 100, sets the amount of results to return
+		//  - order: (optional) Integer from 0 to 5, denotes the type of sorting to use (date newest to oldest, date oldest to newest, alphabetically ascending, alphabetically descending, size large to small, size small to large, modified date newest to oldest, modified date oldest to newest)
 		// Route params:
 		//  - id: String, the alphanumeric ID of the list
 		router().get("/api/v1/media/list/:id").virtualHost(hostname).handler { r ->
-			val params = r.request().params()
 			val listId = r.pathParam("id")
 			GlobalScope.launch(vertx().dispatcher()) {
 				val mediaModel = MediaModel()
 				val listsModel = ListsModel()
 
-				try {
-					// Set model account if authenticated
-					if(r.authenticated())
-						mediaModel.account = r.account()
+				// Set model account if authenticated
+				if(r.authenticated())
+					mediaModel.account = r.account()
 
+				// Request validation
+				val v = RequestValidator()
+						.optionalParam("offset", Presets.resultOffsetValidator(), 0)
+						.optionalParam("limit", Presets.resultLimitValidator(), 100)
+						.optionalParam("order", IntValidator()
+								.min(0)
+								.max(7), 0)
+
+				if(v.validate(r)) {
 					// Collect parameters
-					val offset = (if(params.contains("offset")) params["offset"].toInt() else 0).coerceAtLeast(0)
-					val limit = (if(params.contains("limit")) params["limit"].toInt() else 100).coerceIn(0, 100)
-					val order = (if(params.contains("order")) params["order"].toInt() else 0).coerceIn(0, 5)
+					val offset = v.parsedParam("offset") as Int
+					val limit = v.parsedParam("limit") as Int
+					val order = v.parsedParam("order") as Int
 
 					try {
 						val listRes = listsModel.fetchList(listId)
 
-						if(listRes != null && listRes.rows.size > 0) {
-							val list = listRes.rows[0]
+						if(listRes.count() > 0) {
+							val list = listRes.iterator().next()
 
-							if(list.getInteger("list_visibility") == 1 || r.hasPermission("lists.view")) {
+							if(list.visibility == ListVisibility.PUBLIC || r.hasPermission("lists.view")) {
 								try {
 									// Fetch files based on list type
-									val media = when(list.getInteger("list_type")) {
-                                        1 -> {
+									val media = when(list.type) {
+                                        ListType.AUTOMATICALLY_POPULATED -> {
                                             // Collect source data
-                                            val tags = if(list.getString("list_source_tags") == null) null else JsonArray(list.getString("list_source_tags"))
-                                            val excludeTags = if(list.getString("list_source_exclude_tags") == null) null else JsonArray(list.getString("list_source_exclude_tags"))
-                                            val createdBefore = list.getString("list_source_created_before")
-                                            val createdAfter = list.getString("list_source_created_after")
-                                            val mime = list.getString("list_source_mime")
+                                            val tags = list.sourceTags
+                                            val excludeTags = list.sourceExcludeTags
+                                            val createdBefore = list.sourceCreatedBefore
+                                            val createdAfter = list.sourceCreatedAfter
+                                            val mime = list.sourceMime
 
                                             mediaModel.fetchMediaListByTagsAndDateRange(tags, excludeTags, createdBefore, createdAfter, mime, offset, limit, order)
                                         }
 										else -> {
-											mediaModel.fetchMediaListByListId(offset, limit, list.getInteger("id"), order)
+											mediaModel.fetchMediaListByListId(offset, limit, list.internalId, order)
 										}
 									}
 
 									// Create JSON array of files
 									val arr = JsonArray()
 
-									for(file in media.rows.orEmpty())
-										arr.add(file)
+									for(file in media)
+										arr.add(file.toJson())
 
 									// Send files
 									r.success(json {
@@ -624,8 +621,8 @@ fun mediaController() {
 						e.printStackTrace()
 						r.error("Database error")
 					}
-				} catch(e: Exception) {
-					r.error("Invalid parameters")
+				} else {
+					r.error(v)
 				}
 			}
 		}
