@@ -167,8 +167,8 @@ class MediaModel {
 
 		if(account != null) {
 			for((index, tag) in account!!.excludeTags.withIndex()) {
-				sql.append(" AND NOT media_tags::jsonb ? #{tag$index}")
-				params["tag$index"] = tag
+				sql.append(" AND NOT media_tags::jsonb ? #{prefExcludeTag$index}")
+				params["prefExcludeTag$index"] = tag
 			}
 		}
 
