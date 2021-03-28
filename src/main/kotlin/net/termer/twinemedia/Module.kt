@@ -9,7 +9,6 @@ import net.termer.twine.Twine
 import net.termer.twine.Twine.serverArgs
 import net.termer.twine.modules.TwineModule
 import net.termer.twine.modules.TwineModule.Priority.LOW
-import net.termer.twine.utils.TwineEvent
 import net.termer.twine.utils.files.BlockingFileChecker
 import net.termer.twine.utils.files.BlockingReader
 import net.termer.twine.utils.files.BlockingWriter
@@ -128,6 +127,7 @@ class Module : TwineModule {
 				processesController()
 				listsController()
 				apiKeysController()
+				infoController()
 				notFoundController()
 
 				// Allow upload status event bus channels over websocket
