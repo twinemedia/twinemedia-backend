@@ -22,3 +22,14 @@ Changes:
  - Many other small improvements
 
 * There is now a small delay (typically under 3 seconds) after editing a file's tags and the tags database being refreshed
+
+=== Version 1.4.1 ===
+Config changes: No
+New Features: Yes
+Bugfixes: Yes
+
+This release fixes a bug where tag search was broken if any tag filters were in place, and adds a build info route.
+
+Changes:
+ - Added a build info route (/api/v1/info, doesn't require authentication)
+ - Fixed tag search not working with tag filters in place
