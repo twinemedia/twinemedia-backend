@@ -98,7 +98,7 @@ class AccountsModel {
 	}
 
 	/**
-	 * Fetches all info about an account with the specified email
+	 * Fetches all info about an account with the specified email (case-insensitive)
 	 * @param email The email to search
 	 * @return All rows from database search
 	 * @since 1.4.0
@@ -106,7 +106,7 @@ class AccountsModel {
 	suspend fun fetchAccountByEmail(email: String): RowSet<Account> {
 		return SqlTemplate
 				.forQuery(client, """
-					SELECT * FROM accounts WHERE account_email = #{email}
+					SELECT * FROM accounts WHERE LOWER(account_email) = LOWER(#{email})
 				""".trimIndent())
 				.mapTo(Account.MAPPER)
 				.execute(hashMapOf<String, Any>(
