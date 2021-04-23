@@ -1,9 +1,11 @@
 package net.termer.twinemedia.db.dataobject
 
 import io.vertx.codegen.annotations.DataObject
+import io.vertx.core.json.JsonObject
 import io.vertx.kotlin.core.json.json
 import io.vertx.kotlin.core.json.obj
 import io.vertx.sqlclient.templates.RowMapper
+import net.termer.twinemedia.db.containsColumn
 import net.termer.twinemedia.util.toJsonArray
 import net.termer.twinemedia.util.toStringArray
 import java.time.OffsetDateTime
@@ -108,6 +110,11 @@ class MediaInfo(
 		 */
 		val processError: String?,
 		/**
+		 * Whether this media info object includes a description
+		 * @since 1.4.2
+		 */
+		val hasDescription: Boolean,
+		/**
 		 * The media file's description
 		 * @since 1.4.2
 		 */
@@ -118,25 +125,31 @@ class MediaInfo(
 	 * @return A JSON representation of the media's info
 	 * @since 1.4.0
 	 */
-	fun toJson() = json {
-		obj(
-				"id" to id,
-				"name" to name,
-				"filename" to filename,
-				"creator" to creator,
-				"size" to size,
-				"mime" to mime,
-				"created_on" to createdOn.toString(),
-				"modified_on" to modifiedOn.toString(),
-				"creator" to creator,
-				"creator_name" to creatorName,
-				"file_hash" to hash,
-				"thumbnail" to hasThumbnail,
-				"tags" to tags.toJsonArray(),
-				"processing" to isProcessing,
-				"process_error" to processError,
-				"description" to description
-		)
+	fun toJson(): JsonObject {
+		val json = json {
+			obj(
+					"id" to id,
+					"name" to name,
+					"filename" to filename,
+					"creator" to creator,
+					"size" to size,
+					"mime" to mime,
+					"created_on" to createdOn.toString(),
+					"modified_on" to modifiedOn.toString(),
+					"creator" to creator,
+					"creator_name" to creatorName,
+					"file_hash" to hash,
+					"thumbnail" to hasThumbnail,
+					"tags" to tags.toJsonArray(),
+					"processing" to isProcessing,
+					"process_error" to processError
+			)
+		}
+
+		if(hasDescription)
+			json.put("description", description)
+
+		return json
 	}
 
 	companion object {
@@ -162,7 +175,8 @@ class MediaInfo(
 					hasThumbnail = row.getBoolean("thumbnail"),
 					isProcessing = row.getBoolean("processing"),
 					processError = row.getString("process_error"),
-					description = row.getString("description")
+					hasDescription = row.containsColumn("description"),
+					description = if(row.containsColumn("description")) row.getString("description") else null
 			)
 		}
 	}

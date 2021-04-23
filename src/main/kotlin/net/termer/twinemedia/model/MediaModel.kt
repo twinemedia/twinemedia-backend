@@ -192,7 +192,6 @@ class MediaModel {
 				media_size AS size,
 				media_mime AS mime,
 				media_tags AS tags,
-				media_description AS description,
 				media_created_on AS created_on,
 				media_modified_on AS modified_on,
 				media_creator AS creator,
@@ -350,7 +349,7 @@ class MediaModel {
 	suspend fun fetchMediaInfo(mediaId: String): RowSet<MediaInfo> {
 		return SqlTemplate
 				.forQuery(client, """
-					${infoSelect()}
+					${infoSelect("media_description AS description")}
 					WHERE
 					${viewWhereFilter()}
 					AND media_id = #{mediaId}
@@ -370,7 +369,7 @@ class MediaModel {
 	suspend fun fetchMediaInfo(id: Int): RowSet<MediaInfo> {
 		return SqlTemplate
 				.forQuery(client, """
-					${infoSelect()}
+					${infoSelect("media_description AS description")}
 					WHERE
 					${viewWhereFilter()}
 					AND media.id = #{id}
