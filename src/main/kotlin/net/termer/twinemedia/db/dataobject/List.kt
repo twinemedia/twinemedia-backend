@@ -25,6 +25,7 @@ import java.time.OffsetDateTime
  * @param sourceMime The MIME type media must have to be in this list (can be null) (specify null if type is not AUTOMATICALLY_POPULATED)
  * @param sourceCreatedBefore The time media must have been uploaded to be in this list (can be null) (specify null if type is not AUTOMATICALLY_POPULATED)
  * @param sourceCreatedAfter The time media must have been uploaded to be in this list (can be null) (specify null if type is not AUTOMATICALLY_POPULATED)
+ * @param showAllUserFiles Whether media by all users should be shown in list, not just by the list creator (specify false if type is not AUTOMATICALLY_POPULATED)
  * @since 1.4.0
  */
 @DataObject
@@ -103,7 +104,13 @@ class List(
 		 * Only applies to lists with type AUTOMATICALLY_POPULATED, will be null for other types.
 		 * @since 1.4.0
 		 */
-		val sourceCreatedAfter: OffsetDateTime?
+		val sourceCreatedAfter: OffsetDateTime?,
+		/**
+		 * Whether media by all users should be shown in list, not just by the list creator.
+		 * Only applies to lists with type AUTOMATICALLY_POPULATED.
+		 * @since 1.4.2
+		 */
+		val showAllUserFiles: Boolean
 ) {
 	companion object {
 		/**
@@ -127,7 +134,8 @@ class List(
 					sourceExcludeTags = row.getJsonArray("list_source_exclude_tags")?.toStringArray(),
 					sourceMime = row.getString("list_source_mime"),
 					sourceCreatedBefore = row.getOffsetDateTime("list_source_created_before"),
-					sourceCreatedAfter = row.getOffsetDateTime("list_source_created_after")
+					sourceCreatedAfter = row.getOffsetDateTime("list_source_created_after"),
+					showAllUserFiles = row.getBoolean("list_show_all_user_files")
 			)
 		}
 	}

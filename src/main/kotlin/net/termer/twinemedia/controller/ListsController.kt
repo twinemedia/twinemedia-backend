@@ -203,6 +203,7 @@ fun listsController() {
 									.noNewlinesOrControlChars()
 									.maxLength(64)
 									.trim())
+							.optionalParam("showAllUserFiles", BooleanValidator())
 
 					if(v.validate(r)) {
 						val name = v.parsedParam("name") as String
@@ -214,13 +215,14 @@ fun listsController() {
 						val sourceCreatedBefore = if(type == AUTOMATICALLY_POPULATED) v.parsedParam("sourceCreatedBefore") as OffsetDateTime? else null
 						val sourceCreatedAfter = if(type == AUTOMATICALLY_POPULATED) v.parsedParam("sourceCreatedAfter") as OffsetDateTime? else null
 						val sourceMime = if(type == AUTOMATICALLY_POPULATED) v.parsedParam("sourceMime") as String? else null
+						val showAllUserFiles = if(type == AUTOMATICALLY_POPULATED && r.account().hasPermission("files.list.all")) (v.parsedParam("showAllUserFiles") as Boolean?)?:false else false
 
 						// Generate list ID
 						val id = generateString(10)
 
 						try {
 							// Create list
-							listsModel.createList(id, name, description, r.userId(), visibility, type, sourceTags, sourceExcludeTags, sourceCreatedBefore, sourceCreatedAfter, sourceMime)
+							listsModel.createList(id, name, description, r.userId(), visibility, type, sourceTags, sourceExcludeTags, sourceCreatedBefore, sourceCreatedAfter, sourceMime, showAllUserFiles)
 
 							// Send ID
 							r.success(json {
@@ -335,6 +337,7 @@ fun listsController() {
 											.noNewlinesOrControlChars()
 											.maxLength(64)
 											.trim())
+									.optionalParam("showAllUserFiles", BooleanValidator(), list.showAllUserFiles)
 
 							if(v.validate(r)) {
 								val name = v.parsedParam("name") as String
@@ -346,6 +349,7 @@ fun listsController() {
 								val sourceCreatedBefore = if(type == AUTOMATICALLY_POPULATED) v.parsedParam("sourceCreatedBefore") as OffsetDateTime? else null
 								val sourceCreatedAfter = if(type == AUTOMATICALLY_POPULATED) v.parsedParam("sourceCreatedAfter") as OffsetDateTime? else null
 								val sourceMime = if(type == AUTOMATICALLY_POPULATED) v.parsedParam("sourceMime") as String? else null
+								val showAllUserFiles = if(type == AUTOMATICALLY_POPULATED) v.parsedParam("showAllUserFiles") as Boolean else false
 
 								// Get list ID
 								val internalId = list.internalId
@@ -363,7 +367,7 @@ fun listsController() {
 											listsModel.deleteListItemsByListId(list.internalId)
 
 										// Update list
-										listsModel.updateListToAutomaticallyPopulated(internalId, name, description, visibility, sourceTags, sourceExcludeTags, sourceCreatedBefore, sourceCreatedAfter, sourceMime)
+										listsModel.updateListToAutomaticallyPopulated(internalId, name, description, visibility, sourceTags, sourceExcludeTags, sourceCreatedBefore, sourceCreatedAfter, sourceMime, showAllUserFiles)
 
 										// Send success
 										r.success()

@@ -192,6 +192,7 @@ class MediaModel {
 				media_size AS size,
 				media_mime AS mime,
 				media_tags AS tags,
+				media_description AS description,
 				media_created_on AS created_on,
 				media_modified_on AS modified_on,
 				media_creator AS creator,
@@ -553,24 +554,26 @@ class MediaModel {
 	}
 
 	/**
-	 * Fetches all media files with the specified tags, and between the provided dates
+	 * Fetches all media files with the specified tags, between the provided dates, and the media creator
 	 * @param tags The tags to search for
 	 * @param excludeTags The tags to exclude when searching for files
 	 * @param createdBefore The time that media files must have been created before (can be null to allow any time)
 	 * @param createdAfter The time that media files must have been created after (can be null to allow any time)
 	 * @param mime The media MIME pattern (allows % for use as wildcards, null to allow all types)
+	 * @param creator The account which files must be created by (specifying null will return files from all accounts)
 	 * @param offset The offset of rows to return
 	 * @param limit The amount of rows to return
 	 * @param order The order to return the media files
-	 * @since 1.4.0
+	 * @since 1.4.2
 	 */
-	suspend fun fetchMediaListByTagsAndDateRange(tags: Array<String>?, excludeTags: Array<String>?, createdBefore: OffsetDateTime?, createdAfter: OffsetDateTime?, mime: String?, offset: Int, limit: Int, order: Int): RowSet<MediaInfo> {
+	suspend fun fetchMediaListByTagsDateRangeAndCreator(tags: Array<String>?, excludeTags: Array<String>?, createdBefore: OffsetDateTime?, createdAfter: OffsetDateTime?, mime: String?, creator: Int?, offset: Int, limit: Int, order: Int): RowSet<MediaInfo> {
 		val params = hashMapOf(
 				"createdBefore" to createdBefore,
 				"createdAfter" to createdAfter,
 				"mime" to mime,
 				"offset" to offset,
-				"limit" to limit
+				"limit" to limit,
+				"creator" to creator
 		)
 
 		val beforeSql = if(createdBefore == null)
@@ -587,6 +590,11 @@ class MediaModel {
 			""
 		else
 			"AND media_mime LIKE #{mime}"
+
+		val creatorSql = if(creator == null)
+			""
+		else
+			"AND media_creator = #{creator}"
 
 		var tagsSql = ""
 		if(tags != null) {
@@ -613,6 +621,7 @@ class MediaModel {
 					$beforeSql
 					$afterSql
 					$mimeSql
+					$creatorSql
 					$tagsSql
 					$excludeTagsSql AND
 					${excludeTagsFilter(params)}

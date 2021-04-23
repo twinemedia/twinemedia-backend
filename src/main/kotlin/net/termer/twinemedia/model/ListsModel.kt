@@ -179,6 +179,7 @@ class ListsModel {
 				list_source_created_before AS source_created_before,
 				list_source_created_after AS source_created_after,
 				list_source_mime AS source_mime,
+				list_show_all_user_files AS show_all_user_files,
 				list_creator AS creator,
 				account_name AS creator_name
 				${if(extra.orEmpty().isBlank()) "" else ", $extra"}
@@ -206,15 +207,16 @@ class ListsModel {
 	 * @param sourceCreatedBefore The time media must be created before in order to be displayed in this list (can be null, only applies if type is AUTOMATICALLY_POPULATED)
 	 * @param sourceCreatedAfter The time media must be created after in order to be displayed in this list (can be null, only applies if type is AUTOMATICALLY_POPULATED)
 	 * @param sourceMime The media MIME pattern that media must match in order to be displayed in this list (can be null, only applies if type is AUTOMATICALLY_POPULATED, allows % for use as wildcards)
+	 * @param showAllUserFiles Whether this list will show files from all users and not just the creator's files (only applies if the type is AUTOMATICALLY_POPULATED, otherwise should be false)
 	 * @since 1.4.0
 	 */
-	suspend fun createList(id: String, name: String, description: String?, creator: Int, visibility: ListVisibility, type: ListType, sourceTags: Array<String>?, sourceExcludeTags: Array<String>?, sourceCreatedBefore: OffsetDateTime?, sourceCreatedAfter: OffsetDateTime?, sourceMime: String?) {
+	suspend fun createList(id: String, name: String, description: String?, creator: Int, visibility: ListVisibility, type: ListType, sourceTags: Array<String>?, sourceExcludeTags: Array<String>?, sourceCreatedBefore: OffsetDateTime?, sourceCreatedAfter: OffsetDateTime?, sourceMime: String?, showAllUserFiles: Boolean) {
 		SqlTemplate
 				.forUpdate(client, """
 					INSERT INTO lists
-					( list_id, list_name, list_description, list_creator, list_visibility, list_type, list_source_tags, list_source_exclude_tags, list_source_created_before, list_source_created_after, list_source_mime )
+					( list_id, list_name, list_description, list_creator, list_visibility, list_type, list_source_tags, list_source_exclude_tags, list_source_created_before, list_source_created_after, list_source_mime, list_show_all_user_files )
 					VALUES
-					( #{id}, #{name}, #{desc}, #{creator}, #{visibility}, #{type}, CAST( #{sourceTags} AS jsonb ), CAST( #{sourceExcludeTags} AS jsonb ), #{sourceCreatedBefore}, #{sourceCreatedAfter}, #{sourceMime} )
+					( #{id}, #{name}, #{desc}, #{creator}, #{visibility}, #{type}, CAST( #{sourceTags} AS jsonb ), CAST( #{sourceExcludeTags} AS jsonb ), #{sourceCreatedBefore}, #{sourceCreatedAfter}, #{sourceMime}, #{showAllUserFiles} )
 				""".trimIndent())
 				.execute(hashMapOf<String, Any?>(
 						"id" to id,
@@ -227,7 +229,8 @@ class ListsModel {
 						"sourceExcludeTags" to sourceExcludeTags?.toJsonArray(),
 						"sourceCreatedBefore" to sourceCreatedBefore,
 						"sourceCreatedAfter" to sourceCreatedAfter,
-						"sourceMime" to sourceMime
+						"sourceMime" to sourceMime,
+						"showAllUserFiles" to (showAllUserFiles)
 				)).await()
 	}
 
@@ -486,6 +489,7 @@ class ListsModel {
 						list_source_created_before = NULL,
 						list_source_created_after = NULL,
 						list_source_mime = NULL,
+						list_show_all_user_files = FALSE,
 						list_modified_on = NOW()
 					WHERE
 					${editWhereFilter()}
@@ -510,9 +514,9 @@ class ListsModel {
 	 * @param sourceCreatedBefore The time media must be created before in order to be displayed in this list (can be null)
 	 * @param sourceCreatedAfter The time media must be created after in order to be displayed in this list (can be null)
 	 * @param sourceMime The media MIME pattern that media must match in order to be displayed in this list (can be null, allows % for use as wildcards)
-	 * @since 1.4.0
+	 * @since 1.4.2
 	 */
-	suspend fun updateListToAutomaticallyPopulated(id: Int, name: String, description: String?, visibility: ListVisibility, sourceTags: Array<String>?, sourceExcludeTags: Array<String>?, sourceCreatedBefore: OffsetDateTime?, sourceCreatedAfter: OffsetDateTime?, sourceMime: String?) {
+	suspend fun updateListToAutomaticallyPopulated(id: Int, name: String, description: String?, visibility: ListVisibility, sourceTags: Array<String>?, sourceExcludeTags: Array<String>?, sourceCreatedBefore: OffsetDateTime?, sourceCreatedAfter: OffsetDateTime?, sourceMime: String?, showAllUserFiles: Boolean) {
 		SqlTemplate
 				.forUpdate(client, """
 					UPDATE lists
@@ -526,6 +530,7 @@ class ListsModel {
 						list_source_created_before = #{sourceCreatedBefore},
 						list_source_created_after = #{sourceCreatedAfter},
 						list_source_mime = #{sourceMime},
+						list_show_all_user_files = #{showAllUserFiles},
 						list_modified_on = NOW()
 					WHERE
 					${editWhereFilter()}
@@ -540,7 +545,8 @@ class ListsModel {
 						"sourceExcludeTags" to sourceExcludeTags?.toJsonArray(),
 						"sourceCreatedBefore" to sourceCreatedBefore,
 						"sourceCreatedAfter" to sourceCreatedAfter,
-						"sourceMime" to sourceMime
+						"sourceMime" to sourceMime,
+						"showAllUserFiles" to showAllUserFiles
 				)).await()
 	}
 

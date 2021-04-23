@@ -30,7 +30,9 @@ import java.time.OffsetDateTime
  * @param sourceMime The MIME type media must have to be in this list (can be null) (specify null if type is not AUTOMATICALLY_POPULATED)
  * @param sourceCreatedBefore The time media must have been uploaded to be in this list (can be null) (specify null if type is not AUTOMATICALLY_POPULATED)
  * @param sourceCreatedAfter The time media must have been uploaded to be in this list (can be null) (specify null if type is not AUTOMATICALLY_POPULATED)
+ * @param showAllUserFiles Whether media by all users should be shown in list, not just by the list creator (only applies to lists with type AUTOMATICALLY_POPULATED)
  * @param itemCount The amount of items this list has (specify -1 if type is not STANDARD)
+ * @param containsMedia Whether this list contains a media file that was specified in a query (can be null) (will be null if none was specified)
  * @since 1.4.0
  */
 @DataObject
@@ -111,6 +113,12 @@ class ListInfo(
 		 */
 		val sourceCreatedAfter: OffsetDateTime?,
 		/**
+		 * Whether media by all users should be shown in list, not just by the list creator.
+		 * Only applies to lists with type AUTOMATICALLY_POPULATED.
+		 * @since 1.4.2
+		 */
+		val showAllUserFiles: Boolean,
+		/**
 		 * The amount of items this list has.
 		 * Only applies to lists with type STANDARD, will be -1 for other types.
 		 * @since 1.4.0
@@ -144,6 +152,7 @@ class ListInfo(
 					"source_exclude_tags" to sourceExcludeTags?.toJsonArray(),
 					"source_created_before" to sourceCreatedBefore?.toString(),
 					"source_created_after" to sourceCreatedAfter?.toString(),
+					"show_all_user_files" to showAllUserFiles,
 					"source_mime" to sourceMime,
 					"item_count" to itemCount
 			)
@@ -178,6 +187,7 @@ class ListInfo(
 					sourceMime = row.getString("source_mime"),
 					sourceCreatedBefore = row.getOffsetDateTime("source_created_before"),
 					sourceCreatedAfter = row.getOffsetDateTime("source_created_after"),
+					showAllUserFiles = row.getBoolean("show_all_user_files"),
 					itemCount = row.getInteger("item_count"),
 					containsMedia = if(row.containsColumn("contains_media")) row.getBoolean("contains_media") else null
 			)
