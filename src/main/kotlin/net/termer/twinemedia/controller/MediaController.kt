@@ -327,7 +327,7 @@ fun mediaController() {
 									.optionalParam("name", StringValidator()
 											.trim()
 											.maxLength(256), media.name)
-									.optionalParam("desc", StringValidator()
+									.optionalParam("description", StringValidator()
 											.maxLength(1024), media.description)
 									.optionalParam("tags", TagsValidator(), media.tags.toJsonArray())
 
@@ -335,7 +335,7 @@ fun mediaController() {
 								// Resolve edit values
 								val filename = v.parsedParam("filename") as String
 								val name = (v.parsedParam("name") as String?)?.nullIfEmpty()
-								val desc = (v.parsedParam("desc") as String?)?.nullIfEmpty()
+								val desc = (v.parsedParam("description") as String?)?.nullIfEmpty()
 								val tags = (v.parsedParam("tags") as JsonArray).toStringArray()
 
 								try {
@@ -549,10 +549,7 @@ fun mediaController() {
 			GlobalScope.launch(vertx().dispatcher()) {
 				val mediaModel = MediaModel()
 				val listsModel = ListsModel()
-
-				// Set model account if authenticated
-				if(r.authenticated())
-					mediaModel.account = r.account()
+				val accountsModel = AccountsModel()
 
 				// Request validation
 				val v = RequestValidator()
@@ -576,6 +573,11 @@ fun mediaController() {
 
 							if(list.visibility == ListVisibility.PUBLIC || r.hasPermission("lists.view")) {
 								try {
+									val account = if(list.type == ListType.AUTOMATICALLY_POPULATED)
+										accountsModel.fetchAccountById(list.creator).first()
+									else
+										null
+
 									// Fetch files based on list type
 									val media = when(list.type) {
                                         ListType.AUTOMATICALLY_POPULATED -> {
@@ -585,8 +587,12 @@ fun mediaController() {
                                             val createdBefore = list.sourceCreatedBefore
                                             val createdAfter = list.sourceCreatedAfter
                                             val mime = list.sourceMime
+	                                        val creator = if(account!!.hasPermission("files.list.all") && list.showAllUserFiles)
+	                                        	null
+	                                        else
+	                                        	list.creator
 
-                                            mediaModel.fetchMediaListByTagsAndDateRange(tags, excludeTags, createdBefore, createdAfter, mime, offset, limit, order)
+                                            mediaModel.fetchMediaListByTagsDateRangeAndCreator(tags, excludeTags, createdBefore, createdAfter, mime, creator, offset, limit, order)
                                         }
 										else -> {
 											mediaModel.fetchMediaListByListId(offset, limit, list.internalId, order)

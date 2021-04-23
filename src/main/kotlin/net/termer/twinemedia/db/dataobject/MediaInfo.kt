@@ -106,7 +106,12 @@ class MediaInfo(
 		 * The error that caused the media file's processing to fail, or null if no error has occurred
 		 * @since 1.4.0
 		 */
-		val processError: String?
+		val processError: String?,
+		/**
+		 * The media file's description
+		 * @since 1.4.2
+		 */
+		val description: String?
 ) {
 	/**
 	 * Returns a JSON representation of the media's info
@@ -129,7 +134,8 @@ class MediaInfo(
 				"thumbnail" to hasThumbnail,
 				"tags" to tags.toJsonArray(),
 				"processing" to isProcessing,
-				"process_error" to processError
+				"process_error" to processError,
+				"description" to description
 		)
 	}
 
@@ -155,7 +161,8 @@ class MediaInfo(
 					hash = row.getString("file_hash"),
 					hasThumbnail = row.getBoolean("thumbnail"),
 					isProcessing = row.getBoolean("processing"),
-					processError = row.getString("process_error")
+					processError = row.getString("process_error"),
+					description = row.getString("description")
 			)
 		}
 	}
