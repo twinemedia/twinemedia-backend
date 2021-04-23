@@ -47,3 +47,4 @@ Changes:
  - Fixed any user being able to create a public list that exposes files from all users
  - Fixed lists showing up differently for different users based on permissions and filtering preferences
  - Fixed emails being case-sensitive
+ - Fixed descriptions not showing and not being saved
