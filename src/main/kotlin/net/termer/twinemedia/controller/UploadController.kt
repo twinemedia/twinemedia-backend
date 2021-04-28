@@ -323,7 +323,7 @@ fun uploadController() {
 											mediaName = URLDecoder.decode(headers["X-FILE-NAME"], StandardCharsets.UTF_8.toString()).toLength(256)
 										// Set description if it's specified as a header
 										if(headers.contains("X-FILE-DESCRIPTION"))
-											mediaName = URLDecoder.decode(headers["X-FILE-DESCRIPTION"], StandardCharsets.UTF_8.toString()).toLength(1024)
+											mediaDesc = URLDecoder.decode(headers["X-FILE-DESCRIPTION"], StandardCharsets.UTF_8.toString()).toLength(1024)
 										// Set tags if they're specified as a header
 										if(headers.contains("X-FILE-TAGS"))
 											try {

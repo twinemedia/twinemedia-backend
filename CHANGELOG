@@ -34,8 +34,8 @@ Changes:
  - Added a build info route (/api/v1/info, doesn't require authentication)
  - Fixed tag search not working with tag filters in place
 
-== Version 1.4.2 ===
-Config changes: No
+=== Version 1.4.2 ===
+Config Changes: No
 New Features: Yes
 Bugfixes: Yes
 
@@ -48,3 +48,19 @@ Changes:
  - Fixed lists showing up differently for different users based on permissions and filtering preferences
  - Fixed emails being case-sensitive
  - Fixed descriptions not showing and not being saved
+
+=== Version 1.5.0 ===
+
+
+CHANGE THIS TO BE CORRECT LOL
+
+
+Config changes: No
+New Features: Yes
+Bugfixes: No
+
+Changes:
+ - Added support for multiple storage sources
+ - Added Amazon S3 storage support
+ - Fixed websocket sending data for all users instead of the logged in user
+ - Fixed X-FILE-DESCRIPTION setting name instead of description
