@@ -1,7 +1,11 @@
 package net.termer.twinemedia.db.dataobject
 
 import io.vertx.codegen.annotations.DataObject
+import io.vertx.core.json.JsonObject
+import io.vertx.kotlin.core.json.json
+import io.vertx.kotlin.core.json.obj
 import io.vertx.sqlclient.templates.RowMapper
+import net.termer.twine.ServerManager.vertx
 import net.termer.twinemedia.db.containsColumn
 import net.termer.twinemedia.util.containsPermission
 import net.termer.twinemedia.util.toStringArray
@@ -125,6 +129,20 @@ class Account(
 	 * @since 1.3.0
 	 */
 	fun hasAdminPermission() = !isApiKey && admin
+
+	/**
+	 * Sends an event to all SockJS clients authenticated as this account
+	 * @param type The event type
+	 * @param json The event's JSON body
+	 * @since 1.5.0
+	 */
+	fun sendEvent(type: String, json: JsonObject = JsonObject()) {
+		vertx().eventBus().publish("twinemedia.event.account", json {obj(
+				"account" to id,
+				"type" to type,
+				"json" to json
+		)})
+	}
 
 	companion object {
         /**

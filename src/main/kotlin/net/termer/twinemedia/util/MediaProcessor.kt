@@ -47,7 +47,7 @@ private val executor = FFmpegExecutor(ffmpeg, ffprobe)
 private val mediaQueue = CopyOnWriteArrayList<MediaProcessorJob>()
 private var jobIdIncrementer = 0
 
-private val procLogger : Logger = LoggerFactory.getLogger(MediaProcessorJob::class.java)
+private val procLogger: Logger = LoggerFactory.getLogger(MediaProcessorJob::class.java)
 
 // Returns a new unique job ID integer
 private fun newJobId() = jobIdIncrementer++
@@ -89,7 +89,7 @@ val videoExtensions = arrayOf(
  * Starts a media processor instance
  * @since 1.0
  */
-fun startMediaProcessor() : Thread {
+fun startMediaProcessor(): Thread {
     val thread = thread(start = false) {
         // Sleep random amount of time to avoid deadlocks with other threads
         Thread.sleep(Random.nextLong(0, 1000))
@@ -189,8 +189,10 @@ fun startMediaProcessor() : Thread {
                         File(tmpOut).delete()
 
                         // Broadcast encoding error
-                        vertx().eventBus().publish("twinemedia.process.$id", json {
+                        vertx().eventBus().publish("twinemedia.event.media.process", json {
                             obj(
+                                    "id" to id,
+                                    "creator" to job.creator,
                                     "status" to "error",
                                     "error" to "Encoding error"
                             )
@@ -222,8 +224,10 @@ fun startMediaProcessor() : Thread {
                             // Broadcast progress percentage
                             val percent = ((prog.out_time_ns/10e6) / duration).toInt().coerceAtMost(100)
 
-                            vertx().eventBus().publish("twinemedia.process.$id", json {
+                            vertx().eventBus().publish("twinemedia.event.media.process", json {
                                 obj(
+                                        "id" to id,
+                                        "creator" to job.creator,
                                         "status" to "progress",
                                         "percent" to percent
                                 )
@@ -245,10 +249,6 @@ fun startMediaProcessor() : Thread {
                         // Return to normal loop operation
                         continue@loop
                     }
-
-                    vertx().eventBus().publish("twinemedia.progress.$id", json {
-                        obj("status" to "processing")
-                    })
 
                     // Fetch info about new file
                     val fileSize = File(out).length()
@@ -295,8 +295,12 @@ fun startMediaProcessor() : Thread {
                         }
 
                         // Broadcast success
-                        vertx().eventBus().publish("twinemedia.process.$id", json {
-                            obj("status" to "success")
+                        vertx().eventBus().publish("twinemedia.event.media.process", json {
+                            obj(
+                                    "id" to id,
+                                    "creator" to job.creator,
+                                    "status" to "success"
+                            )
                         })
 
                         procLogger.info("Finished job ID $jobId")
@@ -310,8 +314,10 @@ fun startMediaProcessor() : Thread {
                         e.printStackTrace()
 
                         // Broadcast processing error
-                        vertx().eventBus().publish("twinemedia.process.$id", json {
+                        vertx().eventBus().publish("twinemedia.event.media.process", json {
                             obj(
+                                    "id" to id,
+                                    "creator" to job.creator,
                                     "status" to "error",
                                     "error" to "Database error"
                             )
@@ -336,7 +342,7 @@ fun startMediaProcessor() : Thread {
                             }
                     }
                 }
-            } catch(e : Exception) {
+            } catch(e: Exception) {
                 procLogger.error("Error in processor loop:")
                 e.printStackTrace()
             }
@@ -365,43 +371,49 @@ interface MediaProcessorJob {
      * The alphanumeric ID for the media entry this job is for
      * @since 1.0
      */
-    val id : String
+    val id: String
+    /**
+     * The job creator's account ID
+     * @since 1.5.0
+     */
+    val creator: Int
     /**
      * The path to the source file
      * @since 1.0
      */
-    val source : String
+    val source: String
     /**
      * The path to write the new file
      * @since 1.0
      */
-    val out : String
+    val out: String
     /**
      * The duration of the file in seconds
      * @since 1.0
      */
-    val duration : Int
+    val duration: Int
     /**
      * The type of job
      * @since 1.0
      */
-    val type : MediaProcessorJobType
+    val type: MediaProcessorJobType
     /**
      * The settings to use when encoding the file
      * @since 1.0
      */
-    val settings : JsonObject
+    val settings: JsonObject
     /**
      * The callback to execute when this job has succeeded or failed
      * @since 1.0
      */
-    val callback : Handler<AsyncResult<Unit>>?
+    val callback: Handler<AsyncResult<Unit>>?
 }
 
 /**
  * Queues a media processing job.
  * Job parameters:
  * id: String, the alphanumeric ID for the media entry this job is for
+ * creator: Int, the job creator's account ID
  * source: String, the path to the source file
  * out: String, the path to write the new file
  * duration: Integer, the duration of the file in seconds
@@ -417,7 +429,7 @@ interface MediaProcessorJob {
  * @param job The an object implementing MediaProcessorJob containing the job's info
  * @since 1.0
  */
-fun queueMediaProcessJob(job : MediaProcessorJob) {
+fun queueMediaProcessJob(job: MediaProcessorJob) {
     mediaQueue.add(job)
 }
 
@@ -427,6 +439,7 @@ fun queueMediaProcessJob(job : MediaProcessorJob) {
  *
  * Job parameters:
  * id: String, the alphanumeric ID for the media entry this job is for
+ * creator: Int, the job creator's account ID
  * source: String, the path to the source file
  * out: String, the path to write the new file
  * duration: Integer, the duration of the file in seconds
@@ -442,11 +455,12 @@ fun queueMediaProcessJob(job : MediaProcessorJob) {
  * @param job The an object implementing MediaProcessorJob containing the job's info
  * @since 1.0
  */
-suspend fun queueMediaProcessJobAwait(job : MediaProcessorJob) {
+suspend fun queueMediaProcessJobAwait(job: MediaProcessorJob) {
     awaitEvent<AsyncResult<Unit>> {
         // Create new job with custom callback
-        mediaQueue.add(object : MediaProcessorJob {
+        mediaQueue.add(object: MediaProcessorJob {
             override val id = job.id
+            override val creator = job.creator
             override val source = job.source
             override val out = job.out
             override val duration = job.duration
@@ -475,7 +489,7 @@ suspend fun queueMediaProcessJobAwait(job : MediaProcessorJob) {
  * @throws MediaNotFoundException If the source media file entry does not exist
  * @throws WrongMediaTypeException If the source media file is not audio or video
  */
-suspend fun queueMediaProcessJobFromMedia(sourceId : String, newId : String, extension : String, creator : Int, settings : JsonObject, callback : Handler<AsyncResult<Unit>>?) {
+suspend fun queueMediaProcessJobFromMedia(sourceId: String, newId: String, extension: String, creator: Int, settings: JsonObject, callback: Handler<AsyncResult<Unit>>?) {
     // Fetch source media
     val sourceRes = mediaModel.fetchMedia(sourceId)
 
@@ -524,14 +538,15 @@ suspend fun queueMediaProcessJobFromMedia(sourceId : String, newId : String, ext
         )
 
         // Queue processing job
-        queueMediaProcessJob(object : MediaProcessorJob {
+        queueMediaProcessJob(object: MediaProcessorJob {
             override val id = newId
+            override val creator = creator
             override val source = sourcePath
             override val out = config.upload_location+filename
             override val duration = duration ?: 0
             override val type = if(mime.startsWith("video/")) MediaProcessorJobType.VIDEO else MediaProcessorJobType.AUDIO
             override val settings = settings
-            override val callback : Handler<AsyncResult<Unit>>? = callback
+            override val callback: Handler<AsyncResult<Unit>>? = callback
         })
     } else {
         throw MediaNotFoundException("Media ID $sourceId does not point to any media entry")
@@ -554,7 +569,7 @@ suspend fun queueMediaProcessJobFromMedia(sourceId : String, newId : String, ext
  * @throws MediaNotFoundException If the source media file entry does not exist
  * @throws WrongMediaTypeException If the source media file is not audio or video
  */
-suspend fun queueMediaProcessJobFromMedia(sourceId : String, newId : String, extension : String, creator : Int, settings : JsonObject) {
+suspend fun queueMediaProcessJobFromMedia(sourceId: String, newId: String, extension: String, creator: Int, settings: JsonObject) {
     queueMediaProcessJobFromMedia(sourceId, newId, extension, creator, settings, null)
 }
 
@@ -579,7 +594,7 @@ suspend fun queueMediaProcessJobFromMediaAwait(sourceId: String, newId: String, 
         GlobalScope.launch(vertx().dispatcher()) {
             try {
                 queueMediaProcessJobFromMedia(sourceId, newId, extension, creator, settings, it)
-            } catch(e : Exception) {
+            } catch(e: Exception) {
                 it.handle(failedFuture(e))
             }
         }
@@ -592,7 +607,7 @@ suspend fun queueMediaProcessJobFromMediaAwait(sourceId: String, newId: String, 
  * @return The FFmpegProbeResult object for the provided media file
  * @since 1.0
  */
-suspend fun probeFile(filePath : String) : FFmpegProbeResult? {
+suspend fun probeFile(filePath: String): FFmpegProbeResult? {
     return vertx().executeBlocking<FFmpegProbeResult> {
         try {
             val probe = ffprobe.probe(filePath)
@@ -602,7 +617,7 @@ suspend fun probeFile(filePath : String) : FFmpegProbeResult? {
             } else {
                 it.complete(probe)
             }
-        } catch(e : Exception) {
+        } catch(e: Exception) {
             it.fail(e)
         }
     }.await()
@@ -615,7 +630,7 @@ suspend fun probeFile(filePath : String) : FFmpegProbeResult? {
  * @param outPath The file to output thumbnail file
  * @since 1.0
  */
-suspend fun createVideoThumbnail(filePath : String, duration : Int, outPath : String) {
+suspend fun createVideoThumbnail(filePath: String, duration: Int, outPath: String) {
     vertx().executeBlocking<Unit> {
         try {
             // Get thumbnail snapshot time
@@ -630,7 +645,7 @@ suspend fun createVideoThumbnail(filePath : String, duration : Int, outPath : St
                     .done()
             executor.createJob(builder).run()
             it.complete()
-        } catch(e : Exception) {
+        } catch(e: Exception) {
             it.fail(e)
         }
     }.await()
@@ -642,7 +657,7 @@ suspend fun createVideoThumbnail(filePath : String, duration : Int, outPath : St
  * @param outPath The output file for the preview image
  * @since 1.0
  */
-suspend fun createImagePreview(filePath : String, outPath : String) {
+suspend fun createImagePreview(filePath: String, outPath: String) {
     vertx().executeBlocking<Unit> {
         try {
             val builder = FFmpegBuilder()
@@ -652,7 +667,7 @@ suspend fun createImagePreview(filePath : String, outPath : String) {
                     .done()
             executor.createJob(builder).run()
             it.complete()
-        } catch(e : Exception) {
+        } catch(e: Exception) {
             it.fail(e)
         }
     }.await()
@@ -663,7 +678,7 @@ suspend fun createImagePreview(filePath : String, outPath : String) {
  * @param probe The probe result to extract data from
  * @since 1.0
  */
-fun ffprobeToJsonMeta(probe : FFmpegProbeResult) : JsonObject {
+fun ffprobeToJsonMeta(probe: FFmpegProbeResult): JsonObject {
     val format = probe.format
     val meta = JsonObject()
 

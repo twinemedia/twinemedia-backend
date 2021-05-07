@@ -16,8 +16,13 @@ import net.termer.twinemedia.model.AccountsModel
 import net.termer.vertx.kotlin.validation.RequestValidator
 import java.util.regex.Pattern
 
-// Authorization header content regex
-private val authPattern: Pattern = Pattern.compile("Bearer (.+)")
+/**
+ * Authorization header content regex
+ * @since 1.5.0
+ */
+val authorizationHeaderPattern: Pattern = Pattern.compile("Bearer (.+)")
+
+// Models
 private val accountsModel = AccountsModel()
 
 /**
@@ -130,7 +135,7 @@ suspend fun RoutingContext.authenticate() {
 
     // Check for an authorization header
     if(request().headers().contains("Authorization")) {
-        val matcher = authPattern.matcher(request().getHeader("Authorization"))
+        val matcher = authorizationHeaderPattern.matcher(request().getHeader("Authorization"))
 
         // Check if header matches pattern
         if(matcher.matches()) {
@@ -262,15 +267,6 @@ suspend fun RoutingContext.protectWithPermission(permission: String): Boolean {
         unauthorized()
 
     return has
-}
-
-/**
- * Publishes a message on this request's event bus channel
- * @param msg The message to send
- * @since 1.0.0
- */
-fun RoutingContext.publish(msg: Any) {
-    vertx().eventBus().publish("twinemedia.${tokenId()}", msg)
 }
 
 /**

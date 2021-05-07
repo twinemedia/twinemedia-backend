@@ -10,6 +10,7 @@ import io.vertx.kotlin.core.json.obj
 import io.vertx.kotlin.coroutines.await
 import net.termer.twine.ServerManager.vertx
 import net.termer.twinemedia.Module.Companion.config
+import java.util.*
 
 /**
  * Object containing global JWT fields
@@ -37,8 +38,8 @@ fun jwtInit() {
 }
 
 /**
- * Creates a new JWT token with the provided data and expiration time
- * @param data The data to store in the token
+ * Creates a new JWT with the provided data and expiration time
+ * @param data The data to store in the token's principle
  * @return The newly generated token
  * @since 1.0
  */
@@ -47,7 +48,7 @@ fun jwtCreateToken(data : JsonObject) : String? {
 }
 
 /**
- * Creates a new JWT token without an expiration date
+ * Creates a new JWT without an expiration date
  * @param data The data to store in the token
  * @return The newly generated token
  * @since 1.3.0
@@ -58,7 +59,7 @@ fun jwtCreateUnexpiringToken(data : JsonObject) : String? {
 
 /**
  * Returns if the provided JWT token is valid and not expired
- * @param jwt The JWT token to check
+ * @param jwt The JWT to check
  * @since 1.0
  */
 suspend fun jwtIsValid(jwt : String) : Boolean {
@@ -73,12 +74,11 @@ suspend fun jwtIsValid(jwt : String) : Boolean {
 }
 
 /**
- * Returns the data stored in the provided JWT token
- * @param jwt The JWT token to read
- * @since 1.0
+ * Extracts a JWT's principle and returns it
+ * @param jwt The JWT to read
+ * @return The token's principle
+ * @since 1.5.0
  */
-suspend fun jwtData(jwt : String) : JsonObject? {
-    return JWT.provider?.authenticate(json {
-        obj("jwt" to jwt)
-    })?.await()?.principal()
+fun extractJWTPrinciple(jwt : String) : JsonObject {
+    return JsonObject(String(Base64.getDecoder().decode(jwt.split('.')[1])))
 }

@@ -21,6 +21,7 @@ import net.termer.twinemedia.jwt.jwtInit
 import net.termer.twinemedia.middleware.authMiddleware
 import net.termer.twinemedia.middleware.headersMiddleware
 import net.termer.twinemedia.model.TagsModel
+import net.termer.twinemedia.sockjs.SockJSManager
 import net.termer.twinemedia.util.*
 import org.slf4j.Logger
 import org.slf4j.LoggerFactory
@@ -35,6 +36,7 @@ class Module : TwineModule {
 		val logger: Logger = LoggerFactory.getLogger(Module::class.java)
 		var config = TwineMediaConfig()
 		val crypt: Crypt = Crypt()
+		val sockJSManager = SockJSManager()
 	}
 
 	/**
@@ -114,6 +116,9 @@ class Module : TwineModule {
 				// Setup JWT
 				logger.info("Setting up JWT keystore...")
 				jwtInit()
+
+				// Setup SockJS
+				sockJSManager.initialize()
 
 				// Setup controllers
 				logger.info("Setting up controllers...")

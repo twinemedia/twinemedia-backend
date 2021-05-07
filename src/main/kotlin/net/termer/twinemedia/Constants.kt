@@ -10,7 +10,7 @@ class Constants {
 		 * The module version
 		 * @since 1.4.1
 		 */
-		val VERSION = "1.4.1"
+		val VERSION = "1.5.0"
 
 		/**
 		 * The supported API versions
