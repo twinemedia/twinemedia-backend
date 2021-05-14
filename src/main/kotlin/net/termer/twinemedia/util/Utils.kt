@@ -1,10 +1,13 @@
 package net.termer.twinemedia.util
 
+import io.vertx.core.Promise
 import io.vertx.core.json.JsonArray
+import io.vertx.kotlin.coroutines.await
 import net.termer.twine.Twine.domains
 import net.termer.twinemedia.Module.Companion.config
 import java.text.SimpleDateFormat
 import java.util.*
+import java.util.concurrent.CompletableFuture
 
 private val simpleDateFormat = SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss.SSS'Z'")
 
@@ -126,3 +129,42 @@ fun Array<String>.toJsonArray() = JsonArray().also { json ->
 	    json.add(str)
 }
 
+/**
+ * Takes a filename and adds a unix timestamp after the name, doing any necessary trimming to stay in the filename length limit
+ * @param filename The filename to process
+ * @return The filename processed with a unix timestamp
+ * @since 1.5.0
+ */
+fun filenameToFilenameWithUnixTimestamp(filename: String): String {
+	val unixTime = "${System.currentTimeMillis()/1000L}"
+
+	val dotIndex = filename.lastIndexOf('.')
+	val name = if(dotIndex == -1) filename else filename.substring(0, dotIndex)
+	val ext = if(dotIndex == -1) "" else filename.substring(dotIndex)
+	var nameWithTime = "$name-$unixTime"
+
+	// Make sure name and extension aren't too long, trim if so
+	val totalLen = nameWithTime.length+ext.length
+	if(totalLen > 256)
+		nameWithTime = name.substring(0, name.lastIndex-(totalLen-256))+'-'+unixTime
+
+	return nameWithTime+ext
+}
+
+/**
+ * Suspends under this future completes, or throws an exception if it failed
+ * @return The future's result
+ * @since 1.5.0
+ */
+suspend fun <T> CompletableFuture<T>.await(): T {
+	val promise = Promise.promise<T>()
+
+	whenComplete { t, throwable ->
+		if(throwable == null)
+			promise.complete(t)
+		else
+			promise.fail(throwable)
+	}
+
+	return promise.future().await()
+}

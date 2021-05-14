@@ -22,6 +22,9 @@ import net.termer.twinemedia.middleware.authMiddleware
 import net.termer.twinemedia.middleware.headersMiddleware
 import net.termer.twinemedia.model.TagsModel
 import net.termer.twinemedia.sockjs.SockJSManager
+import net.termer.twinemedia.source.MediaSourceManager
+import net.termer.twinemedia.source.impl.fs.LocalDirectoryMediaSource
+import net.termer.twinemedia.source.impl.s3.S3BucketMediaSource
 import net.termer.twinemedia.util.*
 import org.slf4j.Logger
 import org.slf4j.LoggerFactory
@@ -37,6 +40,7 @@ class Module : TwineModule {
 		var config = TwineMediaConfig()
 		val crypt: Crypt = Crypt()
 		val sockJSManager = SockJSManager()
+		val mediaSourceManager = MediaSourceManager()
 	}
 
 	/**
@@ -134,6 +138,14 @@ class Module : TwineModule {
 				apiKeysController()
 				infoController()
 				notFoundController()
+
+				// Register media sources
+				mediaSourceManager
+						.registerSource("local_directory", "Local Directory", "Store and index files in a local directory", LocalDirectoryMediaSource::class.java)
+						.registerSource("s3_bucket", "S3 Bucket", "Source and index files in an S3 (or S3-compatible) bucket", S3BucketMediaSource::class.java)
+						.initialize()
+				logger.info("Available media sources:")
+				mediaSourceManager.availableSources().forEach { logger.info(" - "+it.name) }
 
 				// Allow upload status event bus channels over websocket
 				ws().outboundRegex("twinemedia\\..*")

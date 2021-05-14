@@ -35,6 +35,11 @@ dependencies {
 	implementation("com.fasterxml.jackson.core:jackson-databind:2.10.0")
 	implementation("net.termer.vertx.kotlin.validation:vertx-web-validator-kotlin:1.0.1")
 
+	// Amazon S3
+	implementation(platform("software.amazon.awssdk:bom:2.15.45"))
+	implementation("software.amazon.awssdk:s3")
+	implementation("io.reactiverse:aws-sdk:1.0.0")
+
 	// Database
 	implementation("org.flywaydb:flyway-core:7.3.2")
 	implementation("postgresql:postgresql:9.1-901-1.jdbc4")
