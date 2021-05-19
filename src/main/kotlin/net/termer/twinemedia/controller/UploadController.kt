@@ -84,39 +84,44 @@ fun uploadController() {
 					if(length <= config.max_upload) {
 						var upload = false
 						var error = "No file sent"
+						var alreadyGotUpload = false
 
 						// Prepare for file uploads
 						r.request().isExpectMultipart = true
 						r.request().uploadHandler { upl ->
-							upload = true
+							// Make sure only one upload is handled
+							if(!alreadyGotUpload) {
+								alreadyGotUpload = true
+								upload = true
 
-							// Resolve extension
-							var extension = ""
-							if(upl.filename().contains('.')) {
-								val parts = upl.filename().split('.')
-								extension = '.' + parts[parts.size - 1]
-							}
+								// Resolve extension
+								var extension = ""
+								if(upl.filename().contains('.')) {
+									val parts = upl.filename().split('.')
+									extension = '.' + parts[parts.size - 1]
+								}
 
-							// Collect info
-							filename = upl.filename()
-							type = upl.contentType()
-							file = id + extension
-							saveLoc = config.upload_location + id + extension
+								// Collect info
+								filename = upl.filename()
+								type = upl.contentType()
+								file = id + extension
+								saveLoc = config.upload_location + id + extension
 
-							// Stream upload to file
-							upl.streamToFileSystem(saveLoc)
+								// Stream upload to file
+								upl.streamToFileSystem(saveLoc)
 
-							// Handle upload errors
-							upl.exceptionHandler {
-								logger.error("Failed to handle upload:")
-								it.printStackTrace()
-								upload = false
-								error = "Internal error"
+								// Handle upload errors
+								upl.exceptionHandler {
+									logger.error("Failed to handle upload:")
+									it.printStackTrace()
+									upload = false
+									error = "Internal error"
 
-								GlobalScope.launch(vertx().dispatcher()) {
-									logger.info("Deleting file $saveLoc")
-									vertx().fileSystem().delete(saveLoc).await()
-									logger.info("Deleted")
+									GlobalScope.launch(vertx().dispatcher()) {
+										logger.info("Deleting file $saveLoc")
+										vertx().fileSystem().delete(saveLoc).await()
+										logger.info("Deleted")
+									}
 								}
 							}
 						}
@@ -158,7 +163,7 @@ fun uploadController() {
 										if(filesRes.count() > 0) {
 											val fileRow = filesRes.iterator().next()
 											// Get already uploaded file's filename on disk
-											file = fileRow.file
+											file = fileRow.key
 
 											// Ignore thumbnail setting if X-NO-THUMBNAIL is true
 											if(!(headers.contains("X-NO-THUMBNAIL") && headers["X-NO-THUMBNAIL"].toLowerCase() == "true")) {
