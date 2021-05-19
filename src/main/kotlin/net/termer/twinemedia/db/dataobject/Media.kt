@@ -15,7 +15,7 @@ import java.time.OffsetDateTime
  * @param size The media file's size in bytes
  * @param mime The media file's MIME type
  * @param tags The media file's tags
- * @param file The media file's actual name on disk
+ * @param key The media file's actual name on disk
  * @param createdOn The media file's creation time
  * @param modifiedOn The media file's last modified time
  * @param description The media file's description
@@ -67,10 +67,10 @@ class Media(
 		 */
 		val tags: Array<String>,
 		/**
-		 * The media file's actual name on disk
+		 * The media file's media source file key
 		 * @since 1.4.0
 		 */
-		val file: String,
+		val key: String,
 		/**
 		 * The media file's creation time
 		 * @since 1.4.0
@@ -125,7 +125,12 @@ class Media(
 		 * The error that caused the media file's processing to fail, or null if no error has occurred
 		 * @since 1.4.0
 		 */
-		val processError: String?
+		val processError: String?,
+		/**
+		 * The media source's ID
+		 * @since 1.5.0
+		 */
+		val source: Int
 ) {
 	companion object {
 		/**
@@ -141,7 +146,7 @@ class Media(
 					size = row.getLong("media_size"),
 					mime = row.getString("media_mime"),
 					tags = row.getJsonArray("media_tags").toStringArray(),
-					file = row.getString("media_file"),
+					key = row.getString("media_file"),
 					createdOn = row.getOffsetDateTime("media_created_on"),
 					modifiedOn = row.getOffsetDateTime("media_modified_on"),
 					description = row.getString("media_description"),
@@ -152,7 +157,8 @@ class Media(
 					hasThumbnail = row.getBoolean("media_thumbnail"),
 					thumbnailFile = row.getString("media_thumbnail_file"),
 					isProcessing = row.getBoolean("media_processing"),
-					processError = row.getString("media_process_error")
+					processError = row.getString("media_process_error"),
+					source = row.getInteger("media_source")
 			)
 		}
 	}

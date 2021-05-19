@@ -118,7 +118,22 @@ class MediaInfo(
 		 * The media file's description
 		 * @since 1.4.2
 		 */
-		val description: String?
+		val description: String?,
+		/**
+		 * The media source's ID
+		 * @since 1.5.0
+		 */
+		val source: Int,
+		/**
+		 * The media source's type
+		 * @since 1.5.0
+		 */
+		val sourceType: String,
+		/**
+		 * The media source's name
+		 * @since 1.5.0
+		 */
+		val sourceName: String
 ) {
 	/**
 	 * Returns a JSON representation of the media's info
@@ -176,7 +191,10 @@ class MediaInfo(
 					isProcessing = row.getBoolean("processing"),
 					processError = row.getString("process_error"),
 					hasDescription = row.containsColumn("description"),
-					description = if(row.containsColumn("description")) row.getString("description") else null
+					description = if(row.containsColumn("description")) row.getString("description") else null,
+					source = row.getInteger("source"),
+					sourceType = row.getString("source_type"),
+					sourceName = row.getString("source_name")
 			)
 		}
 	}

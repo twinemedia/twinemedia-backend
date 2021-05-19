@@ -418,7 +418,7 @@ fun mediaController() {
 									// Delete children
 									for(child in children) {
 										try {
-											val file = config.upload_location + child.file
+											val file = config.upload_location + child.key
 
 											// Delete file
 											if(fs.exists(file).await())
@@ -465,13 +465,13 @@ fun mediaController() {
 								// Delete media files
 								try {
 									// Delete main file
-									val file = media.file
+									val file = media.key
 
 									if(fs.exists(config.upload_location + file).await())
                                         fs.delete(config.upload_location + file).await()
 								} catch(e: Exception) {
 									// Failed to delete main file
-									logger.error("Failed to delete file ${media.file}:")
+									logger.error("Failed to delete file ${media.key}:")
 									e.printStackTrace()
 									r.error("Internal error")
 									return@launch

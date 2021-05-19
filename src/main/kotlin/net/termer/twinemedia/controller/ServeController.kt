@@ -40,7 +40,7 @@ private fun handleFile(r: RoutingContext) {
 			val media = mediaRes.iterator().next()
 
 			// Locate file location on disk
-			val file = config.upload_location + media.file
+			val file = config.upload_location + media.key
 
 			if(vertx().fileSystem().exists(file).await()) {
 				r.sendFileRanged(file)

@@ -496,7 +496,7 @@ suspend fun queueMediaProcessJobFromMedia(sourceId: String, newId: String, exten
     // Check if it exists
     if(sourceRes.count() > 0) {
         val source = sourceRes.iterator().next()
-        val sourcePath = config.upload_location+source.file
+        val sourcePath = config.upload_location+source.key
 
         // Check if media type is video or audio
         val mime = source.mime
