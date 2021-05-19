@@ -395,7 +395,7 @@ class ListsModel {
 				LEFT JOIN media ON media.id = item_media
 				WHERE media_id = #{media}
 				AND item_list = lists.id
-			) = 1 AS contains_media,
+			) = 1 AS contains_media
 		"""
 
 		val searchParts = ArrayList<String>()
