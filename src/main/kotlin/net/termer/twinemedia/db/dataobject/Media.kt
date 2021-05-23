@@ -83,7 +83,7 @@ class Media(
 		val modifiedOn: OffsetDateTime,
 		/**
 		 * The media file's description
-		 * @since 1.2.0
+		 * @since 1.4.0
 		 */
 		val description: String?,
 		/**
