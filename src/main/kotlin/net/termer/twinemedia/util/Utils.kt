@@ -94,10 +94,11 @@ fun filenameToTitle(filename: String): String {
 	var name = filename
 
 	// Cut off extension if present
-	if(filename.lastIndexOf('.') > 0)
-		name = filename.substring(0, filename.lastIndexOf('.'))
+	val extIndex = filename.lastIndexOf('.')
+	if(extIndex > 0)
+		name = filename.substring(0, extIndex)
 
-	// Replace underscores and dashes with spaces with spaces
+	// Replace underscores and dashes with spaces
 	name = name
 			.replace('_', ' ')
 			.replace(Regex("-(?! )"), " ")
