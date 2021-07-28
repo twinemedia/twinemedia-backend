@@ -572,7 +572,7 @@ fun interactiveMediaSourceMigration() {
 			// Create source configuration
 			val srcCfg = json {obj(
 					"directory" to config.upload_location,
-					"indexSubdirs" to false
+					"index_subdirs" to false
 			)}
 
 			// Create source
