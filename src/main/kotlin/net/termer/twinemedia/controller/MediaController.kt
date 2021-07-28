@@ -102,6 +102,7 @@ fun mediaController() {
 					// Request validation
 					val v = RequestValidator()
 							.offsetLimitOrder(7)
+							.optionalParam("query", StringValidator())
 							.optionalParam("mime", Presets.mimeValidator(true), "%")
 							.optionalParam("searchNames", BooleanValidator(), true)
 							.optionalParam("searchFilenames", BooleanValidator(), true)
