@@ -47,7 +47,7 @@ dependencies {
 	annotationProcessor("io.vertx:vertx-codegen:4.1.2:processor")
 
 	// Twine, does not get packaged
-	compileOnly("net.termer.twine:twine:2.0")
+	compileOnly("net.termer.twine:twine:2.1a")
 }
 
 tasks {
