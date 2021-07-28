@@ -59,7 +59,7 @@ class MediaModel {
 	 * @since 1.0.0
 	 */
 	private fun orderBy(order: Int): String {
-		return "ORDER BY " + when (order) {
+		return "ORDER BY " + when(order) {
 			1 -> "media_created_on ASC"
 			2 -> "media_name ASC, media_filename ASC"
 			3 -> "media_name DESC, media_filename DESC"
@@ -78,18 +78,10 @@ class MediaModel {
 	 */
 	private fun listWhereFilter(): String {
 		return when {
-			account == null -> {
-				"TRUE"
-			}
-			account!!.excludeOtherMedia -> {
-				"media_creator = ${account?.id}"
-			}
-			account!!.hasPermission("files.list.all") -> {
-				"TRUE"
-			}
-			else -> {
-				"media_creator = ${account?.id}"
-			}
+			account == null -> "TRUE"
+			account!!.excludeOtherMedia -> "media_creator = ${account?.id}"
+			account!!.hasPermission("files.list.all") -> "TRUE"
+			else -> "media_creator = ${account?.id}"
 		}
 	}
 	/**
@@ -99,18 +91,10 @@ class MediaModel {
 	 */
 	private fun viewWhereFilter(): String {
 		return when {
-			account == null -> {
-				"TRUE"
-			}
-			account!!.excludeOtherMedia -> {
-				"media_creator = ${account?.id}"
-			}
-			account!!.hasPermission("files.view.all") -> {
-				"TRUE"
-			}
-			else -> {
-				"media_creator = ${account?.id}"
-			}
+			account == null -> "TRUE"
+			account!!.excludeOtherMedia -> "media_creator = ${account?.id}"
+			account!!.hasPermission("files.view.all") -> "TRUE"
+			else -> "media_creator = ${account?.id}"
 		}
 	}
 	/**
@@ -120,18 +104,10 @@ class MediaModel {
 	 */
 	private fun editWhereFilter(): String {
 		return when {
-			account == null -> {
-				"TRUE"
-			}
-			account!!.excludeOtherMedia -> {
-				"media_creator = ${account?.id}"
-			}
-			account!!.hasPermission("files.edit.all") -> {
-				"TRUE"
-			}
-			else -> {
-				"media_creator = ${account?.id}"
-			}
+			account == null -> "TRUE"
+			account!!.excludeOtherMedia -> "media_creator = ${account?.id}"
+			account!!.hasPermission("files.edit.all") -> "TRUE"
+			else -> "media_creator = ${account?.id}"
 		}
 	}
 	/**
@@ -141,18 +117,10 @@ class MediaModel {
 	 */
 	private fun deleteWhereFilter(): String {
 		return when {
-			account == null -> {
-				"TRUE"
-			}
-			account!!.excludeOtherMedia -> {
-				"media_creator = ${account?.id}"
-			}
-			account!!.hasPermission("files.delete.all") -> {
-				"TRUE"
-			}
-			else -> {
-				"media_creator = ${account?.id}"
-			}
+			account == null -> "TRUE"
+			account!!.excludeOtherMedia -> "media_creator = ${account?.id}"
+			account!!.hasPermission("files.delete.all") -> "TRUE"
+			else -> "media_creator = ${account?.id}"
 		}
 	}
 
@@ -195,14 +163,18 @@ class MediaModel {
 				media_created_on AS created_on,
 				media_modified_on AS modified_on,
 				media_creator AS creator,
-				media_file_hash AS file_hash,
+				media_hash AS hash,
 				media_thumbnail AS thumbnail,
 				media_processing AS processing,
 				media_process_error AS process_error,
-				account_name AS creator_name
+				media_source AS source,
+				account_name AS creator_name,
+				source_type,
+				source_name
 				${if(extra.orEmpty().isBlank()) "" else ", $extra"}
 			FROM media
 			LEFT JOIN accounts ON accounts.id = media_creator
+			LEFT JOIN sources ON sources.id = media_source
 		""".trimIndent()
 	}
 	/**
@@ -221,19 +193,23 @@ class MediaModel {
 	 * @param tags The tags for the entry
 	 * @param size The size of the media (in bytes)
 	 * @param mime The mime type of the media
-	 * @param file The name of the saved media file
+	 * @param key The media source key to use for accessing the underlying media file
 	 * @param creator The ID of the account that uploaded this media file
+	 * @param hash The underlying media file's hash
 	 * @param thumbnailFile The filename of the media's generated thumbnail, null if none
 	 * @param meta Any metadata for the file stored as JSON
-	 * @since 1.4.0
+	 * @param sourceId The ID of the source this media file is stored on
+	 * @return The newly created media entry's ID
+	 * @since 1.5.0
 	 */
-	suspend fun createMedia(id: String, name: String?, filename: String, description: String?, tags: Array<String>, size: Long, mime: String, file: String, creator: Int, hash: String, thumbnailFile: String?, meta: JsonObject) {
-		SqlTemplate
-				.forUpdate(client, """
+	suspend fun createMedia(id: String, name: String?, filename: String, description: String?, tags: Array<String>, size: Long, mime: String, key: String, creator: Int, hash: String, thumbnailFile: String?, meta: JsonObject, sourceId: Int): Int {
+		return SqlTemplate
+				.forQuery(client, """
 					INSERT INTO media
-					( media_id, media_name, media_filename, media_description, media_tags, media_size, media_mime, media_file, media_creator, media_file_hash, media_thumbnail, media_thumbnail_file, media_meta )
+					( media_id, media_name, media_filename, media_description, media_tags, media_size, media_mime, media_key, media_creator, media_hash, media_thumbnail, media_thumbnail_file, media_meta, media_source )
 					VALUES
-					( #{id}, #{name}, #{filename}, #{desc}, CAST( #{tags} AS jsonb ), #{size}, #{mime}, #{file}, #{creator}, #{hash}, #{thumbnail}, #{thumbnailFile}, CAST( #{meta} AS jsonb ) )
+					( #{id}, #{name}, #{filename}, #{desc}, CAST( #{tags} AS jsonb ), #{size}, #{mime}, #{key}, #{creator}, #{hash}, #{thumbnail}, #{thumbnailFile}, CAST( #{meta} AS jsonb ), #{source} )
+					RETURNING id
 				""".trimIndent())
 				.execute(hashMapOf<String, Any?>(
 						"id" to id,
@@ -243,13 +219,15 @@ class MediaModel {
 						"tags" to tags.toJsonArray(),
 						"size" to size,
 						"mime" to mime,
-						"file" to file,
+						"key" to key,
 						"creator" to creator,
 						"hash" to hash,
 						"thumbnail" to (thumbnailFile != null),
 						"thumbnailFile" to thumbnailFile,
-						"meta" to meta
+						"meta" to meta,
+						"source" to sourceId
 				)).await()
+				.first().getInteger("id")
 	}
 
 	/**
@@ -259,21 +237,25 @@ class MediaModel {
 	 * @param filename The media's original filename
 	 * @param size The size of the media (in bytes)
 	 * @param mime The mime type of the media
-	 * @param file The name of the saved media file
+	 * @param key The media source key to use for accessing the underlying media file
 	 * @param creator The ID of the account that uploaded this media file
+	 * @param hash The underlying media file's hash
 	 * @param thumbnailFile The filename of the media's generated thumbnail, null if none
 	 * @param meta Any metadata for the file stored as JSON
 	 * @param parent The parent of this media file
 	 * @param processing Whether the media file is processing
-	 * @since 1.0.0
+	 * @param sourceId The ID of the source this media file is stored on
+	 * @return The newly created media entry's ID
+	 * @since 1.5.0
 	 */
-	suspend fun createMedia(id: String, name: String?, filename: String, size: Long, mime: String, file: String, creator: Int, hash: String, thumbnailFile: String?, meta: JsonObject, parent: Int, processing: Boolean) {
-		SqlTemplate
-				.forUpdate(client, """
+	suspend fun createMedia(id: String, name: String?, filename: String, size: Long, mime: String, key: String, creator: Int, hash: String, thumbnailFile: String?, meta: JsonObject, parent: Int, processing: Boolean, sourceId: Int): Int {
+		return SqlTemplate
+				.forQuery(client, """
 					INSERT INTO media
-					( media_id, media_name, media_filename, media_size, media_mime, media_file, media_creator, media_file_hash, media_thumbnail, media_thumbnail_file, media_meta, media_parent, media_processing )
+					( media_id, media_name, media_filename, media_size, media_mime, media_key, media_creator, media_hash, media_thumbnail, media_thumbnail_file, media_meta, media_parent, media_processing, media_source )
 					VALUES
-					( #{id}, #{name}, #{filename}, #{size}, #{mime}, #{file}, #{creator}, #{hash}, #{thumbnail}, #{thumbnailFile}, CAST( #{meta} AS jsonb ), #{parent}, #{processing} )
+					( #{id}, #{name}, #{filename}, #{size}, #{mime}, #{key}, #{creator}, #{hash}, #{thumbnail}, #{thumbnailFile}, CAST( #{meta} AS jsonb ), #{parent}, #{processing}, #{source} )
+					RETURNING id
 				""".trimIndent())
 				.execute(hashMapOf<String, Any?>(
 						"id" to id,
@@ -281,21 +263,23 @@ class MediaModel {
 						"filename" to filename,
 						"size" to size,
 						"mime" to mime,
-						"file" to file,
+						"key" to key,
 						"creator" to creator,
 						"hash" to hash,
 						"thumbnail" to (thumbnailFile != null),
 						"thumbnailFile" to thumbnailFile,
 						"meta" to meta,
 						"parent" to parent,
-						"processing" to processing
+						"processing" to processing,
+						"source" to sourceId
 				)).await()
+				.first().getInteger("id")
 	}
 
 	/**
 	 * Fetches the media entry with the specified generated ID
 	 * @param mediaId The generated alphanumeric media ID to search for
-	 * @return All media files from database search
+	 * @return The specified media file
 	 * @since 1.4.0
 	 */
 	suspend fun fetchMedia(mediaId: String): RowSet<Media> {
@@ -434,11 +418,33 @@ class MediaModel {
 					SELECT * FROM media
 					WHERE
 					${listWhereFilter()}
-					AND media_file_hash = #{hash}
+					AND media_hash = #{hash}
 				""".trimIndent())
 				.mapTo(Media.MAPPER)
 				.execute(hashMapOf<String, Any>(
 						"hash" to hash
+				)).await()
+	}
+
+	/**
+	 * Fetches all media files with the specified hash in the provided media source
+	 * @param hash The file hash to search for
+	 * @param source The ID of the source to check in
+	 * @since 1.5.0
+	 */
+	suspend fun fetchMediaByHashAndSource(hash: String, source: Int): RowSet<Media> {
+		return SqlTemplate
+				.forQuery(client, """
+					SELECT * FROM media
+					WHERE
+					${listWhereFilter()}
+					AND media_hash = #{hash}
+					AND media_source = #{source}
+				""".trimIndent())
+				.mapTo(Media.MAPPER)
+				.execute(hashMapOf<String, Any>(
+						"hash" to hash,
+						"source" to source
 				)).await()
 	}
 
@@ -566,7 +572,7 @@ class MediaModel {
 	 * @since 1.4.2
 	 */
 	suspend fun fetchMediaListByTagsDateRangeAndCreator(tags: Array<String>?, excludeTags: Array<String>?, createdBefore: OffsetDateTime?, createdAfter: OffsetDateTime?, mime: String?, creator: Int?, offset: Int, limit: Int, order: Int): RowSet<MediaInfo> {
-		val params = hashMapOf(
+		val params = hashMapOf<String, Any?>(
 				"createdBefore" to createdBefore,
 				"createdAfter" to createdAfter,
 				"mime" to mime,
@@ -663,14 +669,60 @@ class MediaModel {
 	}
 
 	/**
+	 * Fetches all media files with the specified media source
+	 * @param source The source's ID
+	 * @param offset The offset of the media to fetch
+	 * @param limit The amount of media to return
+	 * @param order The order to return the media files
+	 * @since 1.5.0
+	 */
+	suspend fun fetchMediaBySource(source: Int, offset: Int, limit: Int, order: Int): RowSet<Media> {
+		return SqlTemplate
+				.forQuery(client, """
+					SELECT * FROM media
+					WHERE
+					${listWhereFilter()}
+					AND media_source = #{source}
+					${orderBy(order)}
+					OFFSET #{offset} LIMIT #{limit}
+				""".trimIndent())
+				.mapTo(Media.MAPPER)
+				.execute(hashMapOf<String, Any>(
+						"source" to source,
+						"offset" to offset,
+						"limit" to limit
+				)).await()
+	}
+
+	/**
+	 * Fetches the amount of media entries with the specified source
+	 * @param sourceId The source's ID
+	 * @return The amount of media entries with the specified source
+	 * @since 1.5.0
+	 */
+	suspend fun fetchMediaCountBySource(sourceId: Int): Int {
+		return SqlTemplate
+				.forQuery(client, """
+					SELECT COUNT(*) FROM media
+					WHERE ${listWhereFilter()}
+					AND media_source = #{source}
+				""".trimIndent())
+				.execute(mapOf<String, Any>(
+						"source" to sourceId
+				)).await()
+				.first().getInteger("count")
+	}
+
+	/**
 	 * Updates a media file's info
 	 * @param id The internal media ID of the media file
 	 * @param newName The new name for this media file
 	 * @param newDesc The new description for this media file
 	 * @param newTags The new tags for this media
-	 * @since 1.4.0
+	 * @param creator The new creator of this media
+	 * @since 1.5.0
 	 */
-	suspend fun updateMediaInfo(id: Int, newFilename: String, newName: String?, newDesc: String?, newTags: Array<String>) {
+	suspend fun updateMediaInfo(id: Int, newFilename: String, newName: String?, newDesc: String?, newTags: Array<String>, creator: Int) {
 		SqlTemplate
 				.forUpdate(client, """
 					UPDATE media
@@ -679,6 +731,7 @@ class MediaModel {
 						media_name = #{name},
 						media_description = #{desc},
 						media_tags = CAST( #{tags} AS jsonb ),
+						media_creator = #{creator},
 						media_modified_on = NOW()
 					WHERE
 					${editWhereFilter()}
@@ -689,7 +742,8 @@ class MediaModel {
 						"filename" to newFilename,
 						"name" to newName,
 						"desc" to newDesc,
-						"tags" to newTags.toJsonArray()
+						"tags" to newTags.toJsonArray(),
+						"creator" to creator
 				)).await()
 	}
 
@@ -710,7 +764,7 @@ class MediaModel {
 					SET
 						media_processing = #{processing},
 						media_size = #{size},
-						media_file_hash = #{hash},
+						media_hash = #{hash},
 						media_thumbnail_file = #{thumbnailFile},
 						media_thumbnail = #{thumbnail},
 						media_meta = CAST( #{meta} AS jsonb ),
@@ -754,6 +808,28 @@ class MediaModel {
 	}
 
 	/**
+	 * Updates the source of all media files with the specified source
+	 * @param oldSource The old source ID
+	 * @param newSource The new source ID
+	 * @since 1.5.0
+	 */
+	suspend fun updateMediaSourceBySource(oldSource: Int, newSource: Int) {
+		SqlTemplate
+				.forUpdate(client, """
+					UPDATE media
+					SET
+						media_source = #{new}
+					WHERE
+					${editWhereFilter()}
+					AND media_source = #{old}
+				""".trimIndent())
+				.execute(hashMapOf<String, Any?>(
+						"old" to oldSource,
+						"new" to newSource
+				)).await()
+	}
+
+	/**
 	 * Deletes a media file entry by its generated alphanumeric ID
 	 * @param mediaId The generated alphanumeric media ID
 	 * @since 1.0.0
@@ -765,6 +841,21 @@ class MediaModel {
 				""".trimIndent())
 				.execute(hashMapOf<String, Any>(
 						"mediaId" to mediaId
+				)).await()
+	}
+
+	/**
+	 * Deletes all media file entries with the specified source
+	 * @param sourceId The source ID
+	 * @since 1.5.0
+	 */
+	suspend fun deleteMediaBySource(sourceId: Int) {
+		SqlTemplate
+				.forUpdate(client, """
+					DELETE FROM media WHERE ${deleteWhereFilter()} AND media_source = #{source}
+				""".trimIndent())
+				.execute(hashMapOf<String, Any>(
+						"source" to sourceId
 				)).await()
 	}
 }

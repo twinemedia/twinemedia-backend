@@ -6,31 +6,37 @@ import io.vertx.kotlin.core.json.json
 import io.vertx.kotlin.core.json.obj
 import io.vertx.kotlin.coroutines.await
 import io.vertx.kotlin.coroutines.dispatcher
+import kotlinx.coroutines.DelicateCoroutinesApi
 import kotlinx.coroutines.GlobalScope
 import kotlinx.coroutines.launch
 import net.termer.twine.ServerManager.*
 import net.termer.twinemedia.Module.Companion.config
+import net.termer.twinemedia.Module.Companion.crypt
 import net.termer.twinemedia.Module.Companion.logger
+import net.termer.twinemedia.Module.Companion.mediaSourceManager
 import net.termer.twinemedia.db.scheduleTagsViewRefresh
 import net.termer.twinemedia.enumeration.ListType
 import net.termer.twinemedia.enumeration.ListVisibility
 import net.termer.twinemedia.model.*
+import net.termer.twinemedia.source.MediaSourceFileNotFoundException
 import net.termer.twinemedia.util.*
 import net.termer.twinemedia.util.validation.*
 import net.termer.vertx.kotlin.validation.RequestValidator
 import net.termer.vertx.kotlin.validation.validator.*
+import java.time.OffsetDateTime
 
 /**
  * Sets up all routes for retrieving and modifying file info + processing files
  * @since 1.0.0
  */
+@DelicateCoroutinesApi
 fun mediaController() {
 	for(hostname in appHostnames()) {
 		// Returns all media files
 		// Permissions:
 		//  - files.list
 		// Parameters:
-		//  - offset: (optional) Integer at least 0 that sets the offset of returned results
+		//  - offset: (optional) Integer at least 0, sets the offset of returned results
 		//  - limit: (optional) Integer from 0 to 100, sets the amount of results to return
 		//  - mime: (optional) String, the mime pattern to search for, can use % as a wildcard character
 		//  - order: (optional) Integer from 0 to 5, denotes the type of sorting to use (date newest to oldest, date oldest to newest, alphabetically ascending, alphabetically descending, size large to small, size small to large, modified date newest to oldest, modified date oldest to newest)
@@ -41,12 +47,8 @@ fun mediaController() {
 
 					// Request validation
 					val v = RequestValidator()
-							.optionalParam("offset", Presets.resultOffsetValidator(), 0)
-							.optionalParam("limit", Presets.resultLimitValidator(), 100)
+							.offsetLimitOrder(7)
 							.optionalParam("mime", Presets.mimeValidator(true), "%")
-							.optionalParam("order", IntValidator()
-									.min(0)
-									.max(7), 0)
 
 					if(v.validate(r)) {
 						// Collect parameters
@@ -99,13 +101,8 @@ fun mediaController() {
 
 					// Request validation
 					val v = RequestValidator()
-							.optionalParam("query", StringValidator())
-							.optionalParam("offset", Presets.resultOffsetValidator(), 0)
-							.optionalParam("limit", Presets.resultLimitValidator(), 100)
+							.offsetLimitOrder(7)
 							.optionalParam("mime", Presets.mimeValidator(true), "%")
-							.optionalParam("order", IntValidator()
-									.min(0)
-									.max(7), 0)
 							.optionalParam("searchNames", BooleanValidator(), true)
 							.optionalParam("searchFilenames", BooleanValidator(), true)
 							.optionalParam("searchTags", BooleanValidator(), true)
@@ -167,13 +164,9 @@ fun mediaController() {
 
 					// Request validation
 					val v = RequestValidator()
+							.offsetLimitOrder(7)
 							.param("tags", JsonArrayValidator())
 							.optionalParam("excludeTags", JsonArrayValidator())
-							.optionalParam("offset", Presets.resultOffsetValidator(), 100)
-							.optionalParam("limit", Presets.resultLimitValidator(), 100)
-							.optionalParam("order", IntValidator()
-									.min(0)
-									.max(7), 0)
 							.optionalParam("mime", Presets.mimeValidator(true), "%")
 
 					if(v.validate(r)) {
@@ -229,7 +222,7 @@ fun mediaController() {
 						// Check if it exists
 						if(mediaRes.count() > 0) {
 							// Fetch media info
-							val media = mediaRes.iterator().next()
+							val media = mediaRes.first()
 							val mediaJson = media.toJson()
 
 							// Fetch internal values
@@ -259,7 +252,7 @@ fun mediaController() {
 									// Fetch parent
 									val parentRes = mediaModel.fetchMediaInfo(parent)
 									if(parentRes.count() > 0) {
-										mediaJson.put("parent", parentRes.iterator().next().toJson())
+										mediaJson.put("parent", parentRes.first().toJson())
 									} else {
 										mediaJson.put("parent", null as String?)
 									}
@@ -288,6 +281,63 @@ fun mediaController() {
 			}
 		}
 
+		// Creates and returns a temporary link for a file
+		// Permissions:
+		//  - files.view
+		// Route parameters:
+		//  - file: String, the alphanumeric ID of the media file to generate a link for
+		// Parameters:
+		//  - expire: ISO date string, the time when the link will expire
+		router().get("/api/v1/media/:file/link").virtualHost(hostname).handler { r ->
+			GlobalScope.launch(vertx().dispatcher()) {
+				if(r.protectWithPermission("files.view")) {
+					val mediaModel = MediaModel(r.account())
+					val fileId = r.pathParam("file")
+
+					// Request validation
+					val v = RequestValidator()
+							.param("expire", OffsetDateTimeValidator())
+
+					if(v.validate(r)) {
+						val expire = v.parsedParam("expire") as OffsetDateTime
+
+						try {
+							// Fetch media file
+							val mediaRes = mediaModel.fetchMediaInfo(fileId)
+
+							// Check if it exists
+							if(mediaRes.count() > 0) {
+								try {
+									// Generate plaintext link string
+									val linkStr = "${expire.toInstant().epochSecond}:$fileId"
+
+									// Encrypt link string
+									val enc = crypt.aesEncrypt(linkStr)
+
+									// Send link
+									r.success(json {obj(
+											"link" to enc
+									)})
+								} catch(e: Exception) {
+									logger.error("Failed to generate encrypted file link for media ID $fileId:")
+									e.printStackTrace()
+									r.error("Internal error")
+								}
+							} else {
+								r.error("File does not exist")
+							}
+						} catch(e: Exception) {
+							logger.error("Failed to fetch file info:")
+							e.printStackTrace()
+							r.error("Database error")
+						}
+					} else {
+						r.error(v)
+					}
+				}
+			}
+		}
+
 		// Edits a media file's metadata
 		// Permissions:
 		//  - files.edit
@@ -297,6 +347,7 @@ fun mediaController() {
 		//  - name (optional): String, the new name of the media file, can be null (or empty to be null)
 		//  - desc (optional): String, the new description of the media file, can be null (or empty to be null)
 		//  - tags (optional): JSON array, the new tags to give this media file
+		//  - creator (optional): Integer, the new creator
 		router().post("/api/v1/media/:file/edit").virtualHost(hostname).handler { r ->
 			GlobalScope.launch(vertx().dispatcher()) {
 				if(r.protectWithPermission("files.edit")) {
@@ -310,7 +361,7 @@ fun mediaController() {
 						// Check if it exists
 						if(mediaRes.count() > 0) {
 							// Fetch media info
-							val media = mediaRes.iterator().next()
+							val media = mediaRes.first()
 
 							// Check if media was created by the user
 							if(media.creator != r.userId() && !r.hasPermission("files.edit.all")) {
@@ -330,6 +381,7 @@ fun mediaController() {
 									.optionalParam("description", StringValidator()
 											.maxLength(1024), media.description)
 									.optionalParam("tags", TagsValidator(), media.tags.toJsonArray())
+									.optionalParam("creator", IntValidator())
 
 							if(v.validate(r)) {
 								// Resolve edit values
@@ -337,10 +389,40 @@ fun mediaController() {
 								val name = (v.parsedParam("name") as String?)?.nullIfEmpty()
 								val desc = (v.parsedParam("description") as String?)?.nullIfEmpty()
 								val tags = (v.parsedParam("tags") as JsonArray).toStringArray()
+								val creator = v.parsedParam("creator") as Int?
+
+								// Check if creator is specified and account has permission to change it
+								if(creator != null) {
+									if((media.creator != r.userId() && !r.account().hasPermission("files.ownership.all")) || (!r.account().hasPermission("files.ownership"))) {
+										r.unauthorized()
+										return@launch
+									}
+
+									// Check if file is a child
+									if(media.parent != null) {
+										r.error("Cannot change creator of child files")
+										return@launch
+									}
+
+									// Check if account exists
+									val accountsModel = AccountsModel()
+									val accountRes = try {
+										accountsModel.fetchAccountById(creator)
+									} catch(e: Exception) {
+										logger.error("Failed to fetch account ID $creator:")
+										e.printStackTrace()
+										r.error("Database error")
+										return@launch
+									}
+									if(accountRes.rowCount() < 1) {
+										r.error("Invalid account")
+										return@launch
+									}
+								}
 
 								try {
 									// Update media info
-									mediaModel.updateMediaInfo(media.internalId, filename, name, desc, tags)
+									mediaModel.updateMediaInfo(media.internalId, filename, name, desc, tags, creator ?: media.creator)
 
 									try {
 										// Update tags
@@ -389,11 +471,29 @@ fun mediaController() {
 						val mediaRes = mediaModel.fetchMedia(fileId)
 
 						if(mediaRes.count() > 0) {
-							val media = mediaRes.iterator().next()
+							val media = mediaRes.first()
 
-							// Check if media was created by the user
+							// Check if media was created by the user or if the user has permission to delete it
 							if(media.creator != r.userId() && !r.hasPermission("files.delete.all")) {
 								r.unauthorized()
+								return@launch
+							}
+
+							// Check if file is being used in any current processing jobs
+							if(currentProcessingJobsByParent(fileId).isNotEmpty()) {
+								r.error("There are currently processing children for this media, wait until they are finished")
+								return@launch
+							}
+
+							// Cancel any queued processing jobs referencing this media
+							cancelQueuedProcessingJobsByParent(fileId)
+
+							// Fetch media's source
+							val source = try {
+								mediaSourceManager.getSourceInstanceById(media.source)!!
+							} catch(e: NullPointerException) {
+								logger.error("Tried to fetch media source ID ${media.source}, but it was not registered")
+								r.error("Internal error")
 								return@launch
 							}
 
@@ -418,14 +518,13 @@ fun mediaController() {
 									// Delete children
 									for(child in children) {
 										try {
-											val file = config.upload_location + child.key
-
 											// Delete file
-											if(fs.exists(file).await())
-                                                fs.delete(file).await()
+											try {
+												source.deleteFile(child.key)
+											} catch(e: MediaSourceFileNotFoundException) {}
 
 											if(child.hasThumbnail) {
-												val thumbFile = config.upload_location + "thumbnails/" + child.thumbnailFile
+												val thumbFile = config.thumbnails_location + child.thumbnailFile
 
 												// Delete thumbnail
 												if(fs.exists(thumbFile).await())
@@ -464,11 +563,10 @@ fun mediaController() {
 							if(delete) {
 								// Delete media files
 								try {
-									// Delete main file
-									val file = media.key
-
-									if(fs.exists(config.upload_location + file).await())
-                                        fs.delete(config.upload_location + file).await()
+									// Delete file
+									try {
+										source.deleteFile(media.key)
+									} catch(e: MediaSourceFileNotFoundException) {}
 								} catch(e: Exception) {
 									// Failed to delete main file
 									logger.error("Failed to delete file ${media.key}:")
@@ -481,12 +579,11 @@ fun mediaController() {
 										// Delete thumbnail file
 										val file = media.thumbnailFile
 
-
-										if(fs.exists(config.upload_location + "thumbnails/" + file).await())
-                                            fs.delete(config.upload_location + "thumbnails/" + file).await()
+										if(fs.exists(config.thumbnails_location + file).await())
+                                            fs.delete(config.thumbnails_location + file).await()
 									} catch(e: Exception) {
 										// Failed to delete thumbnail file
-										logger.error("Failed to delete file ${media.thumbnailFile}")
+										logger.error("Failed to delete file ${media.thumbnailFile}:")
 										e.printStackTrace()
 										r.error("Internal error")
 										return@launch
@@ -553,11 +650,7 @@ fun mediaController() {
 
 				// Request validation
 				val v = RequestValidator()
-						.optionalParam("offset", Presets.resultOffsetValidator(), 0)
-						.optionalParam("limit", Presets.resultLimitValidator(), 100)
-						.optionalParam("order", IntValidator()
-								.min(0)
-								.max(7), 0)
+						.offsetLimitOrder(7)
 
 				if(v.validate(r)) {
 					// Collect parameters
@@ -569,7 +662,7 @@ fun mediaController() {
 						val listRes = listsModel.fetchList(listId)
 
 						if(listRes.count() > 0) {
-							val list = listRes.iterator().next()
+							val list = listRes.first()
 
 							if(list.visibility == ListVisibility.PUBLIC || r.hasPermission("lists.view")) {
 								try {
@@ -599,16 +692,10 @@ fun mediaController() {
 										}
 									}
 
-									// Create JSON array of files
-									val arr = JsonArray()
-
-									for(file in media)
-										arr.add(file.toJson())
-
 									// Send files
-									r.success(json {
-                                        obj("files" to arr)
-                                    })
+									r.success(json {obj(
+											"files" to media.toJsonArray()
+									)})
 								} catch(e: Exception) {
 									logger.error("Failed to fetch list files:")
 									e.printStackTrace()

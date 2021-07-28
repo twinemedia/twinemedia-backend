@@ -56,7 +56,7 @@ class ProcessesModel {
 	 * @since 1.0
 	 */
 	private fun orderBy(order: Int): String {
-		return "ORDER BY " + when (order) {
+		return "ORDER BY " + when(order) {
 			1 -> "process_created_on ASC"
 			2 -> "process_mime ASC, media_filename ASC"
 			3 -> "process_mime DESC, media_filename DESC"
@@ -75,18 +75,10 @@ class ProcessesModel {
 	 */
 	private fun listWhereFilter(): String {
 		return when {
-			account == null -> {
-				"TRUE"
-			}
-			account!!.excludeOtherProcesses -> {
-				"process_creator = ${account?.id}"
-			}
-			account!!.hasPermission("processes.list.all") -> {
-				"TRUE"
-			}
-			else -> {
-				"process_creator = ${account?.id}"
-			}
+			account == null -> "TRUE"
+			account!!.excludeOtherProcesses -> "process_creator = ${account?.id}"
+			account!!.hasPermission("processes.list.all") -> "TRUE"
+			else -> "process_creator = ${account?.id}"
 		}
 	}
 	/**
@@ -96,18 +88,10 @@ class ProcessesModel {
 	 */
 	private fun viewWhereFilter(): String {
 		return when {
-			account == null -> {
-				"TRUE"
-			}
-			account!!.excludeOtherProcesses -> {
-				"process_creator = ${account?.id}"
-			}
-			account!!.hasPermission("processes.view.all") -> {
-				"TRUE"
-			}
-			else -> {
-				"process_creator = ${account?.id}"
-			}
+			account == null -> "TRUE"
+			account!!.excludeOtherProcesses -> "process_creator = ${account?.id}"
+			account!!.hasPermission("processes.view.all") -> "TRUE"
+			else -> "process_creator = ${account?.id}"
 		}
 	}
 	/**
@@ -117,18 +101,10 @@ class ProcessesModel {
 	 */
 	private fun editWhereFilter(): String {
 		return when {
-			account == null -> {
-				"TRUE"
-			}
-			account!!.excludeOtherProcesses -> {
-				"process_creator = ${account?.id}"
-			}
-			account!!.hasPermission("processes.edit.all") -> {
-				"TRUE"
-			}
-			else -> {
-				"process_creator = ${account?.id}"
-			}
+			account == null -> "TRUE"
+			account!!.excludeOtherProcesses -> "process_creator = ${account?.id}"
+			account!!.hasPermission("processes.edit.all") -> "TRUE"
+			else -> "process_creator = ${account?.id}"
 		}
 	}
 	/**
@@ -138,18 +114,10 @@ class ProcessesModel {
 	 */
 	private fun deleteWhereFilter(): String {
 		return when {
-			account == null -> {
-				"TRUE"
-			}
-			account!!.excludeOtherProcesses -> {
-				"process_creator = ${account?.id}"
-			}
-			account!!.hasPermission("processes.delete.all") -> {
-				"TRUE"
-			}
-			else -> {
-				"process_creator = ${account?.id}"
-			}
+			account == null -> "TRUE"
+			account!!.excludeOtherProcesses -> "process_creator = ${account?.id}"
+			account!!.hasPermission("processes.delete.all") -> "TRUE"
+			else -> "process_creator = ${account?.id}"
 		}
 	}
 
@@ -187,21 +155,24 @@ class ProcessesModel {
 	 * @param mime The mime this process setting is for
 	 * @param settings The settings for this process
 	 * @param creator The ID of the creator of this process
-	 * @since 1.4.0
+	 * @return The newly created process setting entry's ID
+	 * @since 1.5.0
 	 */
-	suspend fun createProcess(mime: String, settings: JsonObject, creator: Int) {
-		SqlTemplate
-				.forUpdate(client, """
+	suspend fun createProcess(mime: String, settings: JsonObject, creator: Int): Int {
+		return SqlTemplate
+				.forQuery(client, """
 					INSERT INTO processes
 					( process_mime, process_settings, process_creator )
 					VALUES
 					( #{mime}, CAST(#{settings} AS jsonb), #{creator} )
+					RETURNING id
 				""".trimIndent())
 				.execute(hashMapOf<String, Any>(
 						"mime" to mime,
 						"settings" to settings,
 						"creator" to creator
 				)).await()
+				.first().getInteger("id")
 	}
 
 	/**

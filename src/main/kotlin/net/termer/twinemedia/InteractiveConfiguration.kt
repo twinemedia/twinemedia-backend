@@ -1,14 +1,20 @@
 package net.termer.twinemedia
 
 import io.vertx.core.json.Json
+import io.vertx.kotlin.core.json.json
+import io.vertx.kotlin.core.json.obj
+import kotlinx.coroutines.DelicateCoroutinesApi
 import kotlinx.coroutines.runBlocking
 import net.termer.twine.utils.StringFilter
 import net.termer.twine.utils.files.BlockingReader
 import net.termer.twine.utils.files.BlockingWriter
 import net.termer.twinemedia.Module.Companion.config
+import net.termer.twinemedia.db.dataobject.Source
 import net.termer.twinemedia.db.dbInit
 import net.termer.twinemedia.db.dbMigrate
 import net.termer.twinemedia.model.AccountsModel
+import net.termer.twinemedia.model.MediaModel
+import net.termer.twinemedia.model.SourcesModel
 import net.termer.twinemedia.util.createAccount
 import net.termer.twinemedia.util.updateAccountPassword
 import net.termer.twinemedia.util.validEmail
@@ -19,6 +25,8 @@ private val cons = System.console()
 
 // Instantiated models
 private val accountsModel = AccountsModel()
+private val mediaModel = MediaModel()
+private val sourcesModel = SourcesModel()
 
 // Notice about Kotlin coroutine calls:
 // Coroutine calls are NOT called inside a Vert.x context because blocking calls are done inside of them, intentionally.
@@ -28,6 +36,7 @@ private val accountsModel = AccountsModel()
  * Admin creation prompt
  * @since 1.4.0
  */
+@DelicateCoroutinesApi
 private fun createAdminPrompt() {
 	var email = ""
 	while(email.isBlank()) {
@@ -35,7 +44,7 @@ private fun createAdminPrompt() {
 		val addr = cons.readLine()
 
 		if(validEmail(addr)) {
-			runBlocking {
+			runBlocking	{
 				// Check if account with that email already exists
 				val emailRes = accountsModel.fetchAccountByEmail(addr)
 
@@ -56,8 +65,8 @@ private fun createAdminPrompt() {
 	val pass = cons.readPassword().joinToString("")
 
 	println("Creating account...")
-	runBlocking {
-		createAccount(name, email, true, arrayOf(), pass)
+	runBlocking	{
+		createAccount(name, email, true, arrayOf(), pass, -1)
 	}
 	println("Created!")
 }
@@ -66,6 +75,7 @@ private fun createAdminPrompt() {
  * Runs an interactive install wizard in the console
  * @since 1.4.0
  */
+@DelicateCoroutinesApi
 fun interactiveInstall() {
 	val cfg = File("configs/twinemedia.json")
 	if(cfg.exists()) {
@@ -378,7 +388,7 @@ fun interactiveInstall() {
 		BlockingWriter.write("configs/twinemedia.json", Json.encodePrettily(config))
 	}
 
-	runBlocking {
+	runBlocking	{
 		// Connect to database
 		println("Testing database connection...")
 		try {
@@ -413,6 +423,7 @@ fun interactiveInstall() {
  * Runs an interactive administrator password reset wizard in the console
  * @since 1.4.0
  */
+@DelicateCoroutinesApi
 fun interactiveResetAdminPassword() {
 	val cfg = File("configs/twinemedia.json")
 	if(cfg.exists()) {
@@ -434,7 +445,7 @@ fun interactiveResetAdminPassword() {
 	dbInit()
 	println("Connected!")
 
-	runBlocking {
+	runBlocking	{
 		println("Fetching admin accounts...")
 		val adminsRes = accountsModel.fetchAdminAccounts()
 
@@ -523,5 +534,92 @@ fun interactiveResetAdminPassword() {
 				createAdminPrompt()
 			}
 		}
+	}
+}
+
+/**
+ * Runs an interactive media source migration for 1.4.0 -> 1.5.0 migration
+ * @since 1.5.0
+ */
+@DelicateCoroutinesApi
+fun interactiveMediaSourceMigration() {
+	println("You are about to start the media source migration process. This will create a new media source based on where your files are already stored, and set it as the default for accounts that have not yet been migrated.")
+	println("Press enter to continue.")
+	cons.readLine()
+
+	println("Attempting to connect to the database...")
+	dbInit()
+	println("Connected!")
+
+	runBlocking	{
+		// Check for unmigrated users
+		val sansSrcAccounts = accountsModel.fetchAccountsWithoutSourceCount()
+
+		if(sansSrcAccounts < 1) {
+			println("There are no unmigrated accounts")
+		}
+
+		// Fetch the amount of sources there are
+		val srcCount = sourcesModel.fetchSourcesCount()
+
+		if(srcCount > 0)
+			println("There are $srcCount existing source(s). This means media or accounts have likely been at least partially migrated.")
+
+		val src: Source?
+
+		print("Do you want to create a source based on your old upload location in the TwineMedia configuration file? [Y/n]: ")
+		if(!readLine()!!.toLowerCase().startsWith('n')) {
+			// Create source configuration
+			val srcCfg = json {obj(
+					"directory" to config.upload_location,
+					"indexSubdirs" to false
+			)}
+
+			// Create source
+			sourcesModel.createSource("local_directory", "Local Directory Files", srcCfg, -1, true)
+
+			// Fetch source to get its ID
+			val srcRes = sourcesModel.fetchAllSources(0, 1, 0)
+
+			if(srcRes.rowCount() < 1) {
+				println("Failed to find source after creating it, something is wrong")
+				return@runBlocking
+			}
+			src = srcRes.first()
+
+			println("Source created. Since the source is using the directory defined by \"upload_location\", you should change that value to an empty directory that can be used for temporary uploads.")
+		} else if(srcCount < 1) {
+			println("There are no sources available, you need to create one to continue.")
+			return@runBlocking
+		} else {
+			// Fetch all sources to choose from
+			val srcs = sourcesModel.fetchAllSources(0, 999999, 0)
+
+			println("Current sources:")
+			for((i, source) in srcs.withIndex()) {
+				println("${i+1}. ${source.name} (${source.type})")
+			}
+			print("Enter the source number to use: ")
+			val id = try { readLine()!!.toInt() } catch(e: NumberFormatException) { 0 }
+			if(id < 1 || id > srcs.rowCount()) {
+				println("Invalid source number")
+				return@runBlocking
+			}
+
+			src = srcs.elementAt(id-1)
+		}
+
+		// Check for unmigrated count
+		val sansSrcMedia = mediaModel.fetchMediaCountBySource(-1)
+
+		if(sansSrcMedia < 1) {
+			println("There is no unmigrated media")
+		}
+
+		println("Migrating accounts and media to new source...")
+		accountsModel.updateAccountDefaultSourceByDefaultSource(-1, src.id)
+		mediaModel.updateMediaSourceBySource(-1, src.id)
+
+		println("Migration finished! Remember to ensure the file of \"upload_location\" is an empty directory that can be used for temporarily storing uploading files!")
 	}
 }

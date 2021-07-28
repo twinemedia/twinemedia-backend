@@ -56,23 +56,16 @@ class ApiKeyInfo(
 		 * @since 1.4.0
 		 */
 		val createdOn: OffsetDateTime
-) {
-	/**
-	 * Returns a JSON representation of the key's info
-	 * @return A JSON representation of the key's info
-	 * @since 1.4.0
-	 */
-	fun toJson() = json {
-		obj(
-				"id" to id,
-				"name" to name,
-				"permissions" to permissions.toJsonArray(),
-				"jwt" to jwt,
-				"owner" to owner,
-				"owner_name" to ownerName,
-				"created_on" to createdOn.toString()
-		)
-	}
+): SerializableDataObject {
+	override fun toJson() = json {obj(
+			"id" to id,
+			"name" to name,
+			"permissions" to permissions.toJsonArray(),
+			"jwt" to jwt,
+			"owner" to owner,
+			"owner_name" to ownerName,
+			"created_on" to createdOn.toString()
+	)}
 
 	companion object {
 		/**

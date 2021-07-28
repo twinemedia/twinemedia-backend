@@ -1,7 +1,6 @@
 package net.termer.twinemedia.db.dataobject
 
 import io.vertx.codegen.annotations.DataObject
-import io.vertx.core.json.JsonObject
 import io.vertx.kotlin.core.json.json
 import io.vertx.kotlin.core.json.obj
 import io.vertx.sqlclient.templates.RowMapper
@@ -14,8 +13,11 @@ import java.time.OffsetDateTime
  * @param id The account's ID
  * @param email The account's email address
  * @param name The account's name
- * @param permissions An array of the account's permissions
  * @param admin Whether the account is an admin
+ * @param permissions An array of the account's permissions
+ * @param defaultSource The ID of the account's default media source
+ * @param defaultSourceName The name of the account's default media source (or null if the source no longer exists)
+ * @param defaultSourceType The type of the account's default media source (or null if the source no longer exists)
  * @param creationDate The date this account was created on
  * @since 1.4.0
  */
@@ -52,6 +54,23 @@ class AccountInfo(
 		val permissions: Array<String>,
 
 		/**
+		 * The ID of the account's default media source
+		 * @since 1.5.0
+		 */
+		val defaultSource: Int,
+
+		/**
+		 * The name of the account's default media source (or null if the source no longer exists)
+		 * @since 1.5.0
+		 */
+		val defaultSourceName: String?,
+
+		/**
+		 * The type of the account's default media source (or null if the source no longer exists)
+		 */
+		val defaultSourceType: String?,
+
+		/**
 		 * The date this account was created on
 		 * @since 1.4.0
 		 */
@@ -62,7 +81,7 @@ class AccountInfo(
 		 * @since 1.4.0
 		 */
 		val filesCreated: Int
-) {
+): SerializableDataObject {
 	/**
 	 * Returns if this user account has the specified permission
 	 * @param permission The permission to check
@@ -80,22 +99,18 @@ class AccountInfo(
 	 */
 	fun hasAdminPermission() = admin
 
-	/**
-	 * Returns a JSON representation of the account's info
-	 * @return A JSON representation of the account's info
-	 * @since 1.4.0
-	 */
-	fun toJson() = json {
-		obj(
-				"id" to id,
-				"email" to email,
-				"name" to name,
-				"permissions" to permissions,
-				"admin" to admin,
-				"creation_date" to creationDate.toString(),
-				"files_created" to filesCreated
-		)
-	}
+	override fun toJson() = json {obj(
+			"id" to id,
+			"email" to email,
+			"name" to name,
+			"permissions" to permissions,
+			"admin" to admin,
+			"default_source" to defaultSource,
+			"default_source_name" to defaultSourceName,
+			"default_source_type" to defaultSourceType,
+			"creation_date" to creationDate.toString(),
+			"files_created" to filesCreated
+	)}
 
 	companion object {
 		/**
@@ -107,8 +122,11 @@ class AccountInfo(
 					id = row.getInteger("id"),
 					email = row.getString("email"),
 					name = row.getString("name"),
-					permissions = row.getJsonArray("permissions").toStringArray(),
 					admin = row.getBoolean("admin"),
+					permissions = row.getJsonArray("permissions").toStringArray(),
+					defaultSource = row.getInteger("default_source"),
+					defaultSourceName = row.getString("default_source_name"),
+					defaultSourceType = row.getString("default_source_type"),
 					creationDate = row.getOffsetDateTime("creation_date"),
 					filesCreated = row.getInteger("files_created")
 			)

@@ -5,6 +5,7 @@ import io.vertx.core.json.JsonArray
 import io.vertx.kotlin.core.json.json
 import io.vertx.kotlin.core.json.obj
 import io.vertx.kotlin.coroutines.dispatcher
+import kotlinx.coroutines.DelicateCoroutinesApi
 import kotlinx.coroutines.GlobalScope
 import kotlinx.coroutines.launch
 import net.termer.twine.ServerManager.router
@@ -17,6 +18,7 @@ import net.termer.twinemedia.util.*
  * Sets up all account routes for the user's account
  * @since 1.0.0
  */
+@DelicateCoroutinesApi
 fun accountController() {
 	for(hostname in appHostnames()) {
 		// Protect all routes in /api/v1/account/
@@ -52,27 +54,24 @@ fun accountController() {
 						for(perm in r.account().permissions)
 							perms.add(perm)
 
-					// Collect properties
-					val account = json {
-						obj(
-                                "id" to r.account().id,
-                                "permissions" to perms,
-                                "name" to r.account().name,
-                                "email" to r.account().email,
-                                "admin" to r.account().hasAdminPermission(),
-                                "creation_date" to r.account().creationDate.toString(),
-                                "exclude_tags" to JsonArray(r.account().excludeTags.asList()),
-                                "exclude_other_media" to r.account().excludeOtherMedia,
-                                "exclude_other_lists" to r.account().excludeOtherLists,
-                                "exclude_other_tags" to r.account().excludeOtherTags,
-                                "exclude_other_processes" to r.account().excludeOtherProcesses,
-                                "max_upload" to config.max_upload,
-                                "api_token" to r.account().isApiKey
-                        )
-					}
-
 					// Send info in JSON response
-					r.success(account)
+					r.success(json {obj(
+							"id" to r.account().id,
+							"permissions" to perms,
+							"name" to r.account().name,
+							"email" to r.account().email,
+							"admin" to r.account().hasAdminPermission(),
+							"creation_date" to r.account().creationDate.toString(),
+							"exclude_tags" to JsonArray(r.account().excludeTags.asList()),
+							"exclude_other_media" to r.account().excludeOtherMedia,
+							"exclude_other_lists" to r.account().excludeOtherLists,
+							"exclude_other_tags" to r.account().excludeOtherTags,
+							"exclude_other_processes" to r.account().excludeOtherProcesses,
+							"exclude_other_sources" to r.account().excludeOtherSources,
+							"default_source" to r.account().defaultSource,
+							"max_upload" to config.max_upload,
+							"api_token" to r.account().isApiKey
+					)})
 				} catch(e: AuthException) {
 					e.printStackTrace()
 					r.error("Internal error")

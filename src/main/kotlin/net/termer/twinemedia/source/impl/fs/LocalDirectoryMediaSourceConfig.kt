@@ -19,7 +19,7 @@ class LocalDirectoryMediaSourceConfig: MediaSourceConfig {
 			arrayOf(MediaSourceSchema.Section("general", "General")),
 			arrayOf(
 					MediaSourceSchema.Field("directory", "Directory Path", MediaSourceSchema.Field.Type.STRING, false, "/", "general"),
-					MediaSourceSchema.Field("indexSubdirs", "Search Sub-Directories For Files", MediaSourceSchema.Field.Type.BOOLEAN, false, true, "general")
+					MediaSourceSchema.Field("index_subdirs", "Search Sub-Directories For Files", MediaSourceSchema.Field.Type.BOOLEAN, false, true, "general")
 			)
 	)
 
@@ -38,7 +38,7 @@ class LocalDirectoryMediaSourceConfig: MediaSourceConfig {
 			if(!directory!!.endsWith("/"))
 				directory += '/'
 
-			indexSubdirs = json.getBoolean("indexSubdirs")
+			indexSubdirs = json.getBoolean("index_subdirs")
 		} else {
 			throw ValidationFailedException("Validation for the provided JSON does not match the schema: "+validationRes.errorText)
 		}

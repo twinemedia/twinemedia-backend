@@ -137,7 +137,7 @@ class Media(
 		 * The row mapper for this type of row
 		 * @since 1.4.0
 		 */
-		val MAPPER = RowMapper<Media> { row ->
+		val MAPPER = RowMapper { row ->
 			Media(
 					internalId = row.getInteger("id"),
 					id = row.getString("media_id"),
@@ -146,14 +146,14 @@ class Media(
 					size = row.getLong("media_size"),
 					mime = row.getString("media_mime"),
 					tags = row.getJsonArray("media_tags").toStringArray(),
-					key = row.getString("media_file"),
+					key = row.getString("media_key"),
 					createdOn = row.getOffsetDateTime("media_created_on"),
 					modifiedOn = row.getOffsetDateTime("media_modified_on"),
 					description = row.getString("media_description"),
 					meta = row.getJsonObject("media_meta"),
 					creator = row.getInteger("media_creator"),
 					parent = row.getInteger("media_parent"),
-					hash = row.getString("media_file_hash"),
+					hash = row.getString("media_hash"),
 					hasThumbnail = row.getBoolean("media_thumbnail"),
 					thumbnailFile = row.getString("media_thumbnail_file"),
 					isProcessing = row.getBoolean("media_processing"),

@@ -57,15 +57,17 @@ class AccountsModel {
 				account_name AS name,
 				account_admin AS admin,
 				account_permissions AS permissions,
+				account_default_source AS default_source,
+				source_name AS default_source_name,
+				source_type AS default_source_type,
 				account_creation_date AS creation_date,
 				(
-					SELECT
-					COUNT(*)
-					FROM media
+					SELECT COUNT(*) FROM media
 					WHERE media_creator = accounts.id
 				) AS files_created
 				${if(extra.orEmpty().isBlank()) "" else ", $extra"}
 			FROM accounts
+			LEFT JOIN sources ON sources.id = account_default_source
 		""".trimIndent()
 	}
 	/**
@@ -74,6 +76,37 @@ class AccountsModel {
 	 * @since 1.4.0
 	 */
 	private fun infoSelect() = infoSelect(null)
+
+	/**
+	 * Creates a new account entry with the provided details
+	 * @param email The email address of the new account
+	 * @param name The name of the new account
+	 * @param admin Whether the new account will be an administrator
+	 * @param permissions An array of permissions that the new account will have
+	 * @param hash The password hash for the new account
+	 * @param defaultSource The default media source for the new account
+	 * @return The newly created account entry's ID
+	 * @since 1.5.0
+	 */
+	suspend fun createAccountEntry(email: String, name: String, admin: Boolean, permissions: Array<String>, hash: String, defaultSource: Int): Int {
+		return SqlTemplate
+				.forQuery(client, """
+					INSERT INTO accounts
+					( account_email, account_name, account_admin, account_permissions, account_hash, account_default_source )
+					VALUES
+					( #{email}, #{name}, #{admin}, CAST( #{perms} AS jsonb ), #{hash}, #{defaultSource} )
+					RETURNING id
+				""".trimIndent())
+				.execute(hashMapOf<String, Any>(
+						"email" to email,
+						"name" to name,
+						"admin" to admin,
+						"perms" to permissions.toJsonArray(),
+						"hash" to hash,
+						"defaultSource" to defaultSource
+				)).await()
+				.first().getInteger("id")
+	}
 
 	/**
 	 * Fetches all account info
@@ -92,6 +125,32 @@ class AccountsModel {
 				""".trimIndent())
 				.mapTo(AccountInfo.MAPPER)
 				.execute(hashMapOf<String, Any>(
+						"offset" to offset,
+						"limit" to limit
+				)).await()
+	}
+
+	/**
+	 * Fetches all accounts with names matching the specified plaintext query
+	 * @param query The query to search for
+	 * @param offset The offset of the accounts to fetch
+	 * @param limit The amount of accounts to return
+	 * @param order The order to return the accounts
+	 * @return All accounts with names matching the specified plaintext query
+	 * @since 1.5.0
+	 */
+	suspend fun fetchAccountsByPlaintextQuery(query: String, offset: Int, limit: Int, order: Int): RowSet<AccountInfo> {
+		return SqlTemplate
+				.forQuery(client, """
+					${infoSelect()}
+					WHERE (to_tsvector(account_name) @@ plainto_tsquery(#{queryRaw}) OR LOWER(account_name) LIKE LOWER(#{query}))
+					${orderBy(order)}
+					OFFSET #{offset} LIMIT #{limit}
+				""".trimIndent())
+				.mapTo(AccountInfo.MAPPER)
+				.execute(hashMapOf<String, Any?>(
+						"queryRaw" to query,
+						"query" to "%$query%",
 						"offset" to offset,
 						"limit" to limit
 				)).await()
@@ -123,7 +182,7 @@ class AccountsModel {
 	suspend fun fetchAccountById(id: Int): RowSet<Account> {
 		return SqlTemplate
 				.forQuery(client, """
-					SELECT * FROM accounts WHERE id = #{id}
+					SELECT * FROM accounts WHERE accounts.id = #{id}
 				""".trimIndent())
 				.mapTo(Account.MAPPER)
 				.execute(hashMapOf<String, Any>(
@@ -164,7 +223,7 @@ class AccountsModel {
 		return SqlTemplate
 				.forQuery(client, """
 					${infoSelect()}
-					WHERE id = #{id}
+					WHERE accounts.id = #{id}
 				""".trimIndent())
 				.mapTo(AccountInfo.MAPPER)
 				.execute(hashMapOf<String, Any>(
@@ -187,32 +246,18 @@ class AccountsModel {
 	}
 
 	/**
-	 * Updates an account's info
-	 * @param id The ID of the account
-	 * @param newName The new name for this account
-	 * @param newEmail The new email for this account
-	 * @param isAdmin Whether this account will be an administrator
-	 * @param newPermissions The new permissions for this account
-	 * @since 1.0
+	 * Fetches the amount of accounts that do not have a default media source associated with them
+	 * @return The amount of accounts that do not have a default media source associated with them
+	 * @since 1.5.0
 	 */
-	suspend fun updateAccountInfo(id: Int, newName: String, newEmail: String, isAdmin: Boolean, newPermissions: Array<String>) {
-		SqlTemplate
-				.forUpdate(client, """
-					UPDATE accounts
-					SET
-						account_name = #{name},
-						account_email = #{email},
-						account_admin = #{admin},
-						account_permissions = CAST( #{perms} AS jsonb )
-					WHERE id = #{id}
+	suspend fun fetchAccountsWithoutSourceCount(): Int {
+		return SqlTemplate
+				.forQuery(client, """
+					SELECT COUNT(*) FROM accounts
+					WHERE account_default_source = -1
 				""".trimIndent())
-				.execute(hashMapOf<String, Any>(
-						"id" to id,
-						"name" to newName,
-						"email" to newEmail,
-						"admin" to isAdmin,
-						"perms" to newPermissions.toJsonArray()
-				)).await()
+				.execute(mapOf()).await()
+				.first().getInteger("count")
 	}
 
 	/**
@@ -220,39 +265,77 @@ class AccountsModel {
 	 * @param id The ID of the account
 	 * @param newName The new name for this account
 	 * @param newEmail The new email for this account
-	 * @param newHash The new password hash for this account
-	 * @param excludeTags Tags to globally exclude when listing files (from searches, lists, or anywhere else an array of files would be returned other than file children)
-	 * @param excludeOtherMedia Whether to globally exclude media created by other users when viewing or listing any media
-	 * @param excludeOtherLists Whether to globally exclude lists created by other users
-	 * @param excludeOtherTags Whether to globally exclude tags added to files created by other users
-	 * @param excludeOtherProcesses Whether to globally exclude processes created by other users
-	 * @since 1.0
+	 * @param isAdmin Whether this account will be an administrator
+	 * @param newPermissions The new permissions for this account
+	 * @param defaultSource The new default source's ID for this account
+	 * @since 1.5.0
 	 */
-	suspend fun updateAccountInfo(id: Int, newName: String, newEmail: String, newHash: String, excludeTags: Array<String>, excludeOtherMedia: Boolean, excludeOtherLists: Boolean, excludeOtherTags: Boolean, excludeOtherProcesses: Boolean) {
+	suspend fun updateAccountInfo(id: Int, newName: String, newEmail: String, isAdmin: Boolean, newPermissions: Array<String>, defaultSource: Int) {
 		SqlTemplate
 				.forUpdate(client, """
 					UPDATE accounts
 					SET
 						account_name = #{name},
 						account_email = #{email},
-						account_hash = #{hash},
-						account_exclude_tags = CAST( #{excludeTags} AS jsonb ),
-						account_exclude_other_media = #{excludeOtherMedia},
-						account_exclude_other_lists = #{excludeOtherLists},
-						account_exclude_other_tags = #{excludeOtherTags},
-						account_exclude_other_processes = #{excludeOtherProcesses}
-					WHERE id = #{id}
+						account_admin = #{admin},
+						account_permissions = CAST( #{perms} AS jsonb ),
+						account_default_source = #{defaultSource}
+					WHERE accounts.id = #{id}
 				""".trimIndent())
 				.execute(hashMapOf<String, Any>(
 						"id" to id,
 						"name" to newName,
 						"email" to newEmail,
+						"admin" to isAdmin,
+						"perms" to newPermissions.toJsonArray(),
+						"defaultSource" to defaultSource
+				)).await()
+	}
+
+	/**
+	 * Updates an account's info
+	 * @param id The ID of the account
+	 * @param newName The new name for this account
+	 * @param newEmail The new email for this account (null to leave unchanged)
+	 * @param newHash The new password hash for this account (null to leave unchanged)
+	 * @param newDefaultSource The new default media source ID for this account
+	 * @param excludeTags Tags to globally exclude when listing files (from searches, lists, or anywhere else an array of files would be returned other than file children)
+	 * @param excludeOtherMedia Whether to globally exclude media created by other users when viewing or listing any media
+	 * @param excludeOtherLists Whether to globally exclude lists created by other users
+	 * @param excludeOtherTags Whether to globally exclude tags added to files created by other users
+	 * @param excludeOtherProcesses Whether to globally exclude processes created by other users
+	 * @param excludeOtherSources Whether to globally exclude media sources created by other users
+	 * @since 1.5.0
+	 */
+	suspend fun updateAccountInfo(id: Int, newName: String, newEmail: String?, newHash: String?, newDefaultSource: Int, excludeTags: Array<String>, excludeOtherMedia: Boolean, excludeOtherLists: Boolean, excludeOtherTags: Boolean, excludeOtherProcesses: Boolean, excludeOtherSources: Boolean) {
+		SqlTemplate
+				.forUpdate(client, """
+					UPDATE accounts
+					SET
+						account_name = #{name},
+						${if(newEmail == null) "" else "account_email = #{email},"}
+						${if(newHash == null) "" else "account_hash = #{hash},"}
+						account_default_source = #{defaultSource},
+						account_exclude_tags = CAST( #{excludeTags} AS jsonb ),
+						account_exclude_other_media = #{excludeOtherMedia},
+						account_exclude_other_lists = #{excludeOtherLists},
+						account_exclude_other_tags = #{excludeOtherTags},
+						account_exclude_other_processes = #{excludeOtherProcesses},
+						account_exclude_other_sources = #{excludeOtherSources}
+					WHERE accounts.id = #{id}
+				""".trimIndent())
+				.execute(hashMapOf<String, Any?>(
+						"id" to id,
+						"name" to newName,
+						"email" to newEmail,
 						"hash" to newHash,
+						"defaultSource" to newDefaultSource,
 						"excludeTags" to excludeTags.toJsonArray(),
 						"excludeOtherMedia" to excludeOtherMedia,
 						"excludeOtherLists" to excludeOtherLists,
 						"excludeOtherTags" to excludeOtherTags,
-						"excludeOtherProcesses" to excludeOtherProcesses
+						"excludeOtherProcesses" to excludeOtherProcesses,
+						"excludeOtherSources" to excludeOtherSources
 				)).await()
 	}
 
@@ -268,7 +351,7 @@ class AccountsModel {
 					UPDATE accounts
 					SET
 						account_hash = #{hash}
-					WHERE id = #{id}
+					WHERE accounts.id = #{id}
 				""".trimIndent())
 				.execute(hashMapOf<String, Any>(
 						"id" to id,
@@ -277,28 +360,22 @@ class AccountsModel {
 	}
 
 	/**
-	 * Creates a new account entry with the provided details
-	 * @param email The email address of the new account
-	 * @param name The name of the new account
-	 * @param admin Whether the new account will be an administrator
-	 * @param permissions An array of permissions that the new account will have
-	 * @param hash The password hash for the new account
-	 * @since 1.0
+	 * Updates the default source of all accounts with the specified default source
+	 * @param oldSource The old source ID
+	 * @param newSource The new source ID
+	 * @since 1.5.0
 	 */
-	suspend fun createAccountEntry(email: String, name: String, admin: Boolean, permissions: Array<String>, hash: String) {
+	suspend fun updateAccountDefaultSourceByDefaultSource(oldSource: Int, newSource: Int) {
 		SqlTemplate
 				.forUpdate(client, """
-					INSERT INTO accounts
-					( account_email, account_name, account_admin, account_permissions, account_hash )
-					VALUES
-					( #{email}, #{name}, #{admin}, CAST( #{perms} AS jsonb ), #{hash} )
+					UPDATE accounts
+					SET
+						account_default_source = #{new}
+					WHERE account_default_source = #{old}
 				""".trimIndent())
 				.execute(hashMapOf<String, Any>(
-						"email" to email,
-						"name" to name,
-						"admin" to admin,
-						"perms" to permissions.toJsonArray(),
-						"hash" to hash
+						"old" to oldSource,
+						"new" to newSource
 				)).await()
 	}
 
@@ -311,7 +388,7 @@ class AccountsModel {
 		SqlTemplate
 				.forUpdate(client, """
 					DELETE FROM accounts
-					WHERE id = #{id}
+					WHERE accounts.id = #{id}
 				""".trimIndent())
 				.execute(hashMapOf<String, Any>(
 						"id" to id

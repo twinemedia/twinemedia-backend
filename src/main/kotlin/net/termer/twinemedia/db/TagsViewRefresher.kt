@@ -5,6 +5,7 @@ import io.vertx.kotlin.coroutines.dispatcher
 import io.vertx.pgclient.PgConnectOptions
 import io.vertx.pgclient.PgPool
 import io.vertx.sqlclient.PoolOptions
+import kotlinx.coroutines.DelicateCoroutinesApi
 import kotlinx.coroutines.GlobalScope
 import kotlinx.coroutines.launch
 import net.termer.twine.ServerManager.vertx
@@ -16,7 +17,9 @@ private var refreshing = false
 
 /**
  * Reserves a database connection and starts the tags view refresher
+ * @since 1.3.0
  */
+@DelicateCoroutinesApi
 suspend fun startTagsViewRefresher() {
 	// Create private connection pool
 	val connOps = PgConnectOptions()

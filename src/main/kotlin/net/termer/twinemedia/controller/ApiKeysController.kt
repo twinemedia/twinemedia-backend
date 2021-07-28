@@ -4,6 +4,7 @@ import io.vertx.core.json.JsonArray
 import io.vertx.kotlin.core.json.json
 import io.vertx.kotlin.core.json.obj
 import io.vertx.kotlin.coroutines.dispatcher
+import kotlinx.coroutines.DelicateCoroutinesApi
 import kotlinx.coroutines.GlobalScope
 import kotlinx.coroutines.launch
 import net.termer.twine.ServerManager.*
@@ -14,12 +15,12 @@ import net.termer.twinemedia.model.ApiKeysModel
 import net.termer.twinemedia.util.*
 import net.termer.twinemedia.util.validation.*
 import net.termer.vertx.kotlin.validation.RequestValidator
-import net.termer.vertx.kotlin.validation.validator.*
 
 /**
  * Sets up all API key creation and management routes
  * @since 1.3.0
  */
+@DelicateCoroutinesApi
 fun apiKeysController() {
 	val keysModel = ApiKeysModel()
 
@@ -34,12 +35,7 @@ fun apiKeysController() {
 				if(r.protectNonApiKey()) {
 					// Request validation
 					val v = RequestValidator()
-							.optionalParam("offset", Presets.resultOffsetValidator(), 0)
-							.optionalParam("limit", Presets.resultLimitValidator(), 100)
-							.optionalParam("order", IntValidator()
-									.coerceMin(0)
-									.coerceMax(3),
-							0)
+							.offsetLimitOrder(3)
 
 					if(v.validate(r)) {
 						// Collect parameters
@@ -51,15 +47,10 @@ fun apiKeysController() {
 							// Fetch keys
 							val keys = keysModel.fetchApiKeyList(r.userId(), offset, limit, order)
 
-							val arr = JsonArray()
-
-							for(key in keys)
-								arr.add(key.toJson())
-
 							// Send success
-							r.success(json {
-                                obj("keys" to arr)
-                            })
+							r.success(json {obj(
+									"keys" to keys.toJsonArray()
+							)})
 						} catch(e: Exception) {
 							logger.error("Failed to fetch API keys:")
 							e.printStackTrace()
@@ -122,24 +113,20 @@ fun apiKeysController() {
 
 						try {
 							// Generate JWT token
-							val token = jwtCreateUnexpiringToken(json {
-								obj(
-										"sub" to r.userId(),
-										"token" to id
-								)
-							})!!
+							val token = jwtCreateUnexpiringToken(json {obj(
+									"sub" to r.userId(),
+									"token" to id
+							)})!!
 
 							try {
 								// Create database entry
 								keysModel.createApiKey(id, name, permissions, token, r.userId())
 
 								// Send ID and token
-								r.success(json {
-									obj(
-											"id" to id,
-											"token" to token
-									)
-								})
+								r.success(json {obj(
+										"id" to id,
+										"token" to token
+								)})
 							} catch(e: Exception) {
 								logger.error("Failed to create new API key entry:")
 								e.printStackTrace()

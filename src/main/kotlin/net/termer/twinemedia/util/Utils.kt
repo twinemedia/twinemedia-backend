@@ -3,13 +3,19 @@ package net.termer.twinemedia.util
 import io.vertx.core.Promise
 import io.vertx.core.json.JsonArray
 import io.vertx.kotlin.coroutines.await
+import io.vertx.sqlclient.RowSet
+import kotlinx.coroutines.DelicateCoroutinesApi
 import net.termer.twine.Twine.domains
 import net.termer.twinemedia.Module.Companion.config
+import net.termer.twinemedia.db.dataobject.SerializableDataObject
 import java.text.SimpleDateFormat
+import java.time.OffsetDateTime
 import java.util.*
 import java.util.concurrent.CompletableFuture
+import kotlin.collections.ArrayList
 
 private val simpleDateFormat = SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss.SSS'Z'")
+private val gmtDateFormat = SimpleDateFormat("EEE, dd MMM yyyy HH:mm:ss zzz")
 
 /**
  * Trims a String down to the specified length
@@ -79,6 +85,7 @@ fun Array<String>.removeDuplicatesBlanksAndToLowercase(): Array<String> {
  * @return The hostnames this application should bind its routes to
  * @since 1.0.0
  */
+@DelicateCoroutinesApi
 fun appHostnames(): Array<String> = if(config.domain != "*")
 	domains().byNameOrDefault(config.domain).hostnames()
 else
@@ -168,4 +175,26 @@ suspend fun <T> CompletableFuture<T>.await(): T {
 	}
 
 	return promise.future().await()
+}
+
+/**
+ * Converts the provided OffsetDateTime to a GMT time string
+ * @param date The OffsetDateTime to convert
+ * @return The provided OffsetDateTime to a GMT time string
+ * @since 1.5.0
+ */
+fun offsetDateTimeToGMT(date: OffsetDateTime): String = gmtDateFormat.format(Date.from(date.toInstant()))
+
+/**
+ * Converts a RowSet of serializable rows to a JSON array containing the JSON serialized version of the RowSet's rows
+ * @return A JSON array containing the JSON serialized versions of the RowSet's rows
+ * @since 1.5.0
+ */
+fun RowSet<out SerializableDataObject>.toJsonArray(): JsonArray {
+	val arr = JsonArray(ArrayList<Any?>(rowCount()))
+
+	for(row in this)
+		arr.add(row.toJson())
+
+	return arr
 }

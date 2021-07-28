@@ -130,33 +130,26 @@ class ListInfo(
 		 * @since 1.4.0
 		 */
 		val containsMedia: Boolean?
-) {
-	/**
-	 * Returns a JSON representation of the list's info
-	 * @return A JSON representation of the list's info
-	 * @since 1.4.0
-	 */
-	fun toJson(): JsonObject {
-		val json = json {
-			obj(
-					"id" to id,
-					"name" to name,
-					"description" to description,
-					"creator" to creator,
-					"creator_name" to creatorName,
-					"type" to type.ordinal,
-					"visibility" to visibility.ordinal,
-					"created_on" to createdOn.toString(),
-					"modified_on" to modifiedOn.toString(),
-					"source_tags" to sourceTags?.toJsonArray(),
-					"source_exclude_tags" to sourceExcludeTags?.toJsonArray(),
-					"source_created_before" to sourceCreatedBefore?.toString(),
-					"source_created_after" to sourceCreatedAfter?.toString(),
-					"show_all_user_files" to showAllUserFiles,
-					"source_mime" to sourceMime,
-					"item_count" to itemCount
-			)
-		}
+): SerializableDataObject {
+	override fun toJson(): JsonObject {
+		val json = json {obj(
+				"id" to id,
+				"name" to name,
+				"description" to description,
+				"creator" to creator,
+				"creator_name" to creatorName,
+				"type" to type.ordinal,
+				"visibility" to visibility.ordinal,
+				"created_on" to createdOn.toString(),
+				"modified_on" to modifiedOn.toString(),
+				"source_tags" to sourceTags?.toJsonArray(),
+				"source_exclude_tags" to sourceExcludeTags?.toJsonArray(),
+				"source_created_before" to sourceCreatedBefore?.toString(),
+				"source_created_after" to sourceCreatedAfter?.toString(),
+				"show_all_user_files" to showAllUserFiles,
+				"source_mime" to sourceMime,
+				"item_count" to itemCount
+		)}
 
 		if(containsMedia != null)
 			json.put("contains_media", containsMedia)

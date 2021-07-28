@@ -23,18 +23,11 @@ class Tag(
 		 * @since 1.4.0
 		 */
 		val files: Int
-) {
-	/**
-	 * Returns a JSON representation of the tag
-	 * @return A JSON representation of the tag
-	 * @since 1.4.0
-	 */
-	fun toJson() = json {
-		obj(
-				"name" to name,
-				"files" to files
-		)
-	}
+): SerializableDataObject {
+	override fun toJson() = json {obj(
+			"name" to name,
+			"files" to files
+	)}
 
 	companion object {
 		/**

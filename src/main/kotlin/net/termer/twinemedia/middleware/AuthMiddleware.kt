@@ -2,6 +2,7 @@ package net.termer.twinemedia.middleware
 
 import io.vertx.core.http.HttpMethod
 import io.vertx.kotlin.coroutines.dispatcher
+import kotlinx.coroutines.DelicateCoroutinesApi
 import kotlinx.coroutines.GlobalScope
 import kotlinx.coroutines.launch
 import net.termer.twine.ServerManager.router
@@ -13,6 +14,7 @@ import net.termer.twinemedia.util.*
  * Automatically authenticates all API routes with JWT if possible
  * @since 1.0.0
  */
+@DelicateCoroutinesApi
 fun authMiddleware() {
     for(hostname in appHostnames()) {
         // Handle all /api/ routes on the configured domain

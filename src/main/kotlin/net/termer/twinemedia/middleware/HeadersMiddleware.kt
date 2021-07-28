@@ -1,6 +1,7 @@
 package net.termer.twinemedia.middleware
 
 import io.vertx.core.http.HttpMethod
+import kotlinx.coroutines.DelicateCoroutinesApi
 import net.termer.twine.ServerManager.router
 import net.termer.twinemedia.Module.Companion.config
 import net.termer.twinemedia.util.appHostnames
@@ -10,6 +11,7 @@ import net.termer.twinemedia.util.corsAllowHeader
  * Sets up CORS and other headers for all requests to /api/
  * @since 1.0.0
  */
+@DelicateCoroutinesApi
 fun headersMiddleware() {
     for(hostname in appHostnames()) {
         // Handle all /api/ routes on the configured domain

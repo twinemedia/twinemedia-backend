@@ -1,10 +1,10 @@
 package net.termer.twinemedia.controller
 
-import io.vertx.core.json.JsonArray
 import io.vertx.core.json.JsonObject
 import io.vertx.kotlin.core.json.json
 import io.vertx.kotlin.core.json.obj
 import io.vertx.kotlin.coroutines.dispatcher
+import kotlinx.coroutines.DelicateCoroutinesApi
 import kotlinx.coroutines.GlobalScope
 import kotlinx.coroutines.launch
 import net.termer.twine.ServerManager.*
@@ -19,6 +19,7 @@ import net.termer.vertx.kotlin.validation.validator.*
  * Sets up all routes for editing and modifying processing presets
  * @since 1.0.0
  */
+@DelicateCoroutinesApi
 fun processesController() {
 	for(hostname in appHostnames()) {
 		// Returns info about a process
@@ -162,8 +163,7 @@ fun processesController() {
 									.max(4320), -1)
 
 					if(v.validate(r)) {
-						val id = r.pathParam("id").toInt()
-
+						val id = v.parsedRouteParam("id") as Int
 						val mime = v.parsedParam("mime") as String
 
 						// Put settings
@@ -236,11 +236,7 @@ fun processesController() {
 
 					// Request validation
 					val v = RequestValidator()
-							.optionalParam("offset", Presets.resultOffsetValidator(), 0)
-							.optionalParam("limit", Presets.resultLimitValidator(), 100)
-							.optionalParam("order", IntValidator()
-									.min(0)
-									.max(7), 0)
+							.offsetLimitOrder(7)
 
 					if(v.validate(r)) {
 						// Collect parameters
@@ -249,19 +245,13 @@ fun processesController() {
 						val order = v.parsedParam("order") as Int
 
 						try {
-							val processes = JsonArray()
-
 							// Fetch processes
-							val processesRes = processesModel.fetchProcesses(offset, limit, order)
+							val processes = processesModel.fetchProcesses(offset, limit, order)
 
-							// Add processes
-							for(process in processesRes)
-								processes.add(process.toJson())
-
-							// Send
-							r.success(json {
-                                obj("processes" to processes)
-                            })
+							// Send processes
+							r.success(json {obj(
+									"processes" to processes.toJsonArray()
+							)})
 						} catch(e: Exception) {
 							logger.error("Failed to fetch process:")
 							e.printStackTrace()
@@ -342,10 +332,12 @@ fun processesController() {
 
 						try {
 							// Create new entry
-							processesModel.createProcess(mime, settings, r.userId())
+							val id = processesModel.createProcess(mime, settings, r.userId())
 
 							// Send success
-							r.success()
+							r.success(json {obj(
+									"id" to id
+							)})
 						} catch(e: Exception) {
 							logger.error("Failed to create new process entry:")
 							e.printStackTrace()

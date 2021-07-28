@@ -13,6 +13,7 @@ import net.termer.twinemedia.db.dataobject.Account
 import net.termer.twinemedia.exception.AuthException
 import net.termer.twinemedia.jwt.JWT
 import net.termer.twinemedia.model.AccountsModel
+import net.termer.twinemedia.util.validation.Presets
 import net.termer.vertx.kotlin.validation.RequestValidator
 import java.util.regex.Pattern
 
@@ -31,9 +32,9 @@ private val accountsModel = AccountsModel()
  * @since 1.0.0
  */
 suspend fun RoutingContext.error(msg: String) {
-    json(j {
-        obj("status" to "error", "error" to msg)
-    }).await()
+	json(j {obj(
+			"status" to "error", "error" to msg
+	)}).await()
 }
 /**
  * Sends an error API response with the provided message and details
@@ -42,13 +43,11 @@ suspend fun RoutingContext.error(msg: String) {
  * @since 1.4.0
  */
 suspend fun RoutingContext.error(msg: String, details: JsonObject) {
-    json(j {
-        obj(
-                "status" to "error",
-                "error" to msg,
-                "details" to details
-        )
-    }).await()
+	json(j {obj(
+			"status" to "error",
+			"error" to msg,
+			"details" to details
+	)}).await()
 }
 /**
  * Sends an error API response with the provided message and error type and text details
@@ -58,18 +57,14 @@ suspend fun RoutingContext.error(msg: String, details: JsonObject) {
  * @since 1.4.0
  */
 suspend fun RoutingContext.error(msg: String, type: String, text: String) {
-    json(j {
-        obj(
-                "status" to "error",
-                "error" to msg,
-                "details" to j {
-                    obj(
-                            "error_type" to type,
-                            "error_text" to text
-                    )
-                }
-        )
-    }).await()
+	json(j {obj(
+			"status" to "error",
+			"error" to msg,
+			"details" to j {obj(
+					"error_type" to type,
+					"error_text" to text
+			)}
+    )}).await()
 }
 
 /**
@@ -78,19 +73,16 @@ suspend fun RoutingContext.error(msg: String, type: String, text: String) {
  * @since 1.4.0
  */
 suspend fun RoutingContext.error(validator: RequestValidator) {
-    json(j {
-        obj(
-                "status" to "error",
-                "error" to validator.validationErrorText,
-                "details" to j {
-                    obj(
-                            "error_type" to validator.validationErrorType,
-                            "error_text" to validator.validationErrorText,
-                            "param_name" to validator.validationErrorParam
-                    )
-                }
-        )
-    }).await()
+	json(j {obj(
+			"status" to "error",
+			"error" to validator.validationErrorText,
+			"details" to j {obj(
+					"error_type" to validator.validationErrorType,
+					"error_text" to validator.validationErrorText,
+					"param_name" to validator.validationErrorParam
+			)}
+		)
+	}).await()
 }
 
 /**
@@ -98,9 +90,9 @@ suspend fun RoutingContext.error(validator: RequestValidator) {
  * @since 1.0.0
  */
 suspend fun RoutingContext.success() {
-    json(j {
-        obj("status" to "success")
-    }).await()
+	json(j {obj(
+			"status" to "success"
+	)}).await()
 }
 
 /**
@@ -109,7 +101,7 @@ suspend fun RoutingContext.success() {
  * @since 1.0.0
  */
 suspend fun RoutingContext.success(json: JsonObject) {
-    json(json.put("status", "success")).await()
+	json(json.put("status", "success")).await()
 }
 
 /**
@@ -117,12 +109,12 @@ suspend fun RoutingContext.success(json: JsonObject) {
  * @since 1.0.0
  */
 suspend fun RoutingContext.unauthorized() {
-    response().statusCode = 401
+	response().statusCode = 401
 
-    if(get("invalidJWT") as Boolean? == true)
-        error("Unauthorized", "INVALID_TOKEN", "The provided token is invalid")
-    else
-        error("Unauthorized")
+	if(get("invalidJWT") as Boolean? == true)
+		error("Unauthorized", "INVALID_TOKEN", "The provided token is invalid")
+	else
+		error("Unauthorized")
 }
 
 /**
@@ -131,30 +123,32 @@ suspend fun RoutingContext.unauthorized() {
  * @since 1.0.0
  */
 suspend fun RoutingContext.authenticate() {
-    put("invalidJWT", false)
+	put("invalidJWT", false)
 
-    // Check for an authorization header
-    if(request().headers().contains("Authorization")) {
-        val matcher = authorizationHeaderPattern.matcher(request().getHeader("Authorization"))
+	// Check for an authorization header
+	if(request().headers().contains("Authorization")) {
+		val matcher = authorizationHeaderPattern.matcher(request().getHeader("Authorization"))
 
-        // Check if header matches pattern
-        if(matcher.matches()) {
-            try {
-                // Set the User object for this RoutingContext
-                setUser(JWT.provider?.authenticate(JsonObject().put("jwt", matcher.group(1)))?.await())
-            } catch (e: Throwable) {
-                put("invalidJWT", true)
-                throw AuthException("Invalid JWT token provided")
-            }
-        } else {
-            put("invalidJWT", true)
-            setUser(null)
-            throw AuthException("Invalid authentication header")
-        }
-    } else {
-        setUser(null)
-        throw AuthException("No authentication header provided in request")
-    }
+		// Check if header matches pattern
+		if(matcher.matches()) {
+			try {
+				// Set the User object for this RoutingContext
+				setUser(JWT.provider?.authenticate(j {obj(
+						"token" to matcher.group(1)
+				)})?.await())
+			} catch (e: Throwable) {
+				put("invalidJWT", true)
+				throw AuthException("Invalid JWT token provided")
+			}
+		} else {
+			put("invalidJWT", true)
+			setUser(null)
+			throw AuthException("Invalid authentication header")
+		}
+	} else {
+		setUser(null)
+		throw AuthException("No authentication header provided in request")
+	}
 }
 
 /**
@@ -170,10 +164,10 @@ fun RoutingContext.authenticated() = user() != null
  * @since 1.0.0
  */
 suspend fun RoutingContext.protectRoute(): Boolean {
-    if(!authenticated())
-        unauthorized()
+	if(!authenticated())
+		unauthorized()
 
-    return authenticated()
+	return authenticated()
 }
 
 /**
@@ -182,9 +176,9 @@ suspend fun RoutingContext.protectRoute(): Boolean {
  * @since 1.3.0
  */
 suspend fun RoutingContext.protectNonApiKey(): Boolean {
-    return if(authenticated() && !account().isApiKey) true else false.also {
-        unauthorized()
-    }
+	return if(authenticated() && !account().isApiKey) true else false.also {
+		unauthorized()
+	}
 }
 
 /**
@@ -193,7 +187,7 @@ suspend fun RoutingContext.protectNonApiKey(): Boolean {
  * @since 1.0.0
  */
 fun RoutingContext.userId(): Int {
-    return user().principal().getInteger("sub")
+	return user().principal().getInteger("sub")
 }
 
 /**
@@ -202,7 +196,7 @@ fun RoutingContext.userId(): Int {
  * @since 1.0.0
  */
 fun RoutingContext.tokenId(): String {
-    return user().principal().getString("id")
+	return user().principal().getString("id")
 }
 
 /**
@@ -212,29 +206,29 @@ fun RoutingContext.tokenId(): String {
  * @since 1.0.0
  */
 suspend fun RoutingContext.account(): Account {
-    if(authenticated()) {
-        if(get("account") as Account? == null) {
-            val principle = user().principal()
+	if(authenticated()) {
+		if(get("account") as Account? == null) {
+			val principle = user().principal()
 
-            // Fetch account from database
-            val accountRes = if(principle.containsKey("token"))
-                accountsModel.fetchAccountAndApiKeyByKeyId(principle.getString("token")).firstOrNull()
-            else
-                accountsModel.fetchAccountById(userId()).firstOrNull()
+			// Fetch account from database
+			val accountRes = if(principle.containsKey("token"))
+				accountsModel.fetchAccountAndApiKeyByKeyId(principle.getString("token")).firstOrNull()
+			else
+				accountsModel.fetchAccountById(userId()).firstOrNull()
 
-            // Check if account exists
-            if (accountRes == null) {
-                throw AuthException("This request's token does not have a corresponding account")
-            } else {
-                // Set account
-                put("account", accountRes)
-            }
-        }
-    } else {
-        throw AuthException("Cannot fetch account of unauthenticated request")
-    }
+			// Check if account exists
+			if (accountRes == null) {
+				throw AuthException("This request's token does not have a corresponding account")
+			} else {
+				// Set account
+				put("account", accountRes)
+			}
+		}
+	} else {
+		throw AuthException("Cannot fetch account of unauthenticated request")
+	}
 
-    return get("account")
+	return get("account")
 }
 
 /**
@@ -243,13 +237,13 @@ suspend fun RoutingContext.account(): Account {
  * @since 1.0.0
  */
 suspend fun RoutingContext.hasPermission(permission: String): Boolean {
-    var has = false
+	var has = false
 
-    if(authenticated()) {
-        has = account().hasPermission(permission)
-    }
+	if(authenticated()) {
+		has = account().hasPermission(permission)
+	}
 
-    return has
+	return has
 }
 
 /**
@@ -259,14 +253,14 @@ suspend fun RoutingContext.hasPermission(permission: String): Boolean {
  * @since 1.0.0
  */
 suspend fun RoutingContext.protectWithPermission(permission: String): Boolean {
-    var has = false
+	var has = false
 
-    if(authenticated() && hasPermission(permission))
-        has = true
-    else
-        unauthorized()
+	if(authenticated() && hasPermission(permission))
+		has = true
+	else
+		unauthorized()
 
-    return has
+	return has
 }
 
 /**
@@ -275,8 +269,8 @@ suspend fun RoutingContext.protectWithPermission(permission: String): Boolean {
  * @since 1.0.0
  */
 fun RoutingContext.sendFileRanged(path: String) {
-    if(!response().closed())
-        ResponseUtils.sendFileRanged(this, path, Twine.config().getNode("server.static.caching") as Boolean)
+	if(!response().closed())
+		ResponseUtils.sendFileRanged(this, path, Twine.config().getNode("server.static.caching") as Boolean)
 }
 
 /**
@@ -293,24 +287,24 @@ fun RoutingContext.ip(): String = RequestUtils.resolveIp(request())
  * @since 1.4.0
  */
 fun HttpServerResponse.corsAllowHeader(header: String): HttpServerResponse {
-    val allowed = arrayListOf<String>()
-    if(headers().contains("Access-Control-Allow-Headers")) {
-        val strs = headers()["Access-Control-Allow-Headers"].split(',')
+	val allowed = arrayListOf<String>()
+	if(headers().contains("Access-Control-Allow-Headers")) {
+		val strs = headers()["Access-Control-Allow-Headers"].split(',')
 
-        // Add existing allowed headers
-        for(str in strs) {
-            val procStr = str.toLowerCase()
-            if(!allowed.contains(procStr))
-                allowed.add(procStr)
-        }
-    }
+		// Add existing allowed headers
+		for(str in strs) {
+			val procStr = str.toLowerCase()
+			if(!allowed.contains(procStr))
+				allowed.add(procStr)
+		}
+	}
 
-    // Add new allowed header
-    if(!allowed.contains(header.toLowerCase()))
-        allowed.add(header.toLowerCase())
+	// Add new allowed header
+	if(!allowed.contains(header.toLowerCase()))
+		allowed.add(header.toLowerCase())
 
-    // Set Access-Control-Allow-Headers
-    putHeader("Access-Control-Allow-Headers", allowed.joinToString(", "))
+	// Set Access-Control-Allow-Headers
+	putHeader("Access-Control-Allow-Headers", allowed.joinToString(", "))
 
-    return this
+	return this
 }

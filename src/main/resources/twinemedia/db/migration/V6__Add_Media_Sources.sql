@@ -6,6 +6,7 @@ CREATE TABLE public.sources
     source_config jsonb NOT NULL,
     source_creator integer NOT NULL,
     source_global boolean NOT NULL DEFAULT false,
+    source_created_on timestamp with time zone NOT NULL DEFAULT NOW(),
     PRIMARY KEY (id)
 );
 
@@ -20,3 +21,6 @@ ALTER TABLE public.media
 
 ALTER TABLE public.accounts
     ADD COLUMN account_default_source integer NOT NULL DEFAULT -1;
+
+ALTER TABLE public.accounts
+    ADD COLUMN account_exclude_other_sources boolean NOT NULL DEFAULT false;

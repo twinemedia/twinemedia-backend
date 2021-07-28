@@ -2,6 +2,7 @@ package net.termer.twinemedia.controller
 
 import io.vertx.core.http.HttpMethod
 import io.vertx.kotlin.coroutines.dispatcher
+import kotlinx.coroutines.DelicateCoroutinesApi
 import kotlinx.coroutines.GlobalScope
 import kotlinx.coroutines.launch
 import net.termer.twine.ServerManager.router
@@ -13,6 +14,7 @@ import net.termer.twinemedia.util.error
  * Not found handler for API routes
  * @since 1.4.0
  */
+@DelicateCoroutinesApi
 fun notFoundController() {
 	for(hostname in appHostnames()) {
 		// Handle all /api/ routes on the configured domain

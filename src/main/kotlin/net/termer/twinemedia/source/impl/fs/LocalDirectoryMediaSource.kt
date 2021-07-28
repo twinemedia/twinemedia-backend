@@ -1,5 +1,6 @@
 package net.termer.twinemedia.source.impl.fs
 
+import io.vertx.core.Handler
 import io.vertx.core.buffer.Buffer
 import io.vertx.core.file.FileSystemException
 import io.vertx.core.file.OpenOptions
@@ -9,9 +10,8 @@ import net.termer.twine.ServerManager.vertx
 import net.termer.twinemedia.source.*
 import net.termer.twinemedia.source.config.SourceNotConfiguredException
 import net.termer.twinemedia.source.stripInvalidFileKeyChars
+import net.termer.twinemedia.util.ConcurrentLock
 import net.termer.twinemedia.util.filenameToFilenameWithUnixTimestamp
-import java.io.File
-import java.nio.file.Files
 import java.nio.file.NoSuchFileException
 import java.time.ZoneOffset
 import java.util.*
@@ -20,8 +20,11 @@ import kotlin.collections.ArrayList
 class LocalDirectoryMediaSource: IndexableMediaSource {
 	private val config = LocalDirectoryMediaSourceConfig()
 	private val fs = vertx().fileSystem()
+	private val lock = ConcurrentLock()
 
 	override fun getConfig() = config
+
+	override fun getLock() = lock
 
 	/**
 	 * Throws SourceNotConfiguredException if not configured
@@ -36,10 +39,23 @@ class LocalDirectoryMediaSource: IndexableMediaSource {
 	 * Returns whether the provided path is a file or not
 	 * @return Whether the provided path is a file or not
 	 */
-	private suspend fun isFile(path: String) = try {
-		fs.props(path).await().isRegularFile
-	} catch(e: NoSuchFileException) {
-		false
+	private suspend fun isFile(path: String): Boolean {
+		var res = false
+
+		val lockId = lock.createLock()
+
+		try {
+			res = fs.props(path).await().isRegularFile
+		} catch(e: NoSuchFileException) {
+			// File doesn't exist
+		} catch(e: FileSystemException) {
+			if(e.cause !is NoSuchFileException)
+				throw e
+		}
+
+		lock.deleteLock(lockId)
+
+		return res
 	}
 
 	/**
@@ -61,6 +77,8 @@ class LocalDirectoryMediaSource: IndexableMediaSource {
 
 	override suspend fun listFiles(): Array<MediaSourceFile> {
 		failIfNotConfigured()
+
+		val lockId = lock.createLock()
 
 		try {
 			val sourceFiles = ArrayList<MediaSourceFile>()
@@ -86,18 +104,28 @@ class LocalDirectoryMediaSource: IndexableMediaSource {
 							))
 						else if(props.isDirectory)
 							toIndex.add("$path/")
-					} catch(e: NoSuchFileException) { /* Oh well, the file no longer exists, there's nothing to do about it */ }
+					} catch(e: NoSuchFileException) {
+						// Oh well, the file no longer exists, there's nothing to do about it
+					} catch(e: FileSystemException) {
+						if(e.cause !is NoSuchFileException)
+							throw e
+					}
 				}
 			}
 
+			lock.deleteLock(lockId)
+
 			return sourceFiles.toTypedArray()
 		} catch(e: Throwable) {
+			lock.deleteLock(lockId)
 			throw wrapThrowableAsMediaSourceException(e)
 		}
 	}
 
 	override suspend fun getFile(key: String): MediaSourceFile {
 		failIfNotConfigured()
+
+		val lockId = lock.createLock()
 
 		try {
 			if(!fileExists(key))
@@ -108,6 +136,8 @@ class LocalDirectoryMediaSource: IndexableMediaSource {
 			// Get file properties
 			val props = fs.props(path).await()
 
+			lock.deleteLock(lockId)
+
 			// Return file
 			return MediaSourceFile(
 					key = path.substring(config.directory!!.length),
@@ -116,6 +146,7 @@ class LocalDirectoryMediaSource: IndexableMediaSource {
 					modifiedOn = Date(props.lastModifiedTime()).toInstant().atOffset(ZoneOffset.UTC)
 			)
 		} catch(e: Throwable) {
+			lock.deleteLock(lockId)
 			throw wrapThrowableAsMediaSourceException(e)
 		}
 	}
@@ -129,6 +160,11 @@ class LocalDirectoryMediaSource: IndexableMediaSource {
 			// Get file info
 			val props = try {
 				fs.props(path).await()
+			} catch(e: FileSystemException) {
+				if(e.cause is NoSuchFileException)
+					throw MediaSourceFileNotFoundException("File $key does not exist")
+				else
+					throw e
 			} catch(e: NoSuchFileException) {
 				throw MediaSourceFileNotFoundException("File $key does not exist")
 			}
@@ -137,18 +173,30 @@ class LocalDirectoryMediaSource: IndexableMediaSource {
 			val stream = fs.open(path, OpenOptions().setRead(true)).await()
 					.pause()
 
+			val correctedOffset = offset.coerceAtMost(props.size())
 			if(offset > -1)
-				stream.setReadPos(offset)
+				stream.setReadPos(correctedOffset)
 			if(length > -1)
-				stream.readLength = length
+				stream.readLength = length.coerceAtMost(props.size()-correctedOffset)
 
 			// Return wrapped stream
-			return MediaSource.StreamAndFile(stream, MediaSourceFile(
-					key = path.substring(config.directory!!.length),
-					size = props.size(),
-					createdOn = Date(props.creationTime()).toInstant().atOffset(ZoneOffset.UTC),
-					modifiedOn = Date(props.lastModifiedTime()).toInstant().atOffset(ZoneOffset.UTC)
-			))
+			return MediaSource.StreamAndFile(
+					object: CloseableReadStream<Buffer> {
+						override fun close() = stream.close()
+						override fun exceptionHandler(handler: Handler<Throwable>?) = stream.exceptionHandler(handler)
+						override fun handler(handler: Handler<Buffer>?) = stream.handler(handler)
+						override fun pause() = stream.pause()
+						override fun resume() = stream.resume()
+						override fun fetch(length: Long) = stream.fetch(length)
+						override fun endHandler(handler: Handler<Void>?) = stream.endHandler(handler)
+					},
+					MediaSourceFile(
+							key = path.substring(config.directory!!.length),
+							size = props.size(),
+							createdOn = Date(props.creationTime()).toInstant().atOffset(ZoneOffset.UTC),
+							modifiedOn = Date(props.lastModifiedTime()).toInstant().atOffset(ZoneOffset.UTC)
+					)
+			)
 		} catch(e: Throwable) {
 			throw wrapThrowableAsMediaSourceException(e)
 		}
@@ -175,6 +223,8 @@ class LocalDirectoryMediaSource: IndexableMediaSource {
 
 	override suspend fun deleteFile(key: String) {
 		failIfNotConfigured()
+
+		val lockId = lock.createLock()
 
 		try {
 			if(!fileExists(key))
@@ -203,14 +253,21 @@ class LocalDirectoryMediaSource: IndexableMediaSource {
 						// Delete the directory if it's empty
 						if(fs.readDir(path).await().size < 1)
 							fs.delete(path).await()
-					} catch(e: NoSuchFileException) { /* Nothing to be done about this, directory doesn't exist anymore */
+					} catch(e: NoSuchFileException) {
+						// Nothing to be done about this, directory doesn't exist anymore
+					} catch(e: FileSystemException) {
+						if(e.cause !is NoSuchFileException)
+							throw e
 					}
 				}
 			} else {
 				// Delete the file
 				fs.delete(config.directory+safeKey).await()
 			}
+
+			lock.deleteLock(lockId)
 		} catch(e: Throwable) {
+			lock.deleteLock(lockId)
 			throw wrapThrowableAsMediaSourceException(e)
 		}
 	}
@@ -218,24 +275,34 @@ class LocalDirectoryMediaSource: IndexableMediaSource {
 	override suspend fun downloadFile(key: String, pathOnDisk: String) {
 		failIfNotConfigured()
 
+		val lockId = lock.createLock()
+
 		try {
 			val sourceFile = openReadStream(key).stream
 			val destFile = fs.open(pathOnDisk, OpenOptions().setWrite(true)).await()
 
 			sourceFile.pipeTo(destFile).await()
+
+			lock.deleteLock(lockId)
 		} catch(e: Throwable) {
+			lock.deleteLock(lockId)
 			throw wrapThrowableAsMediaSourceException(e)
 		}
 	}
 	override suspend fun uploadFile(pathOnDisk: String, key: String) {
 		failIfNotConfigured()
 
+		val lockId = lock.createLock()
+
 		try {
 			val sourceFile = fs.open(pathOnDisk, OpenOptions().setRead(true)).await()
 			val destFile = openWriteStream(key)
 
 			sourceFile.pipeTo(destFile).await()
+
+			lock.deleteLock(lockId)
 		} catch(e: Throwable) {
+			lock.deleteLock(lockId)
 			throw wrapThrowableAsMediaSourceException(e)
 		}
 	}
@@ -244,13 +311,21 @@ class LocalDirectoryMediaSource: IndexableMediaSource {
 
 	override fun filenameToKey(filename: String) = filenameToFilenameWithUnixTimestamp(filename)
 
-	override suspend fun getRemainingStorage(): Long? = vertx().executeBlocking<Long> {
+	override suspend fun getRemainingStorage(): Long? {
 		failIfNotConfigured()
 
+		val lockId = lock.createLock()
+
 		try {
-			it.complete(Files.getFileStore(File(config.directory!!).toPath()).usableSpace)
+			val fsProps = fs.fsProps(config.directory!!).await()
+
+			lock.deleteLock(lockId)
+			return fsProps.usableSpace()
 		} catch(e: Throwable) {
-			it.fail(wrapThrowableAsMediaSourceException(e))
+			lock.deleteLock(lockId)
+			if(e is FileSystemException && e.cause is NoSuchFileException)
+				return null
+			throw wrapThrowableAsMediaSourceException(e)
 		}
-	}.await()
+	}
 }

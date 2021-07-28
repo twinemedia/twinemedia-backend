@@ -1,8 +1,11 @@
 package net.termer.twinemedia.source.impl.s3
 
+import io.netty.buffer.Unpooled
+import io.vertx.core.Future
 import io.vertx.core.Handler
 import io.vertx.core.buffer.Buffer
 import io.vertx.core.streams.ReadStream
+import net.termer.twinemedia.source.CloseableReadStream
 import org.reactivestreams.Subscriber
 import org.reactivestreams.Subscription
 import software.amazon.awssdk.core.async.AsyncResponseTransformer
@@ -16,7 +19,7 @@ import java.util.concurrent.CompletableFuture
  * @author termer
  * @since 1.5.0
  */
-open class ReadStreamAsyncResponseTransformer<T>: AsyncResponseTransformer<T, ReadStream<Buffer>>, ReadStream<Buffer> {
+open class ReadStreamAsyncResponseTransformer<T>: AsyncResponseTransformer<T, ReadStream<Buffer>>, CloseableReadStream<Buffer> {
 	@Volatile
 	private var cf: CompletableFuture<ReadStream<Buffer>>? = null
 
@@ -35,31 +38,42 @@ open class ReadStreamAsyncResponseTransformer<T>: AsyncResponseTransformer<T, Re
 	private val queue = ArrayList<Buffer>()
 	private var subscription: Subscription? = null
 
+	// Whether the stream is closed
+	private var closed = false
+
 	private val subscriber = object: Subscriber<ByteBuffer> {
 		val bufSize = 1024L
 
 		override fun onSubscribe(s: Subscription) {
-			subscription = s
-			s.request(bufSize)
+			if(closed) {
+				s.cancel()
+			} else {
+				subscription = s
+				s.request(bufSize)
+			}
 		}
 
 		override fun onNext(t: ByteBuffer) {
-			try {
-				// Deal with buffer if paused, otherwise just send it to handler
-				if(paused) {
-					// Handle buffer immediately if packets are being waited for, otherwise store in queue
-					if(waitingFor > 0) {
-						handler?.handle(Buffer.buffer(t.array()))
-						waitingFor--
+			if(closed) {
+				subscription?.cancel()
+			} else {
+				try {
+					// Deal with buffer if paused, otherwise just send it to handler
+					if(paused) {
+						// Handle buffer immediately if packets are being waited for, otherwise store in queue
+						if(waitingFor > 0) {
+							handler?.handle(Buffer.buffer(Unpooled.wrappedBuffer(t.array())))
+							waitingFor--
+						} else {
+							queue.add(Buffer.buffer(Unpooled.wrappedBuffer(t.array())))
+						}
 					} else {
-						queue.add(Buffer.buffer(t.array()))
+						handler?.handle(Buffer.buffer(Unpooled.wrappedBuffer(t.array())))
+						subscription?.request(bufSize)
 					}
-				} else {
-					handler?.handle(Buffer.buffer(t.array()))
-					subscription?.request(bufSize)
+				} catch(e: Throwable) {
+					exceptionHandler?.handle(e)
 				}
-			} catch(e: Throwable) {
-				exceptionHandler?.handle(e)
 			}
 		}
 
@@ -110,6 +124,13 @@ open class ReadStreamAsyncResponseTransformer<T>: AsyncResponseTransformer<T, Re
 	override fun endHandler(hdlr: Handler<Void>): ReadStream<Buffer> {
 		endHandler = hdlr
 		return this
+	}
+
+	override fun close(): Future<Void> = Future.future<Void> {
+		closed = true
+		subscription?.cancel()
+		endHandler?.handle(null)
+		it.complete()
 	}
 
 	override fun pause(): ReadStream<Buffer> {

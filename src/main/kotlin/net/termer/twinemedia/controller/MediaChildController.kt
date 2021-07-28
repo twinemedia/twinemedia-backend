@@ -4,6 +4,7 @@ import io.vertx.core.json.JsonObject
 import io.vertx.kotlin.core.json.json
 import io.vertx.kotlin.core.json.obj
 import io.vertx.kotlin.coroutines.dispatcher
+import kotlinx.coroutines.DelicateCoroutinesApi
 import kotlinx.coroutines.GlobalScope
 import kotlinx.coroutines.launch
 import net.termer.twine.ServerManager.*
@@ -18,6 +19,7 @@ import net.termer.vertx.kotlin.validation.validator.*
  * Setups up all routes for creating child media files
  * @since 1.0.0
  */
+@DelicateCoroutinesApi
 fun mediaChildController() {
 	for(hostname in appHostnames()) {
 		// Creates a new child media entry and starts processing the new version
@@ -43,7 +45,7 @@ fun mediaChildController() {
 
 						// Check if media exists
 						if(mediaRes.count() > 0) {
-							val media = mediaRes.iterator().next()
+							val media = mediaRes.first()
 
 							// Check if media was created by the user
 							if(media.creator != r.userId() && !r.hasPermission("files.child.all")) {
@@ -114,9 +116,45 @@ fun mediaChildController() {
 									val newId = generateString(10)
 
 									try {
+										// Generate output key
+										var outKey = ((if(media.key.contains("."))
+											media.key.substring(0, media.key.lastIndexOf('.'))
+										else
+											media.key)+"-child-${System.currentTimeMillis()/1000L}.$extension").replace(' ', '_')
+										if(outKey.length > 256)
+											outKey = outKey.substring(outKey.length-256)
+
+										// Guess mime
+										val outMime = mimeFor(extension)
+
+										// Generate new filename
+										val filename = media.filename
+										val dotIdx = filename.lastIndexOf('.')
+										val outFilename = (if(dotIdx < 0)
+											filename
+										else
+											filename.substring(0, dotIdx))+".$extension"
+
+										// Create media entry
+										mediaModel.createMedia(
+												id = newId,
+												name = media.name,
+												filename = outFilename,
+												size = -1,
+												mime = outMime,
+												key = outKey,
+												creator = r.userId(),
+												hash = "PROCESSING",
+												thumbnailFile = null,
+												meta = JsonObject(),
+												parent = media.internalId,
+												processing = true,
+												sourceId = media.source
+										)
+
 										// Create new processing job
-										queueMediaProcessJobFromMedia(
-												sourceId = id,
+										queueMediaProcessJob(
+												mediaId = id,
 												newId = newId,
 												extension = extension,
 												creator = r.userId(),
@@ -124,9 +162,9 @@ fun mediaChildController() {
 										)
 
 										// Send success
-										r.success(json {
-											obj("id" to newId)
-										})
+										r.success(json {obj(
+												"id" to newId
+										)})
 									} catch(e: Exception) {
 										logger.error("Failed to queue new media processing job:")
 										e.printStackTrace()

@@ -61,23 +61,16 @@ class ProcessInfo(
 		 * @since 1.4.0
 		 */
 		val modifiedOn: OffsetDateTime
-) {
-	/**
-	 * Returns a JSON representation of the process's info
-	 * @return A JSON representation of the process's info
-	 * @since 1.4.0
-	 */
-	fun toJson() = json {
-		obj(
-				"id" to id,
-				"mime" to mime,
-				"settings" to settings,
-				"creator" to creator,
-				"creator_name" to creatorName,
-				"created_on" to createdOn.toString(),
-				"modified_on" to modifiedOn.toString()
-		)
-	}
+): SerializableDataObject {
+	override fun toJson() = json {obj(
+			"id" to id,
+			"mime" to mime,
+			"settings" to settings,
+			"creator" to creator,
+			"creator_name" to creatorName,
+			"created_on" to createdOn.toString(),
+			"modified_on" to modifiedOn.toString()
+	)}
 
 	companion object {
 		/**

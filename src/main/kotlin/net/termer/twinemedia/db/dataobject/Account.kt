@@ -22,6 +22,7 @@ import java.time.OffsetDateTime
  * @param creationDate The date this account was created on
  * @param isApiKey Whether this account is being accessed by an API key
  * @param keyPermissions An array of permissions that this key is authorized to use
+ * @param defaultSource The ID of this account's default media source
  * @since 1.2.0
  */
 @DataObject
@@ -99,6 +100,12 @@ class Account(
         val excludeOtherProcesses: Boolean,
 
         /**
+         * Whether to globally exclude media sources created by other accounts
+         * @since 1.5.0
+         */
+        val excludeOtherSources: Boolean,
+
+        /**
          * Whether this account is being accessed by an API key
          * @since 1.3.0
          */
@@ -108,7 +115,13 @@ class Account(
          * An array of permissions that this key is authorized to use
          * @since 1.3.0
          */
-        val keyPermissions: Array<String>? = null
+        val keyPermissions: Array<String>? = null,
+
+        /**
+         * The ID of this account's default media source
+         * @since 1.5.0
+         */
+        val defaultSource: Int
 ) {
 	/**
 	 * Returns if this user account has the specified permission
@@ -163,10 +176,12 @@ class Account(
                     excludeOtherLists = row.getBoolean("account_exclude_other_lists"),
                     excludeOtherTags = row.getBoolean("account_exclude_other_tags"),
                     excludeOtherProcesses = row.getBoolean("account_exclude_other_processes"),
+					excludeOtherSources = row.getBoolean("account_exclude_other_sources"),
                     isApiKey = row.containsColumn("key_id"),
                     keyPermissions = if(row.containsColumn("key_id"))
 	                    row.getJsonArray("key_permissions").toStringArray()
-                    else null
+                    else null,
+					defaultSource = row.getInteger("account_default_source")
             )
 		}
 	}

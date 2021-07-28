@@ -3,6 +3,7 @@ package net.termer.twinemedia.controller
 import io.vertx.kotlin.core.json.json
 import io.vertx.kotlin.core.json.obj
 import io.vertx.kotlin.coroutines.dispatcher
+import kotlinx.coroutines.DelicateCoroutinesApi
 import kotlinx.coroutines.GlobalScope
 import kotlinx.coroutines.launch
 import net.termer.twine.ServerManager
@@ -16,6 +17,7 @@ import net.termer.twinemedia.util.toJsonArray
  * Sets up routes that return info about the API and server
  * @since 1.4.1
  */
+@DelicateCoroutinesApi
 fun infoController() {
 	for(hostname in appHostnames()) {
 		// Returns info about the API and server

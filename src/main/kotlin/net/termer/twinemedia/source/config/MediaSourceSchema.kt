@@ -85,9 +85,9 @@ class MediaSourceSchema(
 		// Check that all required fields are present
 		for(field in fields)
 			if(!field.optional && !json.containsKey(field.fieldName))
-				return ValidationResponse(errorType = "MISSING_FIELD", errorText = "Missing field ${field.fieldName} (${field.name})")
+				return ValidationResponse(errorType = "MISSING_FIELD", errorText = "Missing field \"${field.fieldName}\" (${field.name})")
 			else if(!isType(json.getValue(field.fieldName), field.type))
-				return ValidationResponse(errorType = "INVALID_TYPE", errorText = "Field ${field.fieldName} (${field.name}) is not type ${field.type}")
+				return ValidationResponse(errorType = "INVALID_TYPE", errorText = "Field \"${field.fieldName}\" (${field.name}) is not type \"${field.type}\"")
 
 		// If it got this far, everything is fine, validation succeeded
 		return ValidationResponse(valid = true)

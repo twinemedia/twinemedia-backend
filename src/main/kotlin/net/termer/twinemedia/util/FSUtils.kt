@@ -1,6 +1,7 @@
 package net.termer.twinemedia.util
 
 import io.vertx.kotlin.coroutines.await
+import kotlinx.coroutines.DelicateCoroutinesApi
 import net.termer.twine.ServerManager.vertx
 import net.termer.twinemedia.Module.Companion.config
 import java.nio.file.FileSystemException
@@ -13,9 +14,31 @@ private val fs = vertx().fileSystem()
  * Deletes all files in the currently processing media directory
  * @since 1.4.0
  */
+@DelicateCoroutinesApi
 suspend fun deleteFilesInProcessingDirectory() {
 	// Get files
 	val files = fs.readDir(config.processing_location).await()
+
+	// Delete files
+	for(file in files) {
+		val props = fs.props(file).await()
+
+		// Make sure path is a regular file
+		if(props.isRegularFile) {
+			// Delete the file
+			fs.delete(file).await()
+		}
+	}
+}
+
+/**
+ * Deletes all files in the currently uploading directory
+ * @since 1.5.0
+ */
+@DelicateCoroutinesApi
+suspend fun deleteFilesInUploadingDirectory() {
+	// Get files
+	val files = fs.readDir(config.upload_location).await()
 
 	// Delete files
 	for(file in files) {

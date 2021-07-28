@@ -50,17 +50,23 @@ Changes:
  - Fixed descriptions not showing and not being saved
 
 === Version 1.5.0 ===
-
-
-CHANGE THIS TO BE CORRECT LOL
-
-
-Config changes: No
+Config changes: Yes
 New Features: Yes
-Bugfixes: No
+Bugfixes: Yes
 
 Changes:
+ - Upgrade Twine to 2.1 (Requires Twine upgrade, see https://github.com/termermc/twine)
+ - Uploader will now only check for files with the same hash in the target media source
  - Added support for multiple storage sources
  - Added Amazon S3 storage support
+ - Added ability for accounts with "files.ownership" permission to change the owner of files
+ - Added ability to create temporary file links that expire after a predetermined amount of time
+ - Added X-IGNORE-HASH header option in uploader to force creating a new file on disk even if others exist with the same hash
+ - Added config property "thumbnails_location" to define where thumbnails are stored
+ - Added config property "processing_location" to define where temporary processing files are stored before being sent to their parent's source
+ - Repurposed config property "upload_location" to refer to the temporary location for files to be saved before sending to their target source
+ - Fixed raw value from upload "Content-Type" header being used as media file size instead of getting real size on disk
  - Fixed websocket sending data for all users instead of the logged in user
- - Fixed X-FILE-DESCRIPTION setting name instead of description
+ - Fixed X-FILE-DESCRIPTION header option in uploader setting name instead of description
+ - Fixed duplicate audio/video files not having their metadata processed
+ - Fixed going back in page history breaking tag search

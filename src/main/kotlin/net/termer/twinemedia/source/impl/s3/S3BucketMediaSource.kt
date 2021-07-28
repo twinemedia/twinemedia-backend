@@ -11,6 +11,7 @@ import io.vertx.kotlin.coroutines.await
 import net.termer.twine.ServerManager.vertx
 import net.termer.twinemedia.source.*
 import net.termer.twinemedia.source.config.SourceNotConfiguredException
+import net.termer.twinemedia.util.ConcurrentLock
 import net.termer.twinemedia.util.await
 import net.termer.twinemedia.util.filenameToFilenameWithUnixTimestamp
 import org.reactivestreams.Subscriber
@@ -34,7 +35,7 @@ class S3BucketMediaSource: StatefulMediaSource {
 	}
 
 	/**
-	 * Returns a file's download URL
+	 * Returns a file's download URL (may or may not require special permission to access)
 	 * @param key The file's key
 	 * @return The file's download URL
 	 * @since 1.5.0
@@ -42,6 +43,7 @@ class S3BucketMediaSource: StatefulMediaSource {
 	fun keyToUrl(key: String) = "${config.endpoint}/${config.bucketName}/$key"
 
 	private val config = S3BucketMediaSourceConfig()
+	private val lock = ConcurrentLock()
 	private var client: S3AsyncClient? = null
 	private val fs = vertx().fileSystem()
 
@@ -67,6 +69,8 @@ class S3BucketMediaSource: StatefulMediaSource {
 
 	override fun getConfig() = config
 
+	override fun getLock() = lock
+
 	override suspend fun fileExists(key: String): Boolean {
 		failIfNotConfigured()
 
@@ -83,6 +87,8 @@ class S3BucketMediaSource: StatefulMediaSource {
 
 	override suspend fun listFiles(): Array<MediaSourceFile> {
 		failIfNotConfigured()
+
+		val lockId = lock.createLock()
 
 		try {
 			val files = ArrayList<MediaSourceFile>()
@@ -130,14 +136,19 @@ class S3BucketMediaSource: StatefulMediaSource {
 
 			promise.future().await()
 
+			lock.deleteLock(lockId)
+
 			return files.toTypedArray()
 		} catch(e: Throwable) {
+			lock.deleteLock(lockId)
 			throw wrapThrowableAsMediaSourceException(e)
 		}
 	}
 
 	override suspend fun getFile(key: String): MediaSourceFile {
 		failIfNotConfigured()
+
+		val lockId = lock.createLock()
 
 		try {
 			// Create metadata request
@@ -149,6 +160,8 @@ class S3BucketMediaSource: StatefulMediaSource {
 			return try {
 				// Execute request
 				val res = client!!.headObject(req).await()
+
+				lock.deleteLock(lockId)
 
 				MediaSourceFile(
 						key = key,
@@ -165,6 +178,7 @@ class S3BucketMediaSource: StatefulMediaSource {
 					throw wrapThrowableAsMediaSourceException(e)
 			}
 		} catch(e: Throwable) {
+			lock.deleteLock(lockId)
 			throw wrapThrowableAsMediaSourceException(e)
 		}
 	}
@@ -183,7 +197,7 @@ class S3BucketMediaSource: StatefulMediaSource {
 			// Work out range
 			if(offset > -1 || length > -1) {
 				val start = offset.coerceAtLeast(0)
-				val end = if(length > -1) start+length else null
+				val end = if(length > -1) start+length-1 else null
 				val endStr = end?.toString().orEmpty()
 				val rangeStr = "bytes=$start-$endStr"
 
@@ -197,16 +211,22 @@ class S3BucketMediaSource: StatefulMediaSource {
 			readStream.pause()
 			var file: MediaSourceFile? = null
 			val promise = Promise.promise<GetObjectResponse>()
-			readStream.setResponseHandler(Handler {
+			readStream.setResponseHandler {
+				val realOffset = offset.coerceAtLeast(0)
+				val resLen = it.contentLength()
 				file = MediaSourceFile(
 						key,
 						url = keyToUrl(key),
-						size = it.contentLength(),
+						size = when {
+							length < 0 -> realOffset + resLen
+							realOffset + length > resLen -> realOffset + resLen
+							else -> null
+						},
 						modifiedOn = it.lastModified().atOffset(ZoneOffset.UTC),
 						hash = it.eTag()
 				)
 				promise.complete()
-			})
+			}
 			promise.future().await()
 
 			// Send stream
@@ -255,6 +275,8 @@ class S3BucketMediaSource: StatefulMediaSource {
 	override suspend fun deleteFile(key: String) {
 		failIfNotConfigured()
 
+		val lockId = lock.createLock()
+
 		try {
 			// Create request
 			val req = DeleteObjectRequest.builder()
@@ -264,7 +286,10 @@ class S3BucketMediaSource: StatefulMediaSource {
 
 			// Delete
 			client!!.deleteObject(req).await()
+
+			lock.deleteLock(lockId)
 		} catch(e: Throwable) {
+			lock.deleteLock(lockId)
 			throw wrapThrowableAsMediaSourceException(e)
 		}
 	}
@@ -272,18 +297,25 @@ class S3BucketMediaSource: StatefulMediaSource {
 	override suspend fun downloadFile(key: String, pathOnDisk: String) {
 		failIfNotConfigured()
 
+		val lockId = lock.createLock()
+
 		try {
 			val source = openReadStream(key).stream
 			val dest = fs.open(pathOnDisk, OpenOptions().setWrite(true)).await()
 
 			source.pipeTo(dest).await()
+
+			lock.deleteLock(lockId)
 		} catch(e: Throwable) {
+			lock.deleteLock(lockId)
 			throw wrapThrowableAsMediaSourceException(e)
 		}
 	}
 
 	override suspend fun uploadFile(pathOnDisk: String, key: String) {
 		failIfNotConfigured()
+
+		val lockId = lock.createLock()
 
 		try {
 			// Get file length
@@ -293,14 +325,27 @@ class S3BucketMediaSource: StatefulMediaSource {
 			val dest = openWriteStream(key, size)
 
 			source.pipeTo(dest).await()
+
+			lock.deleteLock(lockId)
 		} catch(e: Throwable) {
+			lock.deleteLock(lockId)
 			throw wrapThrowableAsMediaSourceException(e)
 		}
 	}
 
 	override fun supportsReadPosition() = true
 
-	override fun filenameToKey(filename: String) = filenameToFilenameWithUnixTimestamp(filename)
+	override fun filenameToKey(filename: String): String {
+		// AWS safe key characters
+		val okChars = arrayOf('0', '1', '2', '3', '4', '5', '6', '7', '8', '9', 'a', 'b', 'c', 'd', 'e', 'f', 'g', 'h', 'i', 'j', 'k', 'l', 'm', 'n', 'o', 'p', 'q', 'r', 's', 't', 'u', 'v', 'w', 'x', 'y', 'z', 'A', 'B', 'C', 'D', 'E', 'F', 'G', 'H', 'I', 'J', 'K', 'L', 'M', 'N', 'O', 'P', 'Q', 'R', 'S', 'T', 'U', 'V', 'W', 'X', 'Y', 'Z', '/', '!', '-', '_', '.', '*', '\'', '(', ')')
+
+		val fname = StringBuilder()
+		for(char in filename.toCharArray())
+			if(okChars.contains(char))
+				fname.append(char)
+
+		return filenameToFilenameWithUnixTimestamp(fname.toString()).replace(' ', '_')
+	}
 
 	override suspend fun getRemainingStorage(): Long? = null
 }

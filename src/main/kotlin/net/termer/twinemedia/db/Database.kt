@@ -4,6 +4,7 @@ import io.vertx.kotlin.coroutines.await
 import io.vertx.pgclient.PgConnectOptions
 import io.vertx.pgclient.PgPool
 import io.vertx.sqlclient.*
+import kotlinx.coroutines.DelicateCoroutinesApi
 import net.termer.twine.ServerManager.vertx
 import net.termer.twinemedia.Module.Companion.config
 import org.flywaydb.core.Flyway
@@ -28,6 +29,7 @@ object Database {
  * Initializes the database connection
  * @since 1.0.0
  */
+@DelicateCoroutinesApi
 fun dbInit() {
 	// Configuration
 	val connOps = PgConnectOptions()
@@ -47,6 +49,7 @@ fun dbInit() {
  * Runs database migrations
  * @since 1.0.0
  */
+@DelicateCoroutinesApi
 fun dbMigrate() {
 	// Create FlyWay instance
 	val flyway = Flyway.configure().dataSource(

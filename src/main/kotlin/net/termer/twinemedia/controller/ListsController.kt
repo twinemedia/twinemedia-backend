@@ -4,6 +4,7 @@ import io.vertx.core.json.JsonArray
 import io.vertx.kotlin.core.json.json
 import io.vertx.kotlin.core.json.obj
 import io.vertx.kotlin.coroutines.dispatcher
+import kotlinx.coroutines.DelicateCoroutinesApi
 import kotlinx.coroutines.GlobalScope
 import kotlinx.coroutines.launch
 import net.termer.twine.ServerManager.*
@@ -22,6 +23,7 @@ import java.time.OffsetDateTime
  * Sets up all routes for creating, editing, and deleting lists
  * @since 1.0.0
  */
+@DelicateCoroutinesApi
 fun listsController() {
 	for(hostname in appHostnames()) {
 		// Returns all lists
@@ -40,12 +42,7 @@ fun listsController() {
 
 					// Request validation
 					val v = RequestValidator()
-							.optionalParam("offset", Presets.resultOffsetValidator(), 0)
-							.optionalParam("limit", Presets.resultLimitValidator(), 100)
-							.optionalParam("order", IntValidator()
-									.coerceMin(0)
-									.coerceMax(5),
-							0)
+							.offsetLimitOrder(5)
 							.optionalParam("type", Presets.listTypeValidator(true), -1)
 							.optionalParam("media", StringValidator())
 
@@ -61,16 +58,10 @@ fun listsController() {
 							// Fetch lists
 							val lists = listsModel.fetchLists(offset, limit, order, type, media)
 
-							// Create JSON array of lists
-							val arr = JsonArray()
-
-							for(list in lists)
-								arr.add(list.toJson())
-
 							// Send lists
-							r.success(json {
-								obj("lists" to arr)
-							})
+							r.success(json {obj(
+									"lists" to lists.toJsonArray()
+							)})
 						} catch (e: Exception) {
 							logger.error("Failed to fetch lists:")
 							e.printStackTrace()
@@ -106,13 +97,8 @@ fun listsController() {
 
 					// Request validation
 					val v = RequestValidator()
+							.offsetLimitOrder(5)
 							.param("query", StringValidator().trim())
-							.optionalParam("offset", Presets.resultOffsetValidator(), 0)
-							.optionalParam("limit", Presets.resultLimitValidator(), 100)
-							.optionalParam("order", IntValidator()
-									.coerceMin(0)
-									.coerceMax(5),
-							0)
 							.optionalParam("type", Presets.listTypeValidator(true), -1)
 							.optionalParam("media", StringValidator())
 							.optionalParam("searchNames", BooleanValidator(), true)
@@ -143,16 +129,10 @@ fun listsController() {
 								else -> listsModel.fetchLists(offset, limit, order, type, media)
 							}
 
-							// Create JSON array of lists
-							val arr = JsonArray()
-
-							for(list in lists)
-								arr.add(list.toJson())
-
 							// Send lists
-							r.success(json {
-								obj("lists" to arr)
-							})
+							r.success(json {obj(
+									"lists" to lists.toJsonArray()
+							)})
 						} catch (e: Exception) {
 							logger.error("Failed to fetch lists:")
 							e.printStackTrace()
@@ -225,9 +205,9 @@ fun listsController() {
 							listsModel.createList(id, name, description, r.userId(), visibility, type, sourceTags, sourceExcludeTags, sourceCreatedBefore, sourceCreatedAfter, sourceMime, showAllUserFiles)
 
 							// Send ID
-							r.success(json {
-								obj("id" to id)
-							})
+							r.success(json {obj(
+									"id" to id
+							)})
 						} catch (e: Exception) {
 							logger.error("Failed to create list:")
 							e.printStackTrace()

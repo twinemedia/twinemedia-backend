@@ -2,6 +2,7 @@ package net.termer.twinemedia.source
 
 import io.vertx.core.json.JsonObject
 import io.vertx.kotlin.coroutines.dispatcher
+import kotlinx.coroutines.DelicateCoroutinesApi
 import kotlinx.coroutines.GlobalScope
 import kotlinx.coroutines.launch
 import net.termer.twine.ServerManager.vertx
@@ -18,16 +19,17 @@ import kotlin.collections.ArrayList
  * @author termer
  * @since 1.5.0
  */
+@DelicateCoroutinesApi
 class MediaSourceManager {
 	/**
 	 * Data class that holds info about a media source
-	 * @param id The media source's ID (e.g. "my_source")
+	 * @param type The media source's type (e.g. "my_source")
 	 * @param name The media source's name
 	 * @param description The media source's description
 	 * @param sourceClass The media source's class
 	 * @since 1.5.0
 	 */
-	class Info(val id: String, val name: String, val description: String, val sourceClass: Class<out MediaSource>)
+	class Info(val type: String, val name: String, val description: String, val sourceClass: Class<out MediaSource>)
 
 	/**
 	 * Data class that holds an instance and its expiration time
@@ -47,17 +49,16 @@ class MediaSourceManager {
 	 * @since 1.5.0
 	 */
 	fun initialize() {
-		// TODO Every minute or so, delete (and shutdown) instances that are past their expiration
-
-		vertx().setPeriodic(60*1000) {
+		// Every minute, delete (and shutdown if StatefulMediaSource) instances that are past their expiration
+		vertx().setPeriodic(60_000L) {
 			val now = Date().toInstant().atOffset(ZoneOffset.UTC)
 			val keys = instances.keys()
 
 			for(key in keys) {
 				val instance = instances[key]!!
 
-				// Check if instance is expired
-				if(instance.source != null && instance.expireTime != null && now.isAfter(instance.expireTime)) {
+				// Check if instance is expired and not locked
+				if(instance.source != null && instance.expireTime != null && now.isAfter(instance.expireTime) && !instance.source!!.getLock().locked()) {
 					// Remove source instance
 					val source = instance.source
 					instance.source = null
@@ -86,6 +87,29 @@ class MediaSourceManager {
 	fun availableSources() = sources.toTypedArray()
 
 	/**
+	 * Returns the available source with the specified type name, or null if none exists
+	 * @param type The type name to search for
+	 * @return The available source with the specified type name, or null if none exists
+	 * @since 1.5.0
+	 */
+	@Suppress("DEPRECATION")
+	fun getAvailableSourceByTypeName(type: String): Info? {
+		@Suppress("DEPRECATION")
+		for(src in sources)
+			if(src.type == type)
+				return src
+
+		return null
+	}
+
+	/**
+	 * Returns all registered source instances
+	 * @return All registered source instances
+	 * @since 1.5.0
+	 */
+	fun registeredSourceInstances() = instances.values.toTypedArray()
+
+	/**
 	 * Returns the media source instance with the provided ID, or null if none exists
 	 * @param id The media source instance ID
 	 * @param minutesToKeep The amount of minutes to keep this instance alive before destroying it (defaults to 60)
@@ -97,6 +121,7 @@ class MediaSourceManager {
 			val instance = instances[id]!!
 
 			// Check if instance is initialized
+			@Suppress("DEPRECATION")
 			return if(instance.source == null) {
 				// Instantiate
 				val source = instance.sourceClass.newInstance()
@@ -151,6 +176,7 @@ class MediaSourceManager {
 	 */
 	fun registerInstance(instanceId: Int, sourceClass: Class<out MediaSource>, config: JsonObject) {
 		// Create instance to test config
+		@Suppress("DEPRECATION")
 		val instance = sourceClass.newInstance()
 
 		// Validate config

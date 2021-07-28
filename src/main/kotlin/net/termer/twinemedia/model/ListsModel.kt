@@ -57,7 +57,7 @@ class ListsModel {
 	 * @since 1.0
 	 */
 	private fun orderBy(order: Int): String {
-		return "ORDER BY " + when (order) {
+		return "ORDER BY " + when(order) {
 			1 -> "list_created_on ASC"
 			2 -> "list_name ASC"
 			3 -> "list_name DESC"
@@ -74,18 +74,10 @@ class ListsModel {
 	 */
 	private fun listWhereFilter(): String {
 		return when {
-			account == null -> {
-				"TRUE"
-			}
-			account!!.excludeOtherLists -> {
-				"list_creator = ${account?.id}"
-			}
-			account!!.hasPermission("lists.list.all") -> {
-				"TRUE"
-			}
-			else -> {
-				"list_creator = ${account?.id}"
-			}
+			account == null -> "TRUE"
+			account!!.excludeOtherLists -> "list_creator = ${account?.id}"
+			account!!.hasPermission("lists.list.all") -> "TRUE"
+			else -> "list_creator = ${account?.id}"
 		}
 	}
 	/**
@@ -95,18 +87,10 @@ class ListsModel {
 	 */
 	private fun viewWhereFilter(): String {
 		return when {
-			account == null -> {
-				"TRUE"
-			}
-			account!!.excludeOtherLists -> {
-				"list_creator = ${account?.id}"
-			}
-			account!!.hasPermission("lists.view.all") -> {
-				"TRUE"
-			}
-			else -> {
-				"list_creator = ${account?.id}"
-			}
+			account == null -> "TRUE"
+			account!!.excludeOtherLists -> "list_creator = ${account?.id}"
+			account!!.hasPermission("lists.view.all") -> "TRUE"
+			else -> "list_creator = ${account?.id}"
 		}
 	}
 	/**
@@ -116,18 +100,10 @@ class ListsModel {
 	 */
 	private fun editWhereFilter(): String {
 		return when {
-			account == null -> {
-				"TRUE"
-			}
-			account!!.excludeOtherLists -> {
-				"list_creator = ${account?.id}"
-			}
-			account!!.hasPermission("lists.edit.all") -> {
-				"TRUE"
-			}
-			else -> {
-				"list_creator = ${account?.id}"
-			}
+			account == null -> "TRUE"
+			account!!.excludeOtherLists -> "list_creator = ${account?.id}"
+			account!!.hasPermission("lists.edit.all") -> "TRUE"
+			else -> "list_creator = ${account?.id}"
 		}
 	}
 	/**
@@ -137,18 +113,10 @@ class ListsModel {
 	 */
 	private fun deleteWhereFilter(): String {
 		return when {
-			account == null -> {
-				"TRUE"
-			}
-			account!!.excludeOtherLists -> {
-				"list_creator = ${account?.id}"
-			}
-			account!!.hasPermission("lists.delete.all") -> {
-				"TRUE"
-			}
-			else -> {
-				"list_creator = ${account?.id}"
-			}
+			account == null -> "TRUE"
+			account!!.excludeOtherLists -> "list_creator = ${account?.id}"
+			account!!.hasPermission("lists.delete.all") -> "TRUE"
+			else -> "list_creator = ${account?.id}"
 		}
 	}
 
@@ -208,15 +176,17 @@ class ListsModel {
 	 * @param sourceCreatedAfter The time media must be created after in order to be displayed in this list (can be null, only applies if type is AUTOMATICALLY_POPULATED)
 	 * @param sourceMime The media MIME pattern that media must match in order to be displayed in this list (can be null, only applies if type is AUTOMATICALLY_POPULATED, allows % for use as wildcards)
 	 * @param showAllUserFiles Whether this list will show files from all users and not just the creator's files (only applies if the type is AUTOMATICALLY_POPULATED, otherwise should be false)
-	 * @since 1.4.0
+	 * @return The newly created list's ID
+	 * @since 1.5.0
 	 */
-	suspend fun createList(id: String, name: String, description: String?, creator: Int, visibility: ListVisibility, type: ListType, sourceTags: Array<String>?, sourceExcludeTags: Array<String>?, sourceCreatedBefore: OffsetDateTime?, sourceCreatedAfter: OffsetDateTime?, sourceMime: String?, showAllUserFiles: Boolean) {
-		SqlTemplate
-				.forUpdate(client, """
+	suspend fun createList(id: String, name: String, description: String?, creator: Int, visibility: ListVisibility, type: ListType, sourceTags: Array<String>?, sourceExcludeTags: Array<String>?, sourceCreatedBefore: OffsetDateTime?, sourceCreatedAfter: OffsetDateTime?, sourceMime: String?, showAllUserFiles: Boolean): Int {
+		return SqlTemplate
+				.forQuery(client, """
 					INSERT INTO lists
 					( list_id, list_name, list_description, list_creator, list_visibility, list_type, list_source_tags, list_source_exclude_tags, list_source_created_before, list_source_created_after, list_source_mime, list_show_all_user_files )
 					VALUES
 					( #{id}, #{name}, #{desc}, #{creator}, #{visibility}, #{type}, CAST( #{sourceTags} AS jsonb ), CAST( #{sourceExcludeTags} AS jsonb ), #{sourceCreatedBefore}, #{sourceCreatedAfter}, #{sourceMime}, #{showAllUserFiles} )
+					RETURNING id
 				""".trimIndent())
 				.execute(hashMapOf<String, Any?>(
 						"id" to id,
@@ -232,26 +202,30 @@ class ListsModel {
 						"sourceMime" to sourceMime,
 						"showAllUserFiles" to (showAllUserFiles)
 				)).await()
+				.first().getInteger("id")
 	}
 
 	/**
 	 * Creates a new list item entry
 	 * @param list The list to add the item to
 	 * @param item The item (media ID) to add to the list
-	 * @since 1.0
+	 * @return The newly created list item's ID
+	 * @since 1.5.0
 	 */
-	suspend fun createListItem(list: Int, item: Int) {
-		SqlTemplate
-				.forUpdate(client, """
+	suspend fun createListItem(list: Int, item: Int): Int {
+		return SqlTemplate
+				.forQuery(client, """
 					INSERT INTO listitems
 					( item_list, item_media )
 					VALUES
 					( #{list}, #{item} )
+					RETURNING id
 				""".trimIndent())
 				.execute(hashMapOf<String, Any>(
 						"list" to list,
 						"item" to item
 				)).await()
+				.first().getInteger("id")
 	}
 
 	/**

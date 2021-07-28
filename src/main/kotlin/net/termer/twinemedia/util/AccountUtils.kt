@@ -1,5 +1,6 @@
 package net.termer.twinemedia.util
 
+import kotlinx.coroutines.DelicateCoroutinesApi
 import net.termer.twinemedia.Module.Companion.crypt
 import net.termer.twinemedia.model.AccountsModel
 import net.termer.twinemedia.model.ApiKeysModel
@@ -18,12 +19,14 @@ private val simpleDateFormat = SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss.SSS'Z'")
  * @param admin Whether the new account will be an administrator
  * @param permissions An array of permissions that the new account will have
  * @param password The password of the new account
- * @since 1.4.0
+ * @param defaultSource The default source of the new account
+ * @since 1.5.0
  */
-suspend fun createAccount(name: String, email: String, admin: Boolean, permissions: Array<String>, password: String) {
+@DelicateCoroutinesApi
+suspend fun createAccount(name: String, email: String, admin: Boolean, permissions: Array<String>, password: String, defaultSource: Int): Int {
 	val hash = crypt.hashPassword(password)
 
-	accountsModel.createAccountEntry(email, name, admin, permissions, hash.orEmpty())
+	return accountsModel.createAccountEntry(email, name, admin, permissions, hash, defaultSource)
 }
 
 /**
@@ -32,6 +35,7 @@ suspend fun createAccount(name: String, email: String, admin: Boolean, permissio
  * @param newPassword The new password for the account
  * @since 1.0
  */
+@DelicateCoroutinesApi
 suspend fun updateAccountPassword(id: Int, newPassword: String) {
 	val hash = crypt.hashPassword(newPassword).orEmpty()
 

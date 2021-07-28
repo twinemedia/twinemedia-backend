@@ -31,7 +31,7 @@ class ApiKeysModel {
 	 * @since 1.3.0
 	 */
 	private fun orderBy(order: Int): String {
-		return "ORDER BY " + when (order) {
+		return "ORDER BY " + when(order) {
 			1 -> "key_created_on ASC"
 			2 -> "key_name ASC, media_filename ASC"
 			3 -> "key_name DESC, media_filename DESC"
@@ -74,15 +74,17 @@ class ApiKeysModel {
 	 * @param permissions An array of permissions that this API key grants
 	 * @param jwt The JWT key String
 	 * @param owner The ID of the account that owns this API key
-	 * @since 1.3.0
+	 * @return The newly created API key's ID
+	 * @since 1.5.0
 	 */
-	suspend fun createApiKey(id: String, name: String, permissions: Array<String>, jwt: String, owner: Int) {
-		SqlTemplate
-				.forUpdate(client, """
+	suspend fun createApiKey(id: String, name: String, permissions: Array<String>, jwt: String, owner: Int): Int {
+		return SqlTemplate
+				.forQuery(client, """
 					INSERT INTO apikeys
 					( key_id, key_name, key_permissions, key_jwt, key_owner )
 					VALUES
-					( #{id}, #{name}, CAST( #{perms} AS jsonb ), #{jwt}, #{owner} )					
+					( #{id}, #{name}, CAST( #{perms} AS jsonb ), #{jwt}, #{owner} )
+					RETURNING id
 				""".trimIndent())
 				.execute(hashMapOf<String, Any>(
 						"id" to id,
@@ -91,6 +93,7 @@ class ApiKeysModel {
 						"jwt" to jwt,
 						"owner" to owner
 				)).await()
+				.first().getInteger("id")
 	}
 
 	/**

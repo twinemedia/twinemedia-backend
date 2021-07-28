@@ -2,13 +2,14 @@ package net.termer.twinemedia
 
 /**
  * TwineMedia configuration class
- * @since 1.0
+ * @since 1.0.0
  */
 class TwineMediaConfig {
     var domain = "*"
 
     var upload_location = "file-uploads/"
     var processing_location = "processing-media/"
+    var thumbnails_location = "thumbnails/"
     var max_upload = 1073741824
 
     var db_address = "localhost"

@@ -128,38 +128,34 @@ class MediaInfo(
 		 * The media source's type
 		 * @since 1.5.0
 		 */
-		val sourceType: String,
+		val sourceType: String?,
 		/**
 		 * The media source's name
 		 * @since 1.5.0
 		 */
-		val sourceName: String
-) {
-	/**
-	 * Returns a JSON representation of the media's info
-	 * @return A JSON representation of the media's info
-	 * @since 1.4.0
-	 */
-	fun toJson(): JsonObject {
-		val json = json {
-			obj(
-					"id" to id,
-					"name" to name,
-					"filename" to filename,
-					"creator" to creator,
-					"size" to size,
-					"mime" to mime,
-					"created_on" to createdOn.toString(),
-					"modified_on" to modifiedOn.toString(),
-					"creator" to creator,
-					"creator_name" to creatorName,
-					"file_hash" to hash,
-					"thumbnail" to hasThumbnail,
-					"tags" to tags.toJsonArray(),
-					"processing" to isProcessing,
-					"process_error" to processError
-			)
-		}
+		val sourceName: String?
+): SerializableDataObject {
+	override fun toJson(): JsonObject {
+		val json = json {obj(
+				"id" to id,
+				"name" to name,
+				"filename" to filename,
+				"creator" to creator,
+				"size" to size,
+				"mime" to mime,
+				"created_on" to createdOn.toString(),
+				"modified_on" to modifiedOn.toString(),
+				"creator" to creator,
+				"creator_name" to creatorName,
+				"file_hash" to hash,
+				"thumbnail" to hasThumbnail,
+				"tags" to tags.toJsonArray(),
+				"processing" to isProcessing,
+				"process_error" to processError,
+				"source" to source,
+				"source_type" to sourceType,
+				"source_name" to sourceName
+		)}
 
 		if(hasDescription)
 			json.put("description", description)
@@ -186,7 +182,7 @@ class MediaInfo(
 					modifiedOn = row.getOffsetDateTime("modified_on"),
 					creator = row.getInteger("creator"),
 					creatorName = row.getString("creator_name"),
-					hash = row.getString("file_hash"),
+					hash = row.getString("hash"),
 					hasThumbnail = row.getBoolean("thumbnail"),
 					isProcessing = row.getBoolean("processing"),
 					processError = row.getString("process_error"),

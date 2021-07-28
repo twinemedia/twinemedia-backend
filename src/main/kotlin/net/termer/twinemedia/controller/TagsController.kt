@@ -1,15 +1,15 @@
 package net.termer.twinemedia.controller
 
-import io.vertx.core.json.JsonArray
-import io.vertx.core.json.JsonObject
+import io.vertx.kotlin.core.json.json
+import io.vertx.kotlin.core.json.obj
 import io.vertx.kotlin.coroutines.dispatcher
+import kotlinx.coroutines.DelicateCoroutinesApi
 import kotlinx.coroutines.GlobalScope
 import kotlinx.coroutines.launch
 import net.termer.twine.ServerManager.*
 import net.termer.twinemedia.Module.Companion.logger
 import net.termer.twinemedia.model.TagsModel
 import net.termer.twinemedia.util.*
-import net.termer.twinemedia.util.validation.*
 import net.termer.vertx.kotlin.validation.RequestValidator
 import net.termer.vertx.kotlin.validation.validator.*
 
@@ -17,6 +17,7 @@ import net.termer.vertx.kotlin.validation.validator.*
  * Sets up all routes for retrieving tags and tag-related information
  * @since 1.0.0
  */
+@DelicateCoroutinesApi
 fun tagsController() {
 	for(hostname in appHostnames()) {
 		// Returns tags, optionally based on a query (which supports % wildcards)
@@ -34,14 +35,10 @@ fun tagsController() {
 
 					// Request validation
 					val v = RequestValidator()
+							.offsetLimitOrder(5)
 							.optionalParam("query", StringValidator()
 									.noNewlinesOrControlChars()
 									.trim(), "")
-							.optionalParam("offset", Presets.resultOffsetValidator(), 0)
-							.optionalParam("limit", Presets.resultLimitValidator(), 100)
-							.optionalParam("order", IntValidator()
-									.min(0)
-									.max(5), 0)
 
 					if(v.validate(r)) {
 						// Collect parameters
@@ -56,14 +53,10 @@ fun tagsController() {
 							else
 								tagsModel.fetchTagsByTerm(query, offset, limit, order)
 
-							// Create JSON array of tags
-							val arr = JsonArray()
-
-							for(tag in tags)
-								arr.add(tag.toJson())
-
 							// Send tags
-							r.success(JsonObject().put("tags", arr))
+							r.success(json {obj(
+									"tags" to tags.toJsonArray()
+							)})
 						} catch(e: Exception) {
 							logger.error("Failed to fetch tags:")
 							e.printStackTrace()
@@ -92,7 +85,7 @@ fun tagsController() {
 
 						// Check if a row has been returned
 						if(infoRes.count() > 0) {
-							val info = infoRes.iterator().next()
+							val info = infoRes.first()
 
 							r.success(info.toJson())
 						} else {

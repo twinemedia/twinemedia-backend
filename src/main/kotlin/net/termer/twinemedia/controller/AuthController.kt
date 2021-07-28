@@ -3,6 +3,7 @@ package net.termer.twinemedia.controller
 import io.vertx.kotlin.core.json.json
 import io.vertx.kotlin.core.json.obj
 import io.vertx.kotlin.coroutines.dispatcher
+import kotlinx.coroutines.DelicateCoroutinesApi
 import kotlinx.coroutines.GlobalScope
 import kotlinx.coroutines.launch
 import net.termer.twine.ServerManager.*
@@ -23,6 +24,7 @@ import net.termer.vertx.kotlin.validation.validator.*
  * Sets up all authentication-related routes
  * @since 1.0.0
  */
+@DelicateCoroutinesApi
 fun authController() {
 	val accountsModel = AccountsModel()
 
@@ -71,18 +73,16 @@ fun authController() {
 
 							// Check if password matches
 							val matches = crypt.verifyPassword(password, account.hash)
-							if(matches != null && matches) {
+							if(matches) {
 								// Generate token ID
 								val id = generateString(10)
 
 								// Create JWT token and send it back to the user
-								r.success(json {
-									obj(
-											"token" to jwtCreateToken(json {
-												obj("sub" to account.id, "id" to id)
-											})
-									)
-								})
+								r.success(json {obj(
+										"token" to jwtCreateToken(json {obj(
+												"sub" to account.id, "id" to id
+										)})
+								)})
 
 								// Clear auth attempts
 								attempts.remove(r.ip())

@@ -1,5 +1,6 @@
 package net.termer.twinemedia.util.validation
 
+import kotlinx.coroutines.DelicateCoroutinesApi
 import net.termer.twinemedia.Module.Companion.config
 import net.termer.vertx.kotlin.validation.ParamValidator
 
@@ -8,6 +9,7 @@ import net.termer.vertx.kotlin.validation.ParamValidator
  * @author termer
  * @since 1.4.0
  */
+@DelicateCoroutinesApi
 open class PasswordValidator: ParamValidator {
 	private val numChars = arrayOf('0', '1', '2', '3', '4', '5', '6', '7', '8', '9')
 	private val specialChars = arrayOf('`', '~', '!', '@', '#', '$', '$', '%', '^', '&', '*', '(', ')', '_', '-', '=', '+', '\\', '|', ';', ':', '\'', '"', ',', '<', '.', '>', '/', '?', '[','{', ']', '}')

@@ -45,18 +45,10 @@ class TagsModel {
 	 */
 	private fun whereFilter(): String {
 		return when {
-			account == null -> {
-				"TRUE"
-			}
-			account!!.excludeOtherTags -> {
-				"tag_creator = ${account?.id}"
-			}
-			account!!.hasPermission("tags.list.all") -> {
-				"TRUE"
-			}
-			else -> {
-				"tag_creator = ${account?.id}"
-			}
+			account == null -> "TRUE"
+			account!!.excludeOtherTags -> "tag_creator = ${account?.id}"
+			account!!.hasPermission("tags.list.all") -> "TRUE"
+			else -> "tag_creator = ${account?.id}"
 		}
 	}
 
@@ -74,7 +66,7 @@ class TagsModel {
 	 * @since 1.0
 	 */
 	private fun orderBy(order: Int): String {
-		return "ORDER BY " + when (order) {
+		return "ORDER BY " + when(order) {
 			1 -> "tag_name DESC"
 			2 -> "CHAR_LENGTH(tag_name) ASC"
 			3 -> "CHAR_LENGTH(tag_name) DESC"
