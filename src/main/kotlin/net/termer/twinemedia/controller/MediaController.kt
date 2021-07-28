@@ -505,7 +505,7 @@ fun mediaController() {
 							// Check if media is a child
 							if(media.parent == null) {
 								// Check if files with the same hash exist
-								val hashMediaRes = mediaModel.fetchMediaByHash(media.hash)
+								val hashMediaRes = mediaModel.fetchMediaByHashAndSource(media.hash, media.source)
 
 								if(hashMediaRes.count() < 2) {
 									delete = true
