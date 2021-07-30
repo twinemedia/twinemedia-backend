@@ -292,7 +292,14 @@ fun startMediaProcessor(): Thread {
                             }
                         }
 
-                        if(!currentJobRequires && !futureJobRequires && tmpOut != null)
+                        if(!futureJobRequires && !currentJobRequires && isMediaCached(job.id)) {
+                            val path = runBlocking(vertx().dispatcher()) { getMediaPath(job.id) }
+                            File(path).delete()
+                            mediaCache.remove(job.id)
+                        }
+
+                        // Delete media output
+                        if(tmpOut != null)
                             File(tmpOut!!).delete()
                     }
 
@@ -541,15 +548,6 @@ fun startMediaProcessor(): Thread {
                             mediaModel.updateMediaInfo(outId, false, fileSize, hash, thumbnail, meta)
                         }
 
-                        // Broadcast success
-                        vertx().eventBus().publish("twinemedia.event.media.process", json {
-                            obj(
-                                    "id" to outId,
-                                    "creator" to job.creator,
-                                    "status" to "success"
-                            )
-                        })
-
                         // Once job is finished and output is dealt with, upload it to the original media's source and delete the temporary file
                         try {
                             runBlocking(vertx().dispatcher()) {
@@ -563,6 +561,15 @@ fun startMediaProcessor(): Thread {
                             handleError(e)
                             continue@loop
                         }
+
+                        // Broadcast success
+                        vertx().eventBus().publish("twinemedia.event.media.process", json {
+                            obj(
+                                    "id" to outId,
+                                    "creator" to job.creator,
+                                    "status" to "success"
+                            )
+                        })
 
                         cleanUpJob()
 
