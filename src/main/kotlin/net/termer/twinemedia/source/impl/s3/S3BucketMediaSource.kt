@@ -2,12 +2,16 @@ package net.termer.twinemedia.source.impl.s3
 
 import io.reactiverse.awssdk.VertxSdkClient
 import io.vertx.core.AsyncResult
-import io.vertx.core.Handler
+import io.vertx.core.Future
 import io.vertx.core.Promise
 import io.vertx.core.buffer.Buffer
 import io.vertx.core.file.OpenOptions
 import io.vertx.core.streams.WriteStream
 import io.vertx.kotlin.coroutines.await
+import io.vertx.kotlin.coroutines.dispatcher
+import kotlinx.coroutines.DelicateCoroutinesApi
+import kotlinx.coroutines.GlobalScope
+import kotlinx.coroutines.launch
 import net.termer.twine.ServerManager.vertx
 import net.termer.twinemedia.source.*
 import net.termer.twinemedia.source.config.SourceNotConfiguredException
@@ -22,8 +26,13 @@ import software.amazon.awssdk.services.s3.model.*
 import java.net.URI
 import java.time.ZoneOffset
 import java.util.concurrent.CompletionException
+import java.util.concurrent.ConcurrentHashMap
 import kotlin.collections.ArrayList
+import kotlin.math.ceil
+import kotlin.math.roundToInt
+import kotlin.system.exitProcess
 
+@DelicateCoroutinesApi
 class S3BucketMediaSource: StatefulMediaSource {
 	/**
 	 * Throws SourceNotConfiguredException if not configured
@@ -321,10 +330,168 @@ class S3BucketMediaSource: StatefulMediaSource {
 			// Get file length
 			val size = fs.props(pathOnDisk).await().size()
 
-			val source = fs.open(pathOnDisk, OpenOptions().setRead(true)).await()
-			val dest = openWriteStream(key, size)
+			// If file is less than 50MB, upload through PUT
+			if(size < 50_000_000) {
+				val source = fs.open(pathOnDisk, OpenOptions().setRead(true)).await()
+				val dest = openWriteStream(key, size)
 
-			source.pipeTo(dest).await()
+				source.pipeTo(dest).await()
+			} else {
+				// Upload file via multipart if it's more 100MB or larger to avoid issues
+
+				// Create multipart upload
+				val createReq = CreateMultipartUploadRequest.builder()
+						.bucket(config.bucketName)
+						.key(key)
+						.build()
+				val uplId = client!!.createMultipartUpload(createReq).await().uploadId()
+
+				// Determine how many pieces the file will need to be cut into
+				val maxConcurrentUploads = 5
+				val maxPieceSize = 50_000_000 // 50MB
+				val pieceCount = ceil(size.toDouble()/maxPieceSize).roundToInt()
+				val pieceSize = ceil(size.toDouble()/pieceCount).roundToInt()
+				val pieces = ConcurrentHashMap<Int, Int>()
+
+				// Figure out each piece's size
+				for(i in 1..pieceCount) {
+					pieces[i] = if(i >= pieceCount)
+						(size - (pieceSize * (i - 1))).toInt()
+					else
+						pieceSize
+				}
+
+				// Wait for all pieces to be uploaded
+				val finishedParts = ArrayList<CompletedPart>()
+				Future.future<Void> { promise ->
+					try {
+						var uploading = 0
+						var error: Throwable? = null
+
+						fun handleComplete() {
+							if(error == null)
+								promise.complete()
+						}
+						suspend fun handleError(e: Throwable) {
+							error = e
+
+							try {
+								// Abort upload
+								val abortReq = AbortMultipartUploadRequest.builder()
+										.bucket(config.bucketName)
+										.key(key)
+										.uploadId(uplId)
+										.build()
+								client!!.abortMultipartUpload(abortReq).await()
+
+								promise.fail(e)
+							} catch(e: Throwable) {
+								promise.fail(e)
+							}
+						}
+
+						suspend fun uploadPart(partNum: Int) {
+							if(error == null) {
+								uploading++
+
+								// Get size and remove part
+								val partSize = pieces[partNum]!!
+								pieces.remove(partNum)
+
+								var errored = false
+								try {
+									// Create upload request
+									val uplReq = UploadPartRequest.builder()
+											.bucket(config.bucketName)
+											.key(key)
+											.uploadId(uplId)
+											.partNumber(partNum)
+											.contentLength(partSize.toLong())
+											.build()
+
+									// Create write and read stream
+									val writeStream = WriteStreamAsyncBodyHandler()
+									val readStream = fs.open(pathOnDisk, OpenOptions().setRead(true)).await()
+											.pause()
+									readStream
+											.setReadLength(partSize.toLong())
+											.setReadPos((partNum - 1) * pieceSize.toLong())
+
+									// Begin upload
+									val upload = client!!.uploadPart(uplReq, writeStream)
+
+									// Pipe file piece to upload request body
+									readStream.pipeTo(writeStream).await()
+
+									// Wait for upload to finish
+									val res = upload.await()
+
+									// Add finished part to list of parts
+									finishedParts.add(CompletedPart.builder()
+											.eTag(res.eTag())
+											.partNumber(partNum)
+											.build())
+								} catch(e: Throwable) {
+									uploading--
+									errored = true
+									e.printStackTrace()
+									handleError(e)
+								}
+
+								uploading--
+
+								if(!errored) {
+									val pieceKeys = pieces.keys().toList().toTypedArray()
+									var i = 0
+
+									// Check if any pieces are left
+									if(finishedParts.size >= pieceCount) {
+										// Finish upload
+										handleComplete()
+									} else {
+										// Upload more pieces
+										for(part in pieceKeys) {
+											if(i >= maxConcurrentUploads)
+												break
+
+											uploadPart(part)
+
+											i++
+										}
+									}
+								}
+							}
+						}
+
+						for(part in 1..maxConcurrentUploads.coerceAtMost(pieceCount)) {
+							if(error == null) {
+								GlobalScope.launch(vertx().dispatcher()) {
+									try {
+										uploadPart(part)
+									} catch(e: Throwable) {
+										handleError(e)
+									}
+								}
+							}
+						}
+					} catch(e: Throwable) {
+						promise.fail(e)
+					}
+				}.await()
+
+				// If it got to this point, it's safe to finish the upload
+				val completedUpload = CompletedMultipartUpload.builder()
+						.parts(finishedParts)
+						.build()
+				val completeReq = CompleteMultipartUploadRequest.builder()
+						.bucket(config.bucketName)
+						.key(key)
+						.uploadId(uplId)
+						.multipartUpload(completedUpload)
+						.build()
+
+				client!!.completeMultipartUpload(completeReq).await()
+			}
 
 			lock.deleteLock(lockId)
 		} catch(e: Throwable) {
