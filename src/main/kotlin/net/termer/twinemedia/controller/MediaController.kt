@@ -522,7 +522,9 @@ fun mediaController() {
 											// Delete file
 											try {
 												source.deleteFile(child.key)
-											} catch(e: MediaSourceFileNotFoundException) {}
+											} catch(e: MediaSourceFileNotFoundException) {
+												logger.warn("Tried to delete child file with key ${child.key}, but it did not exist")
+											}
 
 											if(child.hasThumbnail) {
 												val thumbFile = config.thumbnails_location + child.thumbnailFile
@@ -567,7 +569,9 @@ fun mediaController() {
 									// Delete file
 									try {
 										source.deleteFile(media.key)
-									} catch(e: MediaSourceFileNotFoundException) {}
+									} catch(e: MediaSourceFileNotFoundException) {
+										logger.warn("Tried to delete file with key ${media.key}, but it did not exist")
+									}
 								} catch(e: Exception) {
 									// Failed to delete main file
 									logger.error("Failed to delete file ${media.key}:")
