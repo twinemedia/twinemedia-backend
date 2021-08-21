@@ -1,6 +1,5 @@
 package net.termer.twinemedia.sockjs
 
-import io.vertx.core.Future
 import io.vertx.core.json.JsonObject
 import io.vertx.ext.web.handler.sockjs.SockJSSocket
 import kotlinx.coroutines.DelicateCoroutinesApi
@@ -45,7 +44,7 @@ class SockJSClient(
 		 * The time the client's token expires and will be disconnected
 		 * @since 1.5.0
 		 */
-		val expireTime: OffsetDateTime,
+		val expireTime: OffsetDateTime?,
 
 		/**
 		 * This client's unique ID

@@ -17,6 +17,7 @@ import net.termer.twinemedia.jwt.JWT
 import net.termer.twinemedia.jwt.extractJWTPrinciple
 import net.termer.twinemedia.model.AccountsModel
 import net.termer.twinemedia.util.appHostnames
+import net.termer.twinemedia.util.userId
 import java.time.OffsetDateTime
 import java.time.ZoneOffset
 import java.util.*
@@ -125,10 +126,16 @@ class SockJSManager {
 
 								try {
 									// Fetch extract expire time from principal
-									val expire = Date(principal.getLong("exp")*1000).toInstant().atOffset(ZoneOffset.UTC)
+									val expire = if(principal.containsKey("exp"))
+										Date(principal.getLong("exp")*1000).toInstant().atOffset(ZoneOffset.UTC)
+									else
+										null
 
-									// Fetch account
-									val accountRes = accountsModel.fetchAccountById(principal.getInteger("sub"))
+									// Fetch account, taking into account whether it's via an API token
+									val accountRes = if(principal.containsKey("token"))
+										accountsModel.fetchAccountAndApiKeyByKeyId(principal.getString("token"))
+									else
+										accountsModel.fetchAccountById(principal.getInteger("sub"))
 									if(accountRes.size() > 0) {
 										val account = accountRes.first()
 
@@ -140,7 +147,7 @@ class SockJSManager {
 										vertx().eventBus().publish("twinemedia.socket.event.connect", json {obj(
 												"id" to client!!.id,
 												"account" to account.id,
-												"expire" to expire.toString()
+												"expire" to expire?.toString()
 										)})
 
 										// Cancel kick timer
@@ -208,7 +215,7 @@ class SockJSManager {
 
 			// Loop through connected clients and disconnect those past their expiration time
 			for(client in clients.values) {
-				if(now.isAfter(client.expireTime))
+				if(client.expireTime != null && now.isAfter(client.expireTime))
 					client.disconnect()
 			}
 		}
@@ -269,7 +276,11 @@ class SockJSManager {
 			val body = msg.body()
 			val id = body.getString("id")
 			val accountId = body.getInteger("account")
-			val expireTime = OffsetDateTime.parse(body.getString("expire"))
+			val expireStr = body.getString("expire")
+			val expireTime = if(expireStr == null)
+				null
+			else
+				OffsetDateTime.parse(expireStr)
 
 			// Check if the client is already connected here
 			if(getClientById(id) != null) {
@@ -303,7 +314,7 @@ class SockJSManager {
 			val id = body.getString("id")
 
 			// Check if the client exists in the client list
-			val client = getClientById(id) ?: return@consumer
+			getClientById(id) ?: return@consumer
 
 			removeClient(id)
 		}
