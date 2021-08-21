@@ -17,7 +17,6 @@ import net.termer.twinemedia.jwt.JWT
 import net.termer.twinemedia.jwt.extractJWTPrinciple
 import net.termer.twinemedia.model.AccountsModel
 import net.termer.twinemedia.util.appHostnames
-import net.termer.twinemedia.util.userId
 import java.time.OffsetDateTime
 import java.time.ZoneOffset
 import java.util.*
