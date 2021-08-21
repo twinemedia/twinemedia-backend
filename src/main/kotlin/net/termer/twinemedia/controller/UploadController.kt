@@ -70,9 +70,9 @@ fun uploadController() {
 			val headers = r.request().headers()
 			GlobalScope.launch(vertx().dispatcher()) main@ {
 				if(r.protectWithPermission("upload")) {
-					val processesModel = ProcessesModel(r.account())
-					val mediaModel = MediaModel(r.account())
-					val sourcesModel = SourcesModel(r.account())
+					val processesModel = ProcessesModel()
+					val mediaModel = MediaModel()
+					val sourcesModel = SourcesModel()
 
 					// Check file size header
 					if(!r.request().headers().contains("content-length")) {
@@ -95,11 +95,23 @@ fun uploadController() {
 					val source: Source
 					try {
 						val sourceRes = sourcesModel.fetchSource(sourceId)
+
+						// Make sure source exists
 						if(sourceRes.rowCount() < 1) {
 							r.error("Invalid source")
 							return@main
-						} else {
-							source = sourceRes.first()
+						}
+
+						source = sourceRes.first()
+						val acc = r.account()
+
+						// Make sure source is accessible to the account
+						if(
+								(!acc.hasPermission("sources.list")) ||
+								(source.creator != acc.id && !source.global && !acc.hasPermission("sources.list.all"))
+						) {
+							r.error("Invalid source")
+							return@main
 						}
 					} catch(e: Exception) {
 						logger.error("Failed to fetch media source with ID $sourceId:")
