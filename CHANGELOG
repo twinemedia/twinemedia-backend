@@ -70,3 +70,13 @@ Changes:
  - Fixed X-FILE-DESCRIPTION header option in uploader setting name instead of description
  - Fixed duplicate audio/video files not having their metadata processed
  - Fixed going back in page history breaking tag search
+
+=== Version 1.5.1 ===
+Config changes: No
+New Features: No
+Bugfixes: Yes
+
+Changes:
+ - Fixed SockJS connections not working when using an API token
+ - Fixed X-MEDIA-SOURCE on uploader requiring "sources.view" instead of "sources.list" permission to use
+ - Fixed API tokens not being able to use X-MEDIA-SOURCE on uploader
