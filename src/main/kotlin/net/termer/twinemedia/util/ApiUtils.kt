@@ -13,7 +13,6 @@ import net.termer.twinemedia.db.dataobject.Account
 import net.termer.twinemedia.exception.AuthException
 import net.termer.twinemedia.jwt.JWT
 import net.termer.twinemedia.model.AccountsModel
-import net.termer.twinemedia.util.validation.Presets
 import net.termer.vertx.kotlin.validation.RequestValidator
 import java.util.regex.Pattern
 
@@ -208,11 +207,11 @@ fun RoutingContext.tokenId(): String {
 suspend fun RoutingContext.account(): Account {
 	if(authenticated()) {
 		if(get("account") as Account? == null) {
-			val principle = user().principal()
+			val principal = user().principal()
 
 			// Fetch account from database
-			val accountRes = if(principle.containsKey("token"))
-				accountsModel.fetchAccountAndApiKeyByKeyId(principle.getString("token")).firstOrNull()
+			val accountRes = if(principal.containsKey("token"))
+				accountsModel.fetchAccountAndApiKeyByKeyId(principal.getString("token")).firstOrNull()
 			else
 				accountsModel.fetchAccountById(userId()).firstOrNull()
 
