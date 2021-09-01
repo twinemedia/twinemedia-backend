@@ -1,33 +1,47 @@
 package net.termer.twinemedia.source.impl.s3
 
+import com.google.common.hash.Hashing
 import io.reactiverse.awssdk.VertxSdkClient
 import io.vertx.core.AsyncResult
 import io.vertx.core.Promise
 import io.vertx.core.buffer.Buffer
 import io.vertx.core.file.OpenOptions
+import io.vertx.core.http.HttpClient
 import io.vertx.core.streams.WriteStream
+import io.vertx.kotlin.core.http.httpClientOptionsOf
+import io.vertx.kotlin.core.http.requestOptionsOf
 import io.vertx.kotlin.coroutines.await
 import kotlinx.coroutines.DelicateCoroutinesApi
 import net.termer.twine.ServerManager.vertx
 import net.termer.twinemedia.source.*
 import net.termer.twinemedia.source.config.SourceNotConfiguredException
-import net.termer.twinemedia.util.ConcurrentLock
-import net.termer.twinemedia.util.await
-import net.termer.twinemedia.util.filenameToFilenameWithUnixTimestamp
+import net.termer.twinemedia.source.impl.s3.signing.AWS4SignerForAuthorizationHeader
+import net.termer.twinemedia.util.*
 import org.reactivestreams.Subscriber
 import org.reactivestreams.Subscription
 import software.amazon.awssdk.regions.Region
 import software.amazon.awssdk.services.s3.S3AsyncClient
 import software.amazon.awssdk.services.s3.model.*
+import java.math.BigInteger
 import java.net.URI
-import java.time.ZoneOffset
+import java.net.URL
+import java.net.URLEncoder
+import java.time.*
+import java.time.format.DateTimeFormatter
+import java.util.*
 import java.util.concurrent.CompletionException
-import kotlin.collections.ArrayList
+import javax.crypto.Mac
+import javax.crypto.spec.SecretKeySpec
 import kotlin.math.ceil
 import kotlin.math.roundToInt
+import kotlin.text.Charsets.UTF_8
 
 @DelicateCoroutinesApi
 class S3BucketMediaSource: StatefulMediaSource {
+	// Date format for X-Amz-Date header
+	private val amzDateFormat = DateTimeFormatter.ofPattern("yyyyMMdd'T'HHmmss'Z'")
+	private val clock = Clock.systemUTC()
+
 	/**
 	 * Throws SourceNotConfiguredException if not configured
 	 * @throws SourceNotConfiguredException if not configured
@@ -48,6 +62,7 @@ class S3BucketMediaSource: StatefulMediaSource {
 	private val config = S3BucketMediaSourceConfig()
 	private val lock = ConcurrentLock()
 	private var client: S3AsyncClient? = null
+	private var httpClient: HttpClient? = null
 	private val fs = vertx().fileSystem()
 
 	override suspend fun startup() {
@@ -63,6 +78,11 @@ class S3BucketMediaSource: StatefulMediaSource {
 						.credentialsProvider(AWSCredentialProvider(config.accessKey!!, config.secretKey!!)),
 				vertx().orCreateContext
 		).build()
+
+		httpClient = vertx().createHttpClient(httpClientOptionsOf(
+				keepAlive = false,
+				maxPoolSize = 100
+		))
 	}
 
 	override suspend fun shutdown() {
@@ -190,12 +210,18 @@ class S3BucketMediaSource: StatefulMediaSource {
 		failIfNotConfigured()
 
 		try {
-			val readStream = ReadStreamAsyncResponseTransformer<GetObjectResponse>()
+			// Create request options
+			val path = '/'+config.bucketName!!+'/'+key
+			val reqOps = requestOptionsOf(
+					absoluteURI = config.endpoint!!.stripTrailingSlash()+path,
+			)
+			val host = reqOps.host
 
-			// Start building request
-			val req = GetObjectRequest.builder()
-					.bucket(config.bucketName)
-					.key(key)
+			// HTTP headers to send
+			val amzDate = amzDateFormat.format(ZonedDateTime.now(clock))
+			val headers = hashMapOf(
+					"X-Amz-Date" to amzDate
+			)
 
 			// Work out range
 			if(offset > -1 || length > -1) {
@@ -204,36 +230,97 @@ class S3BucketMediaSource: StatefulMediaSource {
 				val endStr = end?.toString().orEmpty()
 				val rangeStr = "bytes=$start-$endStr"
 
-				req.range(rangeStr)
+				headers["Range"] = rangeStr
 			}
 
-			// Begin getting object
-			client!!.getObject(req.build(), readStream)
+			// Process and sort headers
+			val headerKeys = headers.keys.toTypedArray()
+			for((i, name) in headerKeys.withIndex()) {
+				val lower = name.toLowerCase()
+				if(!headers.containsKey(lower)) {
+					val value = headers[name]
+					headers.remove(name)
+					headers[lower] = value
+				}
+				headerKeys[i] = lower
+			}
+			headerKeys.sortWith(String.CASE_INSENSITIVE_ORDER)
 
-			// Wait until initial response is received
-			readStream.pause()
-			var file: MediaSourceFile? = null
-			val promise = Promise.promise<GetObjectResponse>()
-			readStream.setResponseHandler {
+			// Add headers to request options
+			for((name, value) in headers)
+				reqOps.addHeader(name, value)
+			reqOps.addHeader("host", host)
+
+			// Calculate signature
+			val authHeader = vertx().executeBlocking<String> {
+				val signer = AWS4SignerForAuthorizationHeader(URL(config.endpoint!!+path), "GET", "s3", config.region!!)
+				it.complete(signer.computeSignature(
+						headers = headers,
+						queryParameters = HashMap(),
+						bodyHash = "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855", // Blank
+						awsAccessKey = config.accessKey!!,
+						awsSecretKey = config.secretKey!!
+				))
+			}.await()
+
+			// Add signature to HTTP request in Authorization header
+			reqOps.addHeader("Authorization", authHeader)
+
+			// Fire HTTP request and check if it's successful
+			val req = httpClient!!.request(reqOps).await()
+			val res = req.send().await()
+			if(res.statusCode() !in 200..299) {
+				// Try to read response to understand the issue
+				val body = res.body().await().toString(UTF_8)
+				throw MediaSourceException("S3 returned bad status code ${res.statusCode()} and body:\n$body")
+			}
+
+			// Collect file data
+			val resHeaders = res.headers()
+			val url = keyToUrl(key)
+			var size: Long? = null
+			val contentLength = if(resHeaders.contains("content-length"))
+				try {
+					resHeaders["content-length"].toInt()
+				} catch(e: NumberFormatException) { null }
+			else null
+
+			if(contentLength != null) {
 				val realOffset = offset.coerceAtLeast(0)
-				val resLen = it.contentLength()
-				file = MediaSourceFile(
-						key,
-						url = keyToUrl(key),
-						size = when {
-							length < 0 -> realOffset + resLen
-							realOffset + length > resLen -> realOffset + resLen
-							else -> null
-						},
-						modifiedOn = it.lastModified().atOffset(ZoneOffset.UTC),
-						hash = it.eTag()
-				)
-				promise.complete()
+
+				size = when {
+					length < 0 -> realOffset + contentLength
+					realOffset + length > contentLength -> realOffset + contentLength
+					else -> null
+				}
 			}
-			promise.future().await()
+			val modifiedOn = if(resHeaders.contains("last-modified"))
+				try {
+					gmtToOffsetDateTime(resHeaders["last-modified"])
+				} catch(e: Exception) { null }
+			else null
+			val hash = if(resHeaders.contains("etag"))
+				resHeaders["etag"]
+			else null
+			val mime = if(resHeaders.contains("content-type"))
+				resHeaders["content-type"]
+			else null
+
+			val file = MediaSourceFile(
+					key,
+					url = url,
+					mime = mime,
+					size = size,
+					modifiedOn = modifiedOn,
+					hash = hash
+			)
+
+			val conn = req.connection()
+			conn.exceptionHandler { println("CONN EX:");it.printStackTrace() }
+			val stream = HttpResponseReadStream(res, conn)
 
 			// Send stream
-			return MediaSource.StreamAndFile(readStream, file!!)
+			return MediaSource.StreamAndFile(stream, file)
 		} catch(e: Throwable) {
 			throw wrapThrowableAsMediaSourceException(e)
 		}

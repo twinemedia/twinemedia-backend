@@ -10,6 +10,7 @@ import net.termer.twinemedia.Module.Companion.config
 import net.termer.twinemedia.db.dataobject.SerializableDataObject
 import java.text.SimpleDateFormat
 import java.time.OffsetDateTime
+import java.time.ZoneOffset
 import java.util.*
 import java.util.concurrent.CompletableFuture
 import kotlin.collections.ArrayList
@@ -30,6 +31,13 @@ fun String.toLength(len: Int) = if(this.length > len) this.substring(0, len) els
  * @since 1.0.0
  */
 fun String.nullIfEmpty() = if(this == "") null else this
+
+/**
+ * Strips a trailing forward slash from a String if present and returns the processed String
+ * @return The processed String
+ * @since 1.5.2
+ */
+fun String.stripTrailingSlash() = if(this.endsWith('/')) this.substring(0, this.length-1) else this
 
 /**
  * Creates an ISO date String that represents this Date object
@@ -184,6 +192,14 @@ suspend fun <T> CompletableFuture<T>.await(): T {
  * @since 1.5.0
  */
 fun offsetDateTimeToGMT(date: OffsetDateTime): String = gmtDateFormat.format(Date.from(date.toInstant()))
+
+/**
+ * Converts the provided GMT time string to an OffsetDateTime
+ * @param gmtTime The GMT time string to convert
+ * @return The provided GMT time string to an OffsetDateTime
+ * @since 1.5.2
+ */
+fun gmtToOffsetDateTime(gmtTime: String): OffsetDateTime = gmtDateFormat.parse(gmtTime).toInstant().atOffset(ZoneOffset.UTC)
 
 /**
  * Converts a RowSet of serializable rows to a JSON array containing the JSON serialized version of the RowSet's rows

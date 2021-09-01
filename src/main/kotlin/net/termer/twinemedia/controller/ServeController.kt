@@ -1,5 +1,6 @@
 package net.termer.twinemedia.controller
 
+import io.vertx.core.VertxException
 import io.vertx.core.buffer.Buffer
 import io.vertx.core.http.HttpMethod
 import io.vertx.ext.web.RoutingContext
@@ -114,6 +115,16 @@ private fun handleFile(r: RoutingContext) {
 			// Make stream available to error handler if present
 			var stream: CloseableReadStream<Buffer>? = null
 
+			// Make sure ReadStream is closed on response close and the lock is deleted
+			res.closeHandler {
+				source.getLock().deleteLock(srcLock)
+				stream?.close()
+			}
+			res.exceptionHandler {
+				source.getLock().deleteLock(srcLock)
+				stream?.close()
+			}
+
 			try {
 				var offset = -1L
 				var limit = -1L
@@ -205,20 +216,14 @@ private fun handleFile(r: RoutingContext) {
 				notFound()
 			} catch(e: ClosedChannelException) {
 				stream?.close()
-			} catch(e: IOException) {
-				if(e.message != "Connection reset by peer" && e.message != "Broken pipe") {
+			} catch(e: Exception) {
+				// Ignore non-issues
+				if(e.message != "Response head already sent" && e.message != "Connection was closed" && e.message != "Connection reset by peer" && e.message != "Broken pipe" && e.message != "Response has already been written") {
 					logger.error("Failed to send file:")
 					e.printStackTrace()
 					if(!res.ended())
 						r.error("Internal error")
 				}
-
-				stream?.close()
-			} catch(e: Exception) {
-				logger.error("Failed to send file:")
-				e.printStackTrace()
-				if(!res.ended())
-					r.error("Internal error")
 
 				stream?.close()
 			}
