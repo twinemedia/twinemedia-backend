@@ -15,7 +15,7 @@ import net.termer.twinemedia.source.CloseableReadStream
  * @author termer
  * @since 1.5.2
  */
-open class HttpResponseReadStream(val response: HttpClientResponse, val connection: HttpConnection): CloseableReadStream<Buffer> {
+class HttpResponseReadStream(val response: HttpClientResponse, val connection: HttpConnection): CloseableReadStream<Buffer> {
 	private var exceptionHandler: Handler<Throwable>? = null
 	private var endHandler: Handler<Void>? = null
 
@@ -58,5 +58,9 @@ open class HttpResponseReadStream(val response: HttpClientResponse, val connecti
 	override fun fetch(amount: Long): ReadStream<Buffer> {
 		response.fetch(amount)
 		return this
+	}
+
+	init {
+		pause()
 	}
 }
