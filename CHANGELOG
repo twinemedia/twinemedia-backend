@@ -80,3 +80,13 @@ Changes:
  - Fixed SockJS connections not working when using an API token
  - Fixed X-MEDIA-SOURCE on uploader requiring "sources.view" instead of "sources.list" permission to use
  - Fixed API tokens not being able to use X-MEDIA-SOURCE on uploader
+
+=== Version 1.5.2 ===
+Config changes: No
+New Features: No
+Bugfixes: Yes
+
+Changes:
+ - Fixed a major issue where each request to an S3 source file triggered a full download of the file, even if not the client disconnected
+ - Fixed the "sources.list" permission being required to upload files, even if uploading to a default source that the user has permission to use
+ - Files uploaded with a blank MIME type are now assigned one based on their file extension, or "application/octet-stream" if it can't be guessed
