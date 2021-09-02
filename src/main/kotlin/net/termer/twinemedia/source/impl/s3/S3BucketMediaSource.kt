@@ -316,7 +316,6 @@ class S3BucketMediaSource: StatefulMediaSource {
 			)
 
 			val conn = req.connection()
-			conn.exceptionHandler { println("CONN EX:");it.printStackTrace() }
 			val stream = HttpResponseReadStream(res, conn)
 
 			// Send stream
