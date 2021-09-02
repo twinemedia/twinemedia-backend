@@ -107,7 +107,7 @@ fun uploadController() {
 
 						// Make sure source is accessible to the account
 						if(
-								(!acc.hasPermission("sources.list")) ||
+								(!acc.hasPermission("sources.list") && source.id != acc.defaultSource) ||
 								(source.creator != acc.id && !source.global && !acc.hasPermission("sources.list.all"))
 						) {
 							r.error("Invalid source")
@@ -483,7 +483,7 @@ fun uploadController() {
 								GlobalScope.launch(vertx().dispatcher()) {
 									// Collect info
 									filename = upl.filename()
-									type = upl.contentType()
+									type = upl.contentType().ifBlank { mimeFor(upl.filename()) }
 									key = srcInst.filenameToKey(filename)
 									val tmpSaveLoc = config.upload_location+key
 
