@@ -105,7 +105,7 @@ class TagsModel {
 						FROM tags
 						WHERE
 						${whereFilter()}
-						AND tag_name LIKE #{term}
+						AND tag_name LIKE LOWER(#{term})
 					) AS distinct_tags
 					${orderBy(order)}
 					OFFSET #{offset} LIMIT #{limit}
@@ -168,11 +168,11 @@ class TagsModel {
 				.forQuery(client, """
 					SELECT
 						COUNT(*) AS files,
-						#{tag} AS name
+						tag AS name
 					FROM media
 					WHERE
 					${whereFilter()}
-					AND media_tags::jsonb ? #{tag}
+					AND media_tags::jsonb ? LOWER(#{tag})
 				""".trimIndent())
 				.mapTo(Tag.MAPPER)
 				.execute(hashMapOf<String, Any>(

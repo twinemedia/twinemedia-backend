@@ -476,13 +476,13 @@ class MediaModel {
 
 		// Add AND statements for tags
 		for((index, tag) in tags.withIndex()) {
-			sql += "\nAND media_tags::jsonb ? #{tag$index}"
+			sql += "\nAND media_tags::jsonb ? LOWER(#{tag$index})"
 			params["tag$index"] = tag
 		}
 
 		// Add AND NOT statements for excluded tags
 		for((index, tag) in excludeTags.orEmpty().withIndex()) {
-			sql += "\nAND NOT media_tags::jsonb ? #{excludeTag$index}"
+			sql += "\nAND NOT media_tags::jsonb ? LOWER(#{excludeTag$index})"
 			params["excludeTag$index"] = tag
 		}
 
@@ -604,7 +604,7 @@ class MediaModel {
 		var tagsSql = ""
 		if(tags != null) {
 			for((index, tag) in tags.withIndex()) {
-				tagsSql += "AND media_tags::jsonb ? #{tag$index}"
+				tagsSql += "AND media_tags::jsonb ? LOWER(#{tag$index})"
 				params["tag$index"] = tag
 			}
 		}
@@ -612,7 +612,7 @@ class MediaModel {
 		var excludeTagsSql = ""
 		if(excludeTags != null) {
 			for((index, tag) in excludeTags.withIndex()) {
-				excludeTagsSql += "AND NOT media_tags::jsonb ? #{excludeTag$index}"
+				excludeTagsSql += "AND NOT media_tags::jsonb ? LOWER(#{excludeTag$index})"
 				params["excludeTag$index"] = tag
 			}
 		}
