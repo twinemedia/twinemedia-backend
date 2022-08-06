@@ -1,8 +1,9 @@
 import org.asciidoctor.gradle.jvm.AsciidoctorTask
 
 plugins {
-	// Apply the Kotlin JVM plugin to add support for Kotlin.
-	id("org.jetbrains.kotlin.jvm") version "1.4.21"
+	// Apply the Kotlin JVM plugin to add support for Kotlin
+	kotlin("jvm") version "1.7.10"
+
 	id("com.github.johnrengelman.shadow") version("7.0.0")
 	id("org.asciidoctor.jvm.convert") version("3.1.0")
 }
@@ -11,18 +12,16 @@ repositories {
 	mavenCentral()
 }
 
-tasks {
-	compileKotlin {
-		kotlinOptions {
-			jvmTarget = "1.8"
-		}
+kotlin {
+	jvmToolchain {
+		languageVersion.set(JavaLanguageVersion.of("8")) // "8"
 	}
 }
 
 dependencies {
 	// Align versions of all Kotlin components
 	compileOnly(platform("org.jetbrains.kotlin:kotlin-bom"))
-	compileOnly("org.jetbrains.kotlinx:kotlinx-coroutines-core:1.5.1")
+	compileOnly("org.jetbrains.kotlinx:kotlinx-coroutines-core:1.6.4")
 
 	// Use the Kotlin JDK 8 standard library.
 	compileOnly("org.jetbrains.kotlin:kotlin-stdlib-jdk8")
@@ -41,10 +40,8 @@ dependencies {
 
 	// Database
 	implementation("org.flywaydb:flyway-core:7.3.2")
-	implementation("postgresql:postgresql:9.1-901-1.jdbc4")
 	implementation("io.vertx:vertx-sql-client-templates:4.1.2")
-	implementation("io.vertx:vertx-codegen:4.1.2")
-	annotationProcessor("io.vertx:vertx-codegen:4.1.2:processor")
+	implementation("com.ongres.scram:client:2.1")
 
 	// Twine, does not get packaged
 	compileOnly("net.termer.twine:twine:2.1b")
