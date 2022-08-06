@@ -61,7 +61,7 @@ abstract class AWS4SignerBase(var endpointUrl: URL, var httpMethod: String, var 
 			val buffer = StringBuilder()
 			for(header in sortedHeaders) {
 				if(buffer.isNotEmpty()) buffer.append(";")
-				buffer.append(header.toLowerCase())
+				buffer.append(header.lowercase())
 			}
 			return buffer.toString()
 		}
@@ -85,7 +85,7 @@ abstract class AWS4SignerBase(var endpointUrl: URL, var httpMethod: String, var 
 			// space.
 			val buffer = StringBuilder()
 			for(key in sortedHeaders) {
-				buffer.append(key.toLowerCase().replace("\\s+".toRegex(), " ") + ":" + headers[key]!!.replace("\\s+".toRegex(), " "))
+				buffer.append(key.lowercase().replace("\\s+".toRegex(), " ") + ":" + headers[key]!!.replace("\\s+".toRegex(), " "))
 				buffer.append("\n")
 			}
 			return buffer.toString()

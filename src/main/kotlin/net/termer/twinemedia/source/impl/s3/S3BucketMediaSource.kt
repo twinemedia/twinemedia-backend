@@ -74,7 +74,7 @@ class S3BucketMediaSource: StatefulMediaSource {
 		client = VertxSdkClient.withVertx(
 				S3AsyncClient.builder()
 						.endpointOverride(URI(config.endpoint!!))
-						.region(Region.of(config.region!!.toUpperCase()))
+						.region(Region.of(config.region!!.uppercase()))
 						.credentialsProvider(AWSCredentialProvider(config.accessKey!!, config.secretKey!!)),
 				vertx().orCreateContext
 		).build()
@@ -236,7 +236,7 @@ class S3BucketMediaSource: StatefulMediaSource {
 			// Process and sort headers
 			val headerKeys = headers.keys.toTypedArray()
 			for((i, name) in headerKeys.withIndex()) {
-				val lower = name.toLowerCase()
+				val lower = name.lowercase()
 				if(!headers.containsKey(lower)) {
 					val value = headers[name]
 					headers.remove(name)

@@ -142,7 +142,7 @@ fun processesController() {
 									.toLowerCase()
 									.maxLength(200)
 									.minLength(1)
-									.isInArray(if(r.request().params()["mime"].toLowerCase().startsWith("video/"))
+									.isInArray(if(r.request().params()["mime"].lowercase().startsWith("video/"))
 										videoExtensions
 									else
 										audioExtensions))
@@ -289,7 +289,7 @@ fun processesController() {
 									.toLowerCase()
 									.maxLength(200)
 									.minLength(1)
-									.isInArray(if(r.request().params()["mime"].toLowerCase().startsWith("video/"))
+									.isInArray(if(r.request().params()["mime"].lowercase().startsWith("video/"))
 										videoExtensions
 									else
 										audioExtensions))

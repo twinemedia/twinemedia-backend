@@ -82,7 +82,7 @@ fun Array<String>.containsPermission(permission: String): Boolean {
  */
 fun Array<String>.removeDuplicatesBlanksAndToLowercase(): Array<String> {
 	return ArrayList<String>().apply {
-		for(str in this.map { it.toLowerCase() })
+		for(str in this.map { it.lowercase() })
 			if(str.trim().isNotBlank() && !contains(str))
 				add(str)
 	}.toTypedArray()
@@ -119,7 +119,7 @@ fun filenameToTitle(filename: String): String {
 			.replace(Regex("-(?! )"), " ")
 
 	// Capitalize first letter
-	name = name[0].toUpperCase() + name.substring(1)
+	name = name[0].uppercaseChar() + name.substring(1)
 
 	return name.trim()
 }

@@ -9,7 +9,8 @@ import io.vertx.kotlin.coroutines.dispatcher
 import kotlinx.coroutines.DelicateCoroutinesApi
 import kotlinx.coroutines.GlobalScope
 import kotlinx.coroutines.launch
-import net.termer.twine.ServerManager.*
+import net.termer.twine.ServerManager.router
+import net.termer.twine.ServerManager.vertx
 import net.termer.twinemedia.Module.Companion.config
 import net.termer.twinemedia.Module.Companion.crypt
 import net.termer.twinemedia.Module.Companion.logger
@@ -17,10 +18,17 @@ import net.termer.twinemedia.Module.Companion.mediaSourceManager
 import net.termer.twinemedia.db.scheduleTagsViewRefresh
 import net.termer.twinemedia.enumeration.ListType
 import net.termer.twinemedia.enumeration.ListVisibility
-import net.termer.twinemedia.model.*
+import net.termer.twinemedia.exception.ListDeleteException
+import net.termer.twinemedia.exception.MediaDeleteException
+import net.termer.twinemedia.exception.MediaFetchException
+import net.termer.twinemedia.model.AccountsModel
+import net.termer.twinemedia.model.ListsModel
+import net.termer.twinemedia.model.MediaModel
 import net.termer.twinemedia.source.MediaSourceFileNotFoundException
+import net.termer.twinemedia.source.SourceInstanceNotRegisteredException
 import net.termer.twinemedia.util.*
-import net.termer.twinemedia.util.validation.*
+import net.termer.twinemedia.util.validation.Presets
+import net.termer.twinemedia.util.validation.TagsValidator
 import net.termer.vertx.kotlin.validation.RequestValidator
 import net.termer.vertx.kotlin.validation.validator.*
 import java.time.OffsetDateTime
@@ -471,153 +479,184 @@ fun mediaController() {
 					try {
 						val mediaRes = mediaModel.fetchMedia(fileId)
 
-						if(mediaRes.count() > 0) {
-							val media = mediaRes.first()
+						if(mediaRes.count() < 1) {
+							r.error("File does not exist")
+							return@launch
+						}
 
-							// Check if media was created by the user or if the user has permission to delete it
-							if(media.creator != r.userId() && !r.hasPermission("files.delete.all")) {
-								r.unauthorized()
-								return@launch
+						val media = mediaRes.first()
+
+						// Check if media was created by the user or if the user has permission to delete it
+						if(media.creator != r.userId() && !r.hasPermission("files.delete.all")) {
+							r.unauthorized()
+							return@launch
+						}
+
+						// Check if file is being used in any current processing jobs
+						if(currentProcessingJobsByParent(fileId).isNotEmpty()) {
+							r.error("There are currently processing children for this media, wait until they are finished")
+							return@launch
+						}
+
+						try {
+							// Delete media
+							deleteMedia(
+									media = media,
+									mediaModel = mediaModel,
+									listsModel = listsModel
+							)
+						} catch(e: SourceInstanceNotRegisteredException) {
+							e.printStackTrace()
+							r.error("Internal error")
+							return@launch
+						} catch(e: ListDeleteException) {
+							e.printStackTrace()
+							r.error("Database error")
+							return@launch
+						} catch(e: MediaDeleteException) {
+							e.printStackTrace()
+							r.error("Database error")
+							return@launch
+						} catch(e: MediaFetchException) {
+							e.printStackTrace()
+							r.error("Database error")
+							return@launch
+						} catch(e: Exception) {
+							logger.error("Failed to delete media ID ${fileId}:")
+							e.printStackTrace()
+							r.error("Internal error")
+							return@launch
+						}
+
+						// Cancel any queued processing jobs referencing this media
+						cancelQueuedProcessingJobsByParent(fileId)
+
+						// Fetch media's source
+						val source = try {
+							mediaSourceManager.getSourceInstanceById(media.source)!!
+						} catch(e: NullPointerException) {
+							logger.error("Tried to fetch media source ID ${media.source}, but it was not registered")
+							r.error("Internal error")
+							return@launch
+						}
+
+						val fs = vertx().fileSystem()
+
+						// Whether this media's files should be deleted
+						var delete = false
+
+						// Check if media is a child
+						if(media.parent == null) {
+							// Check if files with the same hash exist
+							val hashMediaRes = mediaModel.fetchMediaByHashAndSource(media.hash, media.source)
+
+							if(hashMediaRes.count() < 2) {
+								delete = true
 							}
 
-							// Check if file is being used in any current processing jobs
-							if(currentProcessingJobsByParent(fileId).isNotEmpty()) {
-								r.error("There are currently processing children for this media, wait until they are finished")
-								return@launch
-							}
+							try {
+								// Fetch children
+								val children = mediaModel.fetchMediaChildren(media.internalId)
 
-							// Cancel any queued processing jobs referencing this media
-							cancelQueuedProcessingJobsByParent(fileId)
-
-							// Fetch media's source
-							val source = try {
-								mediaSourceManager.getSourceInstanceById(media.source)!!
-							} catch(e: NullPointerException) {
-								logger.error("Tried to fetch media source ID ${media.source}, but it was not registered")
-								r.error("Internal error")
-								return@launch
-							}
-
-							val fs = vertx().fileSystem()
-
-							// Whether this media's files should be deleted
-							var delete = false
-
-							// Check if media is a child
-							if(media.parent == null) {
-								// Check if files with the same hash exist
-								val hashMediaRes = mediaModel.fetchMediaByHashAndSource(media.hash, media.source)
-
-								if(hashMediaRes.count() < 2) {
-									delete = true
-								}
-
-								try {
-									// Fetch children
-									val children = mediaModel.fetchMediaChildren(media.internalId)
-
-									// Delete children
-									for(child in children) {
+								// Delete children
+								for(child in children) {
+									try {
+										// Delete file
 										try {
-											// Delete file
-											try {
-												source.deleteFile(child.key)
-											} catch(e: MediaSourceFileNotFoundException) {
-												logger.warn("Tried to delete child file with key ${child.key}, but it did not exist")
-											}
+											source.deleteFile(child.key)
+										} catch(e: MediaSourceFileNotFoundException) {
+											logger.warn("Tried to delete child file with key ${child.key}, but it did not exist")
+										}
 
-											if(child.hasThumbnail) {
-												val thumbFile = config.thumbnails_location + child.thumbnailFile
+										if(child.hasThumbnail) {
+											val thumbFile = config.thumbnails_location + child.thumbnailFile
 
-												// Delete thumbnail
-												if(fs.exists(thumbFile).await())
-                                                    fs.delete(thumbFile).await()
-											}
+											// Delete thumbnail
+											if(fs.exists(thumbFile).await())
+                                                fs.delete(thumbFile).await()
+										}
 
-											// Delete entry
-											mediaModel.deleteMedia(child.id)
+										// Delete entry
+										mediaModel.deleteMedia(child.id)
 
-											try {
-												// Delete entries linking to the file in lists
-												listsModel.deleteListItemsByMediaId(child.internalId)
-											} catch(e: Exception) {
-												logger.error("Failed to delete list references to child ID ${child.id}:")
-												e.printStackTrace()
-												r.error("Database error")
-												return@launch
-											}
+										try {
+											// Delete entries linking to the file in lists
+											listsModel.deleteListItemsByMediaId(child.internalId)
 										} catch(e: Exception) {
-											logger.error("Failed to delete child ID ${child.id}:")
+											logger.error("Failed to delete list references to child ID ${child.id}:")
 											e.printStackTrace()
 											r.error("Database error")
 											return@launch
 										}
+									} catch(e: Exception) {
+										logger.error("Failed to delete child ID ${child.id}:")
+										e.printStackTrace()
+										r.error("Database error")
+										return@launch
 									}
-								} catch(e: Exception) {
-									logger.error("Failed to fetch media children:")
-									e.printStackTrace()
-									r.error("Database error")
-									return@launch
 								}
-							} else {
-								delete = true
+							} catch(e: Exception) {
+								logger.error("Failed to fetch media children:")
+								e.printStackTrace()
+								r.error("Database error")
+								return@launch
 							}
+						} else {
+							delete = true
+						}
 
-							if(delete) {
-								// Delete media files
+						if(delete) {
+							// Delete media files
+							try {
+								// Delete file
 								try {
-									// Delete file
-									try {
-										source.deleteFile(media.key)
-									} catch(e: MediaSourceFileNotFoundException) {
-										logger.warn("Tried to delete file with key ${media.key}, but it did not exist")
-									}
+									source.deleteFile(media.key)
+								} catch(e: MediaSourceFileNotFoundException) {
+									logger.warn("Tried to delete file with key ${media.key}, but it did not exist")
+								}
+							} catch(e: Exception) {
+								// Failed to delete main file
+								logger.error("Failed to delete file ${media.key}:")
+								e.printStackTrace()
+								r.error("Internal error")
+								return@launch
+							}
+							if(media.hasThumbnail) {
+								try {
+									// Delete thumbnail file
+									val file = media.thumbnailFile
+
+									if(fs.exists(config.thumbnails_location + file).await())
+                                        fs.delete(config.thumbnails_location + file).await()
 								} catch(e: Exception) {
-									// Failed to delete main file
-									logger.error("Failed to delete file ${media.key}:")
+									// Failed to delete thumbnail file
+									logger.error("Failed to delete file ${media.thumbnailFile}:")
 									e.printStackTrace()
 									r.error("Internal error")
 									return@launch
 								}
-								if(media.hasThumbnail) {
-									try {
-										// Delete thumbnail file
-										val file = media.thumbnailFile
-
-										if(fs.exists(config.thumbnails_location + file).await())
-                                            fs.delete(config.thumbnails_location + file).await()
-									} catch(e: Exception) {
-										// Failed to delete thumbnail file
-										logger.error("Failed to delete file ${media.thumbnailFile}:")
-										e.printStackTrace()
-										r.error("Internal error")
-										return@launch
-									}
-								}
 							}
+						}
+
+						try {
+							// Delete database entry
+							mediaModel.deleteMedia(fileId)
 
 							try {
-								// Delete database entry
-								mediaModel.deleteMedia(fileId)
-
-								try {
-									// Delete entries linking to the file in lists
-									listsModel.deleteListItemsByMediaId(media.internalId)
-								} catch(e: Exception) {
-									logger.error("Failed to delete list references to media ID $fileId:")
-									e.printStackTrace()
-									r.error("Database error")
-									return@launch
-								}
-
-								r.success()
+								// Delete entries linking to the file in lists
+								listsModel.deleteListItemsByMediaId(media.internalId)
 							} catch(e: Exception) {
-								logger.error("Failed to delete file entry for ID $fileId:")
+								logger.error("Failed to delete list references to media ID $fileId:")
 								e.printStackTrace()
-								r.error("Internal error")
+								r.error("Database error")
+								return@launch
 							}
-						} else {
-							r.error("File does not exist")
+
+							r.success()
+						} catch(e: Exception) {
+							logger.error("Failed to delete file entry for ID $fileId:")
+							e.printStackTrace()
+							r.error("Internal error")
 						}
 
 						try {

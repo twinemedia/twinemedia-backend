@@ -34,7 +34,7 @@ open class TagsValidator: ParamValidator {
 					return ParamValidator.ValidatorResponse("INVALID_ITEM", "The item at index $i of the JSON array is not a string")
 
 				// Process the tag
-				val tag = item.trim().toLowerCase()
+				val tag = item.trim().lowercase()
 
 				// Tag validation
 				when {

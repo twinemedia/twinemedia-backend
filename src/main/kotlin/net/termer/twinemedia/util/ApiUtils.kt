@@ -292,15 +292,15 @@ fun HttpServerResponse.corsAllowHeader(header: String): HttpServerResponse {
 
 		// Add existing allowed headers
 		for(str in strs) {
-			val procStr = str.toLowerCase()
+			val procStr = str.lowercase()
 			if(!allowed.contains(procStr))
 				allowed.add(procStr)
 		}
 	}
 
 	// Add new allowed header
-	if(!allowed.contains(header.toLowerCase()))
-		allowed.add(header.toLowerCase())
+	if(!allowed.contains(header.lowercase()))
+		allowed.add(header.lowercase())
 
 	// Set Access-Control-Allow-Headers
 	putHeader("Access-Control-Allow-Headers", allowed.joinToString(", "))

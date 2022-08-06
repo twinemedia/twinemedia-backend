@@ -1,10 +1,10 @@
 package net.termer.twinemedia.exception
 
 /**
- * Exception to be thrown when a media file is not the desired type
- * @since 1.0
+ * Exception to be thrown when a media entry cannot be deleted
+ * @since 1.5.2
  */
-class WrongMediaTypeException: MediaException {
+class MediaDeleteException: MediaException {
 	constructor(msg: String?): super(msg)
 	constructor(msg: String?, cause: Throwable?): super(msg, cause)
 }

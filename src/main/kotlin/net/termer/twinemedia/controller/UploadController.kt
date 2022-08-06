@@ -189,7 +189,7 @@ fun uploadController() {
 											val filesRes = mediaModel.fetchMediaByHashAndSource(hash, source.id)
 
 											// Ignore check if X-IGNORE-HASH is true
-											if(!(headers.contains("X-IGNORE-HASH") && headers["X-IGNORE-HASH"].toLowerCase() == "true") && filesRes.count() > 0) {
+											if(!(headers.contains("X-IGNORE-HASH") && headers["X-IGNORE-HASH"].lowercase() == "true") && filesRes.count() > 0) {
 												usingExistingKey = true
 												val fileRow = filesRes.first()
 
@@ -197,7 +197,7 @@ fun uploadController() {
 												key = fileRow.key
 
 												// Ignore thumbnail setting if X-NO-THUMBNAIL is true
-												if(!(headers.contains("X-NO-THUMBNAIL") && headers["X-NO-THUMBNAIL"].toLowerCase() == "true")) {
+												if(!(headers.contains("X-NO-THUMBNAIL") && headers["X-NO-THUMBNAIL"].lowercase() == "true")) {
 													// Get already uploaded file's thumbnail
 													thumbnail = fileRow.thumbnailFile
 												}
@@ -217,7 +217,7 @@ fun uploadController() {
 														meta = ffprobeToJsonMeta(probe)
 
 														// Don't generate a thumbnail if X-NO-THUMBNAIL is true
-														if(!(headers.contains("X-NO-THUMBNAIL") && headers["X-NO-THUMBNAIL"].toLowerCase() == "true")) {
+														if(!(headers.contains("X-NO-THUMBNAIL") && headers["X-NO-THUMBNAIL"].lowercase() == "true")) {
 															// Generate preview
 															createVideoThumbnail(saveLoc, (probe.format.duration / 2).toInt(), "${config.thumbnails_location}$thumbId.jpg")
 															thumbnail = "$thumbId.jpg"
@@ -246,7 +246,7 @@ fun uploadController() {
 												}
 
 												// Don't generate a preview if X-NO-THUMBNAIL is true
-												if(!(headers.contains("X-NO-THUMBNAIL") && headers["X-NO-THUMBNAIL"].toLowerCase() == "true")) {
+												if(!(headers.contains("X-NO-THUMBNAIL") && headers["X-NO-THUMBNAIL"].lowercase() == "true")) {
 													try {
 														// Generate preview
 														createImagePreview(saveLoc, "${config.thumbnails_location}/$thumbId.jpg")
@@ -402,7 +402,7 @@ fun uploadController() {
 													scheduleTagsViewRefresh()
 
 												// Check if uploaded file is media
-												if(!(headers.contains("X-NO-PROCESS") && headers["X-NO-PROCESS"].toLowerCase() == "true") && (type.startsWith("video/") || type.startsWith("audio/"))) {
+												if(!(headers.contains("X-NO-PROCESS") && headers["X-NO-PROCESS"].lowercase() == "true") && (type.startsWith("video/") || type.startsWith("audio/"))) {
 													try {
 														// Fetch processes created by the uploader for this type
 														val processes = processesModel.fetchProcessesForMimeAndAccount(type, r.userId())

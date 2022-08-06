@@ -262,7 +262,6 @@ fun startMediaProcessor(): Thread {
                     procLogger.info("Media ID: ${job.id}")
 
                     // Collect job data
-                    val id = job.id
                     val type = job.type
                     val extension = job.extension
                     val settings = job.settings
@@ -857,7 +856,7 @@ fun ffprobeToJsonMeta(probe: FFmpegProbeResult): JsonObject {
     // Put tags
     if(format.tags != null)
         for ((key, value) in format.tags.entries)
-            meta.getJsonObject("tags").put(key.toLowerCase(), value)
+            meta.getJsonObject("tags").put(key.lowercase(), value)
 
     // Put streams
     val streams = JsonArray()

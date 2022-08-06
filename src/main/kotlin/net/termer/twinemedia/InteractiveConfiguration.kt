@@ -90,7 +90,7 @@ fun interactiveInstall() {
 	println("Press enter to continue.")
 	var ln = cons.readLine()
 	print("Show advanced install options? [y/N]: ")
-	val advanced = cons.readLine()?.toLowerCase()?.startsWith("y") == true
+	val advanced = cons.readLine()?.lowercase()?.startsWith("y") == true
 
 	println("Which Twine domain do you want TwineMedia to run on (can select \"*\" for all)? (${config.domain}): ")
 	ln = cons.readLine()
@@ -109,7 +109,7 @@ fun interactiveInstall() {
 	if(!dir.exists()) {
 		println("Directory \"${config.upload_location}\" doesn't exist, create it? [Y/n]: ")
 
-		if(cons.readLine()?.toLowerCase()?.startsWith("n") == false)
+		if(cons.readLine()?.lowercase()?.startsWith("n") == false)
 			dir.mkdirs()
 	}
 
@@ -125,7 +125,7 @@ fun interactiveInstall() {
 		if(!procDir.exists()) {
 			println("Directory \"${config.processing_location}\" doesn't exist, create it? [Y/n]: ")
 
-			if(cons.readLine()?.toLowerCase()?.startsWith("n") == false)
+			if(cons.readLine()?.lowercase()?.startsWith("n") == false)
 				procDir.mkdirs()
 		}
 	}
@@ -238,7 +238,7 @@ fun interactiveInstall() {
 		println("Should migrations automatically be run when TwineMedia starts? [${if(config.db_auto_migrate) "Y/n" else "y/N"}]: ")
 		ln = cons.readLine().trim()
 		if(ln.isNotEmpty())
-			config.db_auto_migrate = ln.toLowerCase().startsWith('y')
+			config.db_auto_migrate = ln.lowercase().startsWith('y')
 
 		var cryptCount: Int? = null
 		while(cryptCount == null) {
@@ -365,23 +365,23 @@ fun interactiveInstall() {
 		println("Should passwords require an uppercase letter? [${if(config.password_require_uppercase) "Y/n" else "y/N"}]: ")
 		ln = cons.readLine().trim()
 		if(ln.isNotEmpty())
-			config.password_require_uppercase = ln.toLowerCase().startsWith("y")
+			config.password_require_uppercase = ln.lowercase().startsWith("y")
 
 		println("Should passwords require a number? [${if(config.password_require_number) "Y/n" else "y/N"}]: ")
 		ln = cons.readLine().trim()
 		if(ln.isNotEmpty())
-			config.password_require_number = ln.toLowerCase().startsWith("y")
+			config.password_require_number = ln.lowercase().startsWith("y")
 
 		println("Should passwords require a special character? [${if(config.password_require_special) "Y/n" else "y/N"}]: ")
 		ln = cons.readLine().trim()
 		if(ln.isNotEmpty())
-			config.password_require_special = ln.toLowerCase().startsWith("y")
+			config.password_require_special = ln.lowercase().startsWith("y")
 	}
 
 	// Check if config exists, ask for overwrite confirmation if it does
 	if(cfg.exists()) {
 		println("A configuration file already exists, replace it? [y/N]: ")
-		if(cons.readLine().toLowerCase().startsWith("y")) {
+		if(cons.readLine().lowercase().startsWith("y")) {
 			BlockingWriter.write("configs/twinemedia.json", Json.encodePrettily(config))
 		}
 	} else {
@@ -407,7 +407,7 @@ fun interactiveInstall() {
 			}
 
 			println("Would you like to create one? [Y/n]: ")
-			if(cons.readLine().toLowerCase().startsWith("y")) {
+			if(cons.readLine().lowercase().startsWith("y")) {
 				createAdminPrompt()
 			}
 		} catch(e: Exception) {
@@ -530,7 +530,7 @@ fun interactiveResetAdminPassword() {
 			}
 		} else {
 			println("No admin accounts exist, would you like to create one? [Y/n]: ")
-			if(cons.readLine().toLowerCase().startsWith("y")) {
+			if(cons.readLine().lowercase().startsWith("y")) {
 				createAdminPrompt()
 			}
 		}
@@ -568,7 +568,7 @@ fun interactiveMediaSourceMigration() {
 		val src: Source?
 
 		print("Do you want to create a source based on your old upload location in the TwineMedia configuration file? [Y/n]: ")
-		if(!readLine()!!.toLowerCase().startsWith('n')) {
+		if(!readLine()!!.lowercase().startsWith('n')) {
 			// Create source configuration
 			val srcCfg = json {obj(
 					"directory" to config.upload_location,
