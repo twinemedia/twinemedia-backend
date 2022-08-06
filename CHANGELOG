@@ -90,3 +90,4 @@ Changes:
  - Fixed a major issue where each request to an S3 source file triggered a full download of the file, even if not the client disconnected
  - Fixed the "sources.list" permission being required to upload files, even if uploading to a default source that the user has permission to use
  - Files uploaded with a blank MIME type are now assigned one based on their file extension, or "application/octet-stream" if it can't be guessed
+ - Upgraded Kotlin to version 1.7.10
