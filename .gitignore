@@ -22,12 +22,15 @@
 build
 .idea
 .gradle
-build.sh
+/build.sh
 
 # virtual machine crash logs, see http://www.java.com/en/download/help/error_hotspot.xml
 hs_err_pid*
 
 # Files rendered in the docs/ directory
-docs/*.html
-docs/*.css
-docs/*.js
+/docs/*.html
+/docs/*.css
+/docs/*.js
+
+# App config
+/config.json

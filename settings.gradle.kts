@@ -1,1 +1,2 @@
-rootProject.name = "TwineMedia"
+rootProject.name = "twinemedia-backend"
+include("app")
