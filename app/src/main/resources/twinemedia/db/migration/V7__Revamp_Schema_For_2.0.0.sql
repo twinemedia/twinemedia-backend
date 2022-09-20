@@ -28,10 +28,11 @@ create table tags
         primary key (id),
     constraint creator_fk
         foreign key (tag_creator) references accounts (id)
-        on delete set null,
-    constraint tag_name_and_creator_idx
-        unique (tag_name, tag_creator)
+        on delete set null
 );
+-- Tag names retain their original case, but two tags with the same content but different cases cannot exist
+create unique index tag_name_and_creator_idx
+    on tags (lower(tag_name), tag_creator);
 create table tag_uses
 (
     id             serial                                 not null,
@@ -66,10 +67,15 @@ do $$
             insert into tags (tag_name, tag_creator) values (name, creator) returning id into tag_id;
 
             -- Create tag use records for all the files that have the tag
-            for file_id in (select id from files where media_tags ? lower(name)) loop
-                insert into tag_uses (use_tag, use_file) values (tag_id, file_id);
+            for file_id in (select id from files where media_tags ? lower(name) and media_creator = creator) loop
+                -- Create use link between file and tag, and use the media creation date as the link date
+                -- The tag may not have been added to the file at that time, but it's more useful information than just defaulting to now()
+                insert into tag_uses (use_tag, use_file, use_created_ts) values (tag_id, file_id, media_created_on);
             end loop;
         end loop;
+
+        -- Update tag file counts
+        update tags set tag_file_count = (select count(*) from tag_uses where use_tag = tags.id);
 end $$;
 
 -- We don't need the tags view anymore; delete it
@@ -124,11 +130,15 @@ update api_keys set key_modified_ts = key_created_ts;
 
 -- Alter files table to reflect new schema changes
 alter table files
+    drop column media_tags;
+alter table files
     rename column media_id to file_id;
 create unique index file_id_idx
     on files (file_id);
 alter table files
     rename column media_name to file_title;
+alter table files
+    rename column media_filename to file_name;
 alter table files
     rename column media_size to file_size;
 alter table files
@@ -220,6 +230,12 @@ alter table lists
 -- Alter processes table to reflect new schema changes
 alter table processes
     rename to process_presets;
+alter table process_presets
+    add preset_id varchar(10) default pg_temp.gen_id() not null;
+create unique index process_preset_id_idx
+    on process_presets (preset_id);
+alter table process_presets
+    alter column preset_id drop default;
 alter table process_presets
     rename column process_mime to preset_mime;
 alter table process_presets
