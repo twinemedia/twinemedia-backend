@@ -10,10 +10,14 @@ $$ language sql;
 --- END UTIL FUNCTIONS ---
 
 -- Rename tags to "tags_view" so that we can still access it before deleting it
-alter materialized view tags rename to tags_view;
+alter materialized view tags
+    rename to tags_view;
 
 -- Rename "media" to "files", but don't modify the schema until we're done using data from its original schema
-alter table media rename to files;
+alter table media
+    rename to files;
+alter sequence media_id_seq
+    rename to files_id_seq;
 
 -- Create tag-related tables
 create table tags
@@ -60,22 +64,34 @@ do $$
         creator int;
         tag_id int;
         file_id int;
+        file_created_ts timestamp with time zone;
+        creator_or_null int;
     begin
         -- Loop through all tags in the materialized view
         for key, name, creator in (select * from tags_view) loop
+            -- If no creator account is found, use null as creator
+            if (select count(*) from accounts where id = creator) > 1 then
+                creator_or_null = null;
+            else
+                creator_or_null = creator;
+            end if;
+
             -- Create record of the tag in the new tags table and get its ID
-            insert into tags (tag_name, tag_creator) values (name, creator) returning id into tag_id;
+            insert into tags (tag_name, tag_creator) values (name, creator_or_null) returning id into tag_id;
 
             -- Create tag use records for all the files that have the tag
-            for file_id in (select id from files where media_tags ? lower(name) and media_creator = creator) loop
+            for file_id, file_created_ts in (select id, media_created_on from files where media_tags ? lower(name) and media_creator = creator) loop
                 -- Create use link between file and tag, and use the media creation date as the link date
                 -- The tag may not have been added to the file at that time, but it's more useful information than just defaulting to now()
-                insert into tag_uses (use_tag, use_file, use_created_ts) values (tag_id, file_id, media_created_on);
+                insert into tag_uses (use_tag, use_file, use_created_ts) values (tag_id, file_id, file_created_ts);
             end loop;
         end loop;
 
-        -- Update tag file counts
-        update tags set tag_file_count = (select count(*) from tag_uses where use_tag = tags.id);
+        -- Update tag file counts and creation timestamps
+        update tags set
+            tag_file_count = (select count(*) from tag_uses where use_tag = tags.id),
+            tag_created_ts = coalesce((select use_created_ts from tag_uses where use_tag = tags.id order by tag_created_ts limit 1), now()),
+            tag_modified_ts = coalesce((select use_created_ts from tag_uses where use_tag = tags.id order by tag_created_ts limit 1), now()); --Use earliest tag use for timestamps
 end $$;
 
 -- We don't need the tags view anymore; delete it
@@ -108,6 +124,8 @@ update accounts set account_modified_ts = account_created_ts;
 -- Alter API keys table to reflect new schema changes
 alter table apikeys
     rename to api_keys;
+alter sequence apikeys_id_seq
+    rename to api_keys_id_seq;
 create unique index key_id_idx
     on api_keys (key_id);
 alter table api_keys
@@ -197,6 +215,8 @@ update files SET file_hash = encode(decode(file_hash, 'base64'), 'hex');
 -- Alter list items table to reflect new schema changes
 alter table listitems
     rename to list_items;
+alter sequence listitems_id_seq
+    rename to list_items_id_seq;
 alter table list_items
     rename column item_media to item_file;
 alter table list_items
@@ -230,6 +250,8 @@ alter table lists
 -- Alter processes table to reflect new schema changes
 alter table processes
     rename to process_presets;
+alter sequence processes_id_seq
+    rename to process_presets_id_seq;
 alter table process_presets
     add preset_id varchar(10) default pg_temp.gen_id() not null;
 create unique index process_preset_id_idx
