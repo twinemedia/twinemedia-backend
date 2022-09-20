@@ -185,7 +185,7 @@ alter table files
     rename column media_parent to file_parent;
 update files set file_parent = null
     where file_parent is not null
-    and (select count(*) from accounts where accounts.id = file_parent) < 1;
+    and (select count(*) from files parents where parents.id = files.file_parent) < 1;
 alter table files
     add constraint file_parent_fk
         foreign key (file_parent) references files (id)
@@ -208,6 +208,9 @@ alter table files
     add constraint file_source_fk
         foreign key (file_source) references sources (id)
         on delete restrict;
+alter table files
+    add file_tag_count integer not null default 0;
+update files set file_tag_count = (select count(*) from tag_uses where use_file = files.id);
 
 -- Convert hash format to hex for all files
 update files SET file_hash = encode(decode(file_hash, 'base64'), 'hex');
@@ -359,22 +362,24 @@ create trigger decrement_list_item_count
     execute procedure dec_list_item_count();
 
 -- Update file count on tags table
-create function inc_tag_file_count() returns trigger as $$ begin
+create function inc_tag_and_file_count() returns trigger as $$ begin
     update tags set tag_file_count = tag_file_count + 1 where tags.id = NEW.use_tag;
+    update files set file_tag_count = file_tag_count + 1 where files.id = NEW.use_file;
     return null;
 end $$ language plpgsql;
-create function dec_tag_file_count() returns trigger as $$ begin
+create function dec_tag_and_file_count() returns trigger as $$ begin
     update tags set tag_file_count = tag_file_count - 1 where tags.id = OLD.use_tag;
+    update files set file_tag_count = file_tag_count - 1 where files.id = OLD.use_file;
     return null;
 end $$ language plpgsql;
-create trigger increment_tag_file_count
+create trigger increment_tag_and_file_count
     after insert on tag_uses
     for each row
-    execute procedure inc_tag_file_count();
+    execute procedure inc_tag_and_file_count();
 create trigger decrement_tag_file_count
     after delete on tag_uses
     for each row
-    execute procedure dec_tag_file_count();
+    execute procedure dec_tag_and_file_count();
 
 -- Perform actions based on list type changes
 create function handle_list_type_change() returns trigger as $$ begin
