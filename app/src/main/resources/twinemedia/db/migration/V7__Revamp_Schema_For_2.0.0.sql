@@ -169,14 +169,11 @@ alter table api_keys
     alter column key_name type varchar(256);
 alter table api_keys
     rename column key_owner to key_creator;
-alter table api_keys
-    alter column key_creator drop not null;
-update api_keys set key_creator = null
-    where (select count(*) from accounts where accounts.id = key_creator) < 1;
+delete from api_keys where (select count(*) from accounts where accounts.id = key_creator) < 1;
 alter table api_keys
     add constraint key_creator_fk
         foreign key (key_creator) references accounts (id)
-        on delete set null;
+        on delete cascade;
 alter table api_keys
     rename column key_created_on to key_created_ts;
 update api_keys set key_created_ts = key_created_ts + (floor(random()*1000) || ' milliseconds')::interval
