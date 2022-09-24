@@ -8,10 +8,10 @@ import net.termer.twinemedia.util.toStringArray
 import java.time.OffsetDateTime
 
 /**
- * Data class for an API key's info
+ * DTO for an API key
  * @since 1.4.0
  */
-class ApiKeyInfo(
+class ApiKeyDto(
 	/**
 	 * The key's alphanumeric ID
 	 * @since 1.4.0
@@ -37,16 +37,10 @@ class ApiKeyInfo(
 	val jwt: String,
 
 	/**
-	 * The owner of this key, the subject of the JWT token
+	 * The key's creator, the subject of the JWT token
 	 * @since 1.4.0
 	 */
-	val owner: Int,
-
-	/**
-	 * The name of the key's owner (null if the account doesn't exist)
-	 * @since 1.4.0
-	 */
-	val ownerName: String?,
+	val creator: RecordCreatorDto,
 
 	/**
 	 * The key's creation timestamp
@@ -65,8 +59,7 @@ class ApiKeyInfo(
 		"name" to name,
 		"permissions" to permissions.toJsonArray(),
 		"jwt" to jwt,
-		"owner" to owner,
-		"owner_name" to ownerName,
+		"creator" to creator.toJson(),
 		"created_ts" to createdTs.toString(),
 		"modified_ts" to modifiedTs.toString()
 	)
@@ -77,15 +70,17 @@ class ApiKeyInfo(
 		 * @since 1.4.0
 		 */
 		val MAPPER = RowMapper { row ->
-			ApiKeyInfo(
-				id = row.getString("id"),
-				name = row.getString("name"),
-				permissions = row.getJsonArray("permissions").toStringArray(),
-				jwt = row.getString("jwt"),
-				owner = row.getInteger("owner"),
-				ownerName = row.getString("owner_name"),
-				createdTs = row.getOffsetDateTime("created_ts"),
-				modifiedTs = row.getOffsetDateTime("modified_ts")
+			ApiKeyDto(
+				id = row.getString("key_id"),
+				name = row.getString("key_name"),
+				permissions = row.getJsonArray("key_permissions").toStringArray(),
+				jwt = row.getString("key_jwt"),
+				creator = RecordCreatorDto(
+					id = row.getString("key_creator_id"),
+					name = row.getString("key_creator_name")
+				),
+				createdTs = row.getOffsetDateTime("key_created_ts"),
+				modifiedTs = row.getOffsetDateTime("key_modified_ts")
 			)
 		}
 	}

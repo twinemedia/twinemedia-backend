@@ -10,14 +10,14 @@ import java.time.OffsetDateTime
  */
 class ApiKey(
 	/**
-	 * The key's internal ID, the one not exposed through the API
+	 * The key's internal sequential ID
 	 * @since 1.4.0
 	 */
 	val internalId: Int,
 
 	/**
 	 * The key's alphanumeric ID
-	 * @since 1.4.0
+	 * @since 2.0.0
 	 */
 	val id: String,
 

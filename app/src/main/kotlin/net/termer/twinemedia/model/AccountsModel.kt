@@ -4,7 +4,7 @@ import io.vertx.kotlin.coroutines.await
 import io.vertx.sqlclient.RowSet
 import io.vertx.sqlclient.templates.SqlTemplate
 import net.termer.twinemedia.db.Database.client
-import net.termer.twinemedia.db.dataobject.AccountInfo
+import net.termer.twinemedia.db.dataobject.AccountDto
 import net.termer.twinemedia.db.dataobject.Account
 import net.termer.twinemedia.util.toJsonArray
 
@@ -116,14 +116,14 @@ class AccountsModel(context: Context?, ignoreContext: Boolean): Model(context, i
 	 * @return All account info in the specified range
 	 * @since 1.4.0
 	 */
-	suspend fun fetchAccountList(offset: Int, limit: Int, order: Int): RowSet<AccountInfo> {
+	suspend fun fetchAccountList(offset: Int, limit: Int, order: Int): RowSet<AccountDto> {
 		return SqlTemplate
 			.forQuery(client, """
 				${infoSelect()}
 				${orderBy(order)}
 				OFFSET #{offset} LIMIT #{limit}
 			""".trimIndent())
-			.mapTo(AccountInfo.MAPPER)
+			.mapTo(AccountDto.MAPPER)
 			.execute(hashMapOf<String, Any>(
 				"offset" to offset,
 				"limit" to limit
@@ -139,7 +139,7 @@ class AccountsModel(context: Context?, ignoreContext: Boolean): Model(context, i
 	 * @return All accounts with names matching the specified plaintext query
 	 * @since 1.5.0
 	 */
-	suspend fun fetchAccountsByPlaintextQuery(query: String, offset: Int, limit: Int, order: Int): RowSet<AccountInfo> {
+	suspend fun fetchAccountsByPlaintextQuery(query: String, offset: Int, limit: Int, order: Int): RowSet<AccountDto> {
 		return SqlTemplate
 			.forQuery(client, """
 				${infoSelect()}
@@ -147,7 +147,7 @@ class AccountsModel(context: Context?, ignoreContext: Boolean): Model(context, i
 				${orderBy(order)}
 				OFFSET #{offset} LIMIT #{limit}
 			""".trimIndent())
-			.mapTo(AccountInfo.MAPPER)
+			.mapTo(AccountDto.MAPPER)
 			.execute(hashMapOf<String, Any?>(
 				"queryRaw" to query,
 				"query" to "%$query%",
@@ -219,13 +219,13 @@ class AccountsModel(context: Context?, ignoreContext: Boolean): Model(context, i
 	 * @return All rows from database search
 	 * @since 1.4.0
 	 */
-	suspend fun fetchAccountInfoById(id: Int): RowSet<AccountInfo> {
+	suspend fun fetchAccountInfoById(id: Int): RowSet<AccountDto> {
 		return SqlTemplate
 			.forQuery(client, """
 				${infoSelect()}
 				WHERE accounts.id = #{id}
 			""".trimIndent())
-			.mapTo(AccountInfo.MAPPER)
+			.mapTo(AccountDto.MAPPER)
 			.execute(hashMapOf<String, Any>(
 				"id" to id
 			)).await()

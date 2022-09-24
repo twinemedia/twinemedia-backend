@@ -14,103 +14,115 @@ import java.time.OffsetDateTime
  * @since 1.2.0
  */
 class Account(
-    /**
-     * The account's ID
-     * @since 1.2.0
-     */
-    val id: Int,
+	/**
+	 * The key's internal sequential ID
+	 * @since 2.0.0
+	 */
+	val internalId: Int,
 
-    /**
+	/**
+     * The account's alphanumeric ID
+     * @since 2.0.0
+     */
+    val id: String,
+
+	/**
      * The account's email address
      * @since 1.2.0
      */
     val email: String,
 
-    /**
+	/**
      * The account's name
      * @since 1.2.0
      */
     val name: String,
 
-    /**
+	/**
      * An array of the account's permissions
      * @since 1.2.0
      */
     val permissions: Array<String>,
 
-    /**
+	/**
      * Whether the account is an admin
-     * @since 1.2.0
+     * @since 2.0.0
      */
-    val admin: Boolean,
+    val isAdmin: Boolean,
 
-    /**
+	/**
      * The account's password hash
      * @since 1.2.0
      */
     val hash: String,
 
-    /**
+	/**
      * The tags to exclude globally when listing and searching files
      * @since 1.2.0
      */
     val excludeTags: Array<String>,
 
-    /**
+	/**
      * Whether to globally exclude files created by other accounts
      * @since 1.2.0
      */
     val excludeOtherFiles: Boolean,
 
-    /**
+	/**
      * Whether to globally exclude lists created by other accounts
      * @since 1.2.0
      */
     val excludeOtherLists: Boolean,
 
-    /**
+	/**
      * Whether to globally exclude tags on files created by other accounts
      * @since 1.2.0
      */
     val excludeOtherTags: Boolean,
 
-    /**
+	/**
      * Whether to globally exclude process presets created by other accounts
      * @since 1.2.0
      */
     val excludeOtherProcesses: Boolean,
 
-    /**
+	/**
      * Whether to globally exclude file sources created by other accounts
      * @since 1.5.0
      */
     val excludeOtherSources: Boolean,
 
-    /**
+	/**
      * Whether this account is being accessed by an API key
      * @since 1.3.0
      */
     val isApiKey: Boolean = false,
 
-    /**
+	/**
      * An array of permissions that this key is authorized to use
      * @since 1.3.0
      */
     val keyPermissions: Array<String>? = null,
 
-    /**
+	/**
      * The ID of this account's default file source
-     * @since 1.5.0
+     * @since 2.0.0
      */
-    val defaultSource: Int,
+    val defaultSource: Int?,
 
-    /**
+	/**
+	 * The number of files the account has created
+	 * @since 2.0.0
+	 */
+	val fileCount: Int,
+
+	/**
      * The account's creation timestamp
      * @since 2.0.0
      */
     val createdTs: OffsetDateTime,
 
-    /**
+	/**
      * The account's last modified timestamp
      * @since 2.0.0
      */
@@ -124,9 +136,9 @@ class Account(
 	 */
 	fun hasPermission(permission: String): Boolean {
 		return if(isApiKey && keyPermissions != null)
-			(admin || permissions.containsPermission(permission)) && keyPermissions.containsPermission(permission)
+			(isAdmin || permissions.containsPermission(permission)) && keyPermissions.containsPermission(permission)
 		else
-			admin || permissions.containsPermission(permission)
+			isAdmin || permissions.containsPermission(permission)
 	}
 
 	/**
@@ -134,7 +146,7 @@ class Account(
 	 * @return whether this user has administrator permissions
 	 * @since 1.3.0
 	 */
-	fun hasAdminPermission() = !isApiKey && admin
+	fun hasAdminPermission() = !isApiKey && isAdmin
 
 	/**
 	 * Sends an event to all SockJS clients authenticated as this account
@@ -158,11 +170,12 @@ class Account(
          */
 		val MAPPER = RowMapper { row ->
 			Account(
-                id = row.getInteger("id"),
+                internalId = row.getInteger("id"),
+				id = row.getString("account_id"),
                 email = row.getString("account_email"),
                 name = row.getString("account_name"),
                 permissions = row.getJsonArray("account_permissions").toStringArray(),
-                admin = row.getBoolean("account_admin"),
+                isAdmin = row.getBoolean("account_admin"),
                 hash = row.getString("account_hash"),
                 excludeTags = row.getJsonArray("account_exclude_tags").toStringArray(),
                 excludeOtherFiles = row.getBoolean("account_exclude_other_files"),
@@ -175,6 +188,7 @@ class Account(
                     row.getJsonArray("key_permissions").toStringArray()
                 else null,
 				defaultSource = row.getInteger("account_default_source"),
+				fileCount = row.getInteger("account_file_count"),
                 createdTs = row.getOffsetDateTime("account_created_ts"),
 				modifiedTs = row.getOffsetDateTime("account_modified_ts")
             )

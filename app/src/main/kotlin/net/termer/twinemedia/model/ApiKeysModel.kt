@@ -5,7 +5,7 @@ import io.vertx.sqlclient.RowSet
 import io.vertx.sqlclient.templates.SqlTemplate
 import net.termer.twinemedia.db.Database.client
 import net.termer.twinemedia.db.dataobject.ApiKey
-import net.termer.twinemedia.db.dataobject.ApiKeyInfo
+import net.termer.twinemedia.db.dataobject.ApiKeyDto
 import net.termer.twinemedia.util.toJsonArray
 
 /**
@@ -105,7 +105,7 @@ class ApiKeysModel(context: Context?, ignoreContext: Boolean): Model(context, ig
 	 * @return All API keys in the specified range
 	 * @since 1.4.0
 	 */
-	suspend fun fetchApiKeyList(owner: Int, offset: Int, limit: Int, order: Int): RowSet<ApiKeyInfo> {
+	suspend fun fetchApiKeyList(owner: Int, offset: Int, limit: Int, order: Int): RowSet<ApiKeyDto> {
 		return SqlTemplate
 			.forQuery(client, """
 				${infoSelect()}
@@ -113,7 +113,7 @@ class ApiKeysModel(context: Context?, ignoreContext: Boolean): Model(context, ig
 				${orderBy(order)}
 				OFFSET #{offset} LIMIT #{limit}
 			""".trimIndent())
-			.mapTo(ApiKeyInfo.MAPPER)
+			.mapTo(ApiKeyDto.MAPPER)
 			.execute(hashMapOf<String, Any>(
 				"owner" to owner,
 				"offset" to offset,
@@ -127,13 +127,13 @@ class ApiKeysModel(context: Context?, ignoreContext: Boolean): Model(context, ig
 	 * @return Info for the specified key
 	 * @since 1.4.0
 	 */
-	suspend fun fetchApiKeyInfo(keyId: String): RowSet<ApiKeyInfo> {
+	suspend fun fetchApiKeyInfo(keyId: String): RowSet<ApiKeyDto> {
 		return SqlTemplate
 			.forQuery(client, """
 				${infoSelect()}
 				WHERE key_id = #{keyId}	
 			""".trimIndent())
-			.mapTo(ApiKeyInfo.MAPPER)
+			.mapTo(ApiKeyDto.MAPPER)
 			.execute(hashMapOf<String, Any>(
 				"keyId" to keyId
 			)).await()
