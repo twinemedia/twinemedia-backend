@@ -105,10 +105,10 @@ class Account(
     val keyPermissions: Array<String>? = null,
 
 	/**
-     * The ID of this account's default file source
+     * The ID of this account's default file source ID
      * @since 2.0.0
      */
-    val defaultSource: Int?,
+    val defaultSourceId: Int?,
 
 	/**
 	 * The number of files the account has created
@@ -187,7 +187,7 @@ class Account(
                 keyPermissions = if(row.hasCol("key_id"))
                     row.getJsonArray("key_permissions").toStringArray()
                 else null,
-				defaultSource = row.getInteger("account_default_source"),
+				defaultSourceId = row.getInteger("account_default_source"),
 				fileCount = row.getInteger("account_file_count"),
                 createdTs = row.getOffsetDateTime("account_created_ts"),
 				modifiedTs = row.getOffsetDateTime("account_modified_ts")

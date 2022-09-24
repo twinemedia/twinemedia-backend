@@ -40,10 +40,10 @@ class ApiKey(
 	val jwt: String,
 
 	/**
-	 * The owner of this key, the subject of the JWT token
-	 * @since 1.4.0
+	 * The key creator's account ID
+	 * @since 2.0.0
 	 */
-	val owner: Int,
+	val creatorId: Int,
 
 	/**
 	 * The key's creation timestamp
@@ -53,6 +53,7 @@ class ApiKey(
 
 	/**
 	 * The key's last modified timestamp
+	 * @since 2.0.0
 	 */
 	val modifiedTs: OffsetDateTime
 ) {
@@ -68,7 +69,7 @@ class ApiKey(
 				name = row.getString("key_name"),
 				permissions = row.getJsonArray("key_permissions").toStringArray(),
 				jwt = row.getString("key_jwt"),
-				owner = row.getInteger("key_owner"),
+				creatorId = row.getInteger("key_creator"),
 				createdTs = row.getOffsetDateTime("key_created_ts"),
 				modifiedTs = row.getOffsetDateTime("key_modified_ts")
 			)

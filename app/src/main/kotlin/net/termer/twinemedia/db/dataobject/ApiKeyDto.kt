@@ -37,7 +37,7 @@ class ApiKeyDto(
 	val jwt: String,
 
 	/**
-	 * The key's creator, the subject of the JWT token
+	 * The key's creator
 	 * @since 1.4.0
 	 */
 	val creator: RecordCreatorDto,
