@@ -129,6 +129,8 @@ create unique index account_email_idx
     on accounts (lower(account_email));
 alter table accounts
     alter column account_default_source drop not null;
+alter table accounts
+    alter column account_default_source drop default;
 update accounts set account_default_source = null
     where account_default_source = -1
 or (select count(*) from sources where sources.id = account_default_source) < 1;
@@ -145,7 +147,7 @@ from (
 ) as dup
 where accounts.id = any(dup.id) and accounts.id <> dup.idmin;
 alter table accounts
-    add account_modified_ts timestamp with time zone;
+    add account_modified_ts timestamp with time zone default now();
 update accounts set account_modified_ts = account_created_ts;
 alter table accounts
     alter column account_modified_ts set not null;
@@ -183,7 +185,7 @@ from (
 ) as dup
 where api_keys.id = any(dup.id) and api_keys.id <> dup.idmin;
 alter table api_keys
-    add key_modified_ts timestamp with time zone;
+    add key_modified_ts timestamp with time zone default now();
 create unique index api_key_name_and_id_idx
     on api_keys (key_name, id);
 update api_keys set key_modified_ts = key_created_ts;
@@ -199,6 +201,8 @@ alter table files
     drop column media_tags;
 alter table files
     rename column media_id to file_id;
+alter table files
+    alter column file_id type char(10);
 create unique index file_id_idx
     on files (file_id);
 alter table files
@@ -252,6 +256,8 @@ alter table files
     rename column media_modified_on to file_modified_ts;
 alter table files
     rename column media_source to file_source;
+alter table files
+    alter column file_source drop default;
 alter table files
     add constraint file_source_fk
         foreign key (file_source) references sources (id)
@@ -417,7 +423,7 @@ from (
 ) as dup
 where sources.id = any(dup.id) and sources.id <> dup.idmin;
 alter table sources
-    add source_modified_ts timestamp with time zone;
+    add source_modified_ts timestamp with time zone default now();
 update sources set source_modified_ts = sources.source_created_ts;
 alter table sources
     alter column source_modified_ts set not null;
@@ -436,7 +442,7 @@ update accounts set account_file_count = (select count(*) from files where file_
 create unique index account_file_count_and_id_idx
     on accounts (account_file_count, id);
 alter table lists
-    add list_item_count integer default null;
+    add list_item_count integer;
 update lists set list_item_count = (select count(*) from list_items where item_list = lists.id)
     where list_type = 0; -- Only update count for standard lists
 create unique index list_item_count_and_id_idx
