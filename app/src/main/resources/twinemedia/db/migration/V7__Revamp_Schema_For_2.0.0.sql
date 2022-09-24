@@ -247,6 +247,8 @@ alter table files
 alter table files
     rename column media_thumbnail_file to file_thumbnail_key;
 alter table files
+    alter column file_thumbnail_key type varchar(255);
+alter table files
     drop column media_thumbnail;
 alter table files
     rename column media_processing to file_processing;
