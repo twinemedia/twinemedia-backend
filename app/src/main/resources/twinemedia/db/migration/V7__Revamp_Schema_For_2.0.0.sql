@@ -23,20 +23,29 @@ alter sequence media_id_seq
 create table tags
 (
     id              serial                                           not null,
+    tag_id          char(10)                                         not null,
     tag_name        varchar(256)                                     not null,
     tag_creator     integer,
     tag_file_count  integer                                not null default 0,
-    tag_created_ts  timestamp with time zone default NOW()           not null,
-    tag_modified_ts timestamp with time zone default NOW()           not null,
+    tag_created_ts  timestamp with time zone default NOW(),
+    tag_modified_ts timestamp with time zone default NOW(),
     constraint tags_pkey
         primary key (id),
     constraint creator_fk
         foreign key (tag_creator) references accounts (id)
         on delete set null
 );
+create unique index tag_name_and_id_idx
+    on tags (tag_name, id);
+create unique index tag_file_count_and_id_idx
+    on tags (tag_file_count, id);
 -- Tag names retain their original case, but two tags with the same content but different cases cannot exist
 create unique index tag_name_and_creator_idx
     on tags (lower(tag_name), tag_creator);
+create unique index tag_created_ts_and_id_idx
+    on tags (tag_created_ts, id);
+create unique index tag_modified_ts_and_id_idx
+    on tags (tag_modified_ts, id);
 create table tag_uses
 (
     id             serial                                 not null,
@@ -62,7 +71,7 @@ do $$
         key text;
         name text;
         creator int;
-        tag_id int;
+        tag_pk int;
         file_id int;
         file_created_ts timestamp with time zone;
         creator_or_null int;
@@ -77,21 +86,33 @@ do $$
             end if;
 
             -- Create record of the tag in the new tags table and get its ID
-            insert into tags (tag_name, tag_creator) values (name, creator_or_null) returning id into tag_id;
+            insert into tags (tag_id, tag_name, tag_creator, tag_created_ts, tag_modified_ts) values (
+                pg_temp.gen_id(),
+                name,
+                creator_or_null,
+                null,
+                null
+            ) returning id into tag_pk;
 
             -- Create tag use records for all the files that have the tag
             for file_id, file_created_ts in (select id, media_created_on from files where media_tags ? lower(name) and media_creator = creator) loop
                 -- Create use link between file and tag, and use the media creation date as the link date
                 -- The tag may not have been added to the file at that time, but it's more useful information than just defaulting to now()
-                insert into tag_uses (use_tag, use_file, use_created_ts) values (tag_id, file_id, file_created_ts);
+                insert into tag_uses (use_tag, use_file, use_created_ts) values (tag_pk, file_id, file_created_ts + (floor(random()*10) || ' seconds')::interval); -- Add a random number of seconds to the timestamp if it's not unique
             end loop;
         end loop;
 
         -- Update tag file counts and creation timestamps
         update tags set
             tag_file_count = (select count(*) from tag_uses where use_tag = tags.id),
-            tag_created_ts = coalesce((select use_created_ts from tag_uses where use_tag = tags.id order by tag_created_ts limit 1), now()),
-            tag_modified_ts = coalesce((select use_created_ts from tag_uses where use_tag = tags.id order by tag_created_ts limit 1), now()); --Use earliest tag use for timestamps
+            tag_created_ts = coalesce((select use_created_ts from tag_uses where use_tag = tags.id order by tag_created_ts limit 1), now()) + (floor(random()*10) || ' seconds')::interval, -- Sleep for a small amount of time to make sure now() doesn't yield a duplicate value
+            tag_modified_ts = coalesce((select use_created_ts from tag_uses where use_tag = tags.id order by tag_created_ts limit 1), now()) + (floor(random()*10) || ' seconds')::interval;
+
+        -- Disallow nulls now that timestamps are populated
+        alter table tags
+            alter column tag_created_ts set not null;
+        alter table tags
+            alter column tag_modified_ts set not null;
 end $$;
 
 -- We don't need the tags view anymore; delete it
@@ -99,7 +120,7 @@ drop materialized view tags_view;
 
 -- Alter accounts table to reflect new schema changes
 alter table accounts
-    add account_id varchar(10) default pg_temp.gen_id() not null;
+    add account_id char(10) default pg_temp.gen_id() not null;
 create unique index account_id_idx
     on accounts (account_id);
 alter table accounts
@@ -117,19 +138,35 @@ alter table accounts
         on delete set null;
 alter table accounts
     rename column account_creation_date to account_created_ts;
+update accounts set account_created_ts = account_created_ts + (floor(random()*1000) || ' milliseconds')::interval
+from (
+    select array_agg(id) id, min(id) idmin FROM accounts
+    group by account_created_ts having count(*) > 1
+) as dup
+where accounts.id = any(dup.id) and accounts.id <> dup.idmin;
 alter table accounts
-    add account_modified_ts timestamp with time zone default now() not null;
+    add account_modified_ts timestamp with time zone;
 update accounts set account_modified_ts = account_created_ts;
+alter table accounts
+    alter column account_modified_ts set not null;
+create unique index account_name_and_id_idx
+    on accounts (account_name, id);
+create unique index account_created_ts_idx
+    on accounts (account_created_ts);
+create unique index account_modified_ts_idx
+    on accounts (account_modified_ts);
 
 -- Alter API keys table to reflect new schema changes
 alter table apikeys
     rename to api_keys;
 alter sequence apikeys_id_seq
     rename to api_keys_id_seq;
-create unique index key_id_idx
+alter table api_keys
+    alter column key_id type char(10);
+create unique index api_key_id_idx
     on api_keys (key_id);
 alter table api_keys
-    alter column key_name type varchar(256) using key_name::varchar(256);
+    alter column key_name type varchar(256);
 alter table api_keys
     rename column key_owner to key_creator;
 alter table api_keys
@@ -142,9 +179,23 @@ alter table api_keys
         on delete set null;
 alter table api_keys
     rename column key_created_on to key_created_ts;
+update api_keys set key_created_ts = key_created_ts + (floor(random()*1000) || ' milliseconds')::interval
+from (
+    select array_agg(id) id, min(id) idmin FROM api_keys
+    group by key_created_ts having count(*) > 1
+) as dup
+where api_keys.id = any(dup.id) and api_keys.id <> dup.idmin;
 alter table api_keys
-    add key_modified_ts timestamp with time zone default now() not null;
+    add key_modified_ts timestamp with time zone;
+create unique index api_key_name_and_id_idx
+    on api_keys (key_name, id);
 update api_keys set key_modified_ts = key_created_ts;
+alter table api_keys
+    alter column key_modified_ts set not null;
+create unique index api_key_created_ts_idx
+    on api_keys (key_created_ts);
+create unique index api_key_modified_ts_idx
+    on api_keys (key_modified_ts);
 
 -- Alter files table to reflect new schema changes
 alter table files
@@ -162,7 +213,7 @@ alter table files
 alter table files
     rename column media_mime to file_mime;
 alter table files
-    alter column file_mime type varchar(129) using file_mime::varchar(129);
+    alter column file_mime type varchar(129);
 alter table files
     rename column media_key to file_key;
 alter table files
@@ -210,6 +261,28 @@ alter table files
         on delete restrict;
 alter table files
     add file_tag_count integer not null default 0;
+create unique index file_title_and_id_idx
+    on files (file_title, id);
+create unique index file_size_and_id_idx
+    on files (file_size, id);
+create unique index file_tag_count_and_id_idx
+    on files (file_tag_count, id);
+update files set file_created_ts = file_created_ts + (floor(random()*1000) || ' milliseconds')::interval
+from (
+    select array_agg(id) id, min(id) idmin FROM files
+    group by file_created_ts having count(*) > 1
+) as dup
+where files.id = any(dup.id) and files.id <> dup.idmin;
+create unique index file_created_ts_idx
+    on files (file_created_ts);
+update files set file_modified_ts = file_modified_ts + (floor(random()*1000) || ' milliseconds')::interval
+from (
+    select array_agg(id) id, min(id) idmin FROM files
+    group by file_modified_ts having count(*) > 1
+) as dup
+where files.id = any(dup.id) and files.id <> dup.idmin;
+create unique index file_modified_ts_idx
+    on files (file_modified_ts);
 update files set file_tag_count = (select count(*) from tag_uses where use_file = files.id);
 
 -- Convert hash format to hex for all files
@@ -237,6 +310,8 @@ alter table list_items
     rename column item_created_on to item_created_ts;
 
 -- Alter lists table to reflect new schema changes
+create unique index list_id_idx
+    on lists (list_id);
 alter table lists
     alter column list_creator drop not null;
 update lists set list_creator = null
@@ -249,6 +324,24 @@ alter table lists
     rename column list_created_on to list_created_ts;
 alter table lists
     rename column list_modified_on to list_modified_ts;
+create unique index list_name_and_id_idx
+    on lists (list_name, id);
+update lists set list_created_ts = list_created_ts + (floor(random()*1000) || ' milliseconds')::interval
+from (
+    select array_agg(id) id, min(id) idmin FROM lists
+    group by list_created_ts having count(*) > 1
+) as dup
+where lists.id = any(dup.id) and lists.id <> dup.idmin;
+create unique index list_created_ts_idx
+    on lists (list_created_ts);
+update lists set list_modified_ts = list_modified_ts + (floor(random()*1000) || ' milliseconds')::interval
+from (
+    select array_agg(id) id, min(id) idmin FROM lists
+    group by list_modified_ts having count(*) > 1
+) as dup
+where lists.id = any(dup.id) and lists.id <> dup.idmin;
+create unique index list_modified_ts_idx
+    on lists (list_modified_ts);
 
 -- Alter processes table to reflect new schema changes
 alter table processes
@@ -256,7 +349,7 @@ alter table processes
 alter sequence processes_id_seq
     rename to process_presets_id_seq;
 alter table process_presets
-    add preset_id varchar(10) default pg_temp.gen_id() not null;
+    add preset_id char(10) default pg_temp.gen_id() not null;
 create unique index process_preset_id_idx
     on process_presets (preset_id);
 alter table process_presets
@@ -284,10 +377,28 @@ alter table process_presets
 update process_presets set preset_name = preset_mime;
 alter table process_presets
     alter column preset_name drop default;
+create unique index process_preset_name_and_id_idx
+    on process_presets (preset_name, id);
+update process_presets set preset_created_ts = preset_created_ts + (floor(random()*1000) || ' milliseconds')::interval
+from (
+    select array_agg(id) id, min(id) idmin FROM process_presets
+    group by preset_created_ts having count(*) > 1
+) as dup
+where process_presets.id = any(dup.id) and process_presets.id <> dup.idmin;
+create unique index process_preset_created_ts_idx
+    on process_presets (preset_created_ts);
+update process_presets set preset_modified_ts = preset_modified_ts + (floor(random()*1000) || ' milliseconds')::interval
+from (
+    select array_agg(id) id, min(id) idmin FROM process_presets
+    group by preset_modified_ts having count(*) > 1
+) as dup
+where process_presets.id = any(dup.id) and process_presets.id <> dup.idmin;
+create unique index process_preset_modified_ts_idx
+    on process_presets (preset_modified_ts);
 
 -- Alter sources table to reflect new schema changes
 alter table sources
-    add source_id varchar(10) default pg_temp.gen_id() not null;
+    add source_id char(10) default pg_temp.gen_id() not null;
 create unique index source_id_idx
     on sources (source_id);
 alter table sources
@@ -302,21 +413,42 @@ alter table sources
         on delete set null;
 alter table sources
     rename column source_created_on to source_created_ts;
+update sources set source_created_ts = source_created_ts + (floor(random()*1000) || ' milliseconds')::interval
+from (
+    select array_agg(id) id, min(id) idmin FROM sources
+    group by source_created_ts having count(*) > 1
+) as dup
+where sources.id = any(dup.id) and sources.id <> dup.idmin;
 alter table sources
-    add source_modified_ts timestamp with time zone default now() not null;
+    add source_modified_ts timestamp with time zone;
+update sources set source_modified_ts = sources.source_created_ts;
+alter table sources
+    alter column source_modified_ts set not null;
+create unique index source_name_and_id_idx
+    on sources (source_name, id);
+create unique index source_created_ts_idx
+    on sources (source_created_ts);
+create unique index source_modified_ts_idx
+    on sources (source_modified_ts);
 update sources set source_modified_ts = source_created_ts;
 
 -- Add counter columns to tables
 alter table accounts
     add account_file_count integer not null default 0;
 update accounts set account_file_count = (select count(*) from files where file_creator = accounts.id);
-alter table sources
-    add source_file_count integer not null default 0;
-update sources set source_file_count = (select count(*) from files where file_source = sources.id);
+create unique index account_file_count_and_id_idx
+    on accounts (account_file_count, id);
 alter table lists
     add list_item_count integer default null;
 update lists set list_item_count = (select count(*) from list_items where item_list = lists.id)
     where list_type = 0; -- Only update count for standard lists
+create unique index list_item_count_and_id_idx
+    on lists (list_item_count, id);
+alter table sources
+    add source_file_count integer not null default 0;
+update sources set source_file_count = (select count(*) from files where file_source = sources.id);
+create unique index source_file_count_and_id_idx
+    on sources (source_file_count, id);
 
 -- Update file counts on various tables
 create function inc_file_counts() returns trigger as $$ begin
