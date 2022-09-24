@@ -264,14 +264,10 @@ alter table files
     add constraint file_source_fk
         foreign key (file_source) references sources (id)
         on delete restrict;
-alter table files
-    add file_tag_count integer not null default 0;
 create unique index file_title_and_id_idx
     on files (file_title, id);
 create unique index file_size_and_id_idx
     on files (file_size, id);
-create unique index file_tag_count_and_id_idx
-    on files (file_tag_count, id);
 update files set file_created_ts = file_created_ts + (floor(random()*1000) || ' milliseconds')::interval
 from (
     select array_agg(id) id, min(id) idmin FROM files
@@ -288,7 +284,6 @@ from (
 where files.id = any(dup.id) and files.id <> dup.idmin;
 create unique index file_modified_ts_idx
     on files (file_modified_ts);
-update files set file_tag_count = (select count(*) from tag_uses where use_file = files.id);
 
 -- Convert hash format to hex for all files
 update files SET file_hash = encode(decode(file_hash, 'base64'), 'hex');
@@ -443,6 +438,16 @@ alter table accounts
 update accounts set account_file_count = (select count(*) from files where file_creator = accounts.id);
 create unique index account_file_count_and_id_idx
     on accounts (account_file_count, id);
+alter table files
+    add file_tag_count integer not null default 0;
+create unique index file_tag_count_and_id_idx
+    on files (file_tag_count, id);
+update files set file_tag_count = (select count(*) from tag_uses where use_file = files.id);
+alter table files
+    add file_child_count integer not null default 0;
+create unique index file_child_count_and_id_idx
+    on files (file_child_count, id);
+update files parents set file_child_count = (select count(*) from files children where children.file_parent = parents.id);
 alter table lists
     add list_item_count integer;
 update lists set list_item_count = (select count(*) from list_items where item_list = lists.id)
@@ -458,11 +463,13 @@ create unique index source_file_count_and_id_idx
 -- Update file counts on various tables
 create function inc_file_counts() returns trigger as $$ begin
     update accounts set account_file_count = accounts.account_file_count + 1 where accounts.id = NEW.file_creator;
+    update files parents set file_child_count = file_child_count + 1 where parents.id = NEW.file_parent;
     update sources set source_file_count = source_file_count + 1 where sources.id = NEW.file_source;
     return null;
 end $$ language plpgsql;
 create function dec_file_counts() returns trigger as $$ begin
     update accounts set account_file_count = accounts.account_file_count - 1 where accounts.id = OLD.file_creator;
+    update files parents set file_child_count = file_child_count - 1 where parents.id = OLD.file_parent;
     update sources set source_file_count = source_file_count - 1 where sources.id = OLD.file_source;
     return null;
 end $$ language plpgsql;
