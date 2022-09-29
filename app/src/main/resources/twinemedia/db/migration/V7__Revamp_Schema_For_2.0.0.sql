@@ -298,6 +298,9 @@ alter sequence listitems_id_seq
     rename to list_items_id_seq;
 alter table list_items
     rename column item_media to item_file;
+update lists set list_description = '' where lists.list_description is null;
+alter table lists
+    alter column list_description set not null;
 alter table list_items
     add constraint list_item_file_fk
         foreign key (item_file) references files (id)
