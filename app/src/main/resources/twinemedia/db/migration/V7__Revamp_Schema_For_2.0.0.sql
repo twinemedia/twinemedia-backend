@@ -221,6 +221,9 @@ alter table files
     rename column media_created_on to file_created_ts;
 alter table files
     rename column media_description to file_description;
+update files set file_description = '' where file_description is null;
+alter table files
+    alter column file_description set not null;
 alter table files
     rename column media_meta to file_meta;
 alter table files
