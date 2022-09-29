@@ -298,9 +298,6 @@ alter sequence listitems_id_seq
     rename to list_items_id_seq;
 alter table list_items
     rename column item_media to item_file;
-update lists set list_description = '' where lists.list_description is null;
-alter table lists
-    alter column list_description set not null;
 alter table list_items
     add constraint list_item_file_fk
         foreign key (item_file) references files (id)
@@ -322,6 +319,9 @@ alter table lists
     alter column list_creator drop not null;
 update lists set list_creator = null
     where (select count(*) from accounts where accounts.id = list_creator) < 1;
+update lists set list_description = '' where lists.list_description is null;
+alter table lists
+    alter column list_description set not null;
 alter table lists
     add constraint list_creator_fk
         foreign key (list_creator) references accounts (id)
