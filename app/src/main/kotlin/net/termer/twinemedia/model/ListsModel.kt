@@ -4,8 +4,8 @@ import io.vertx.kotlin.coroutines.await
 import io.vertx.sqlclient.RowSet
 import io.vertx.sqlclient.templates.SqlTemplate
 import net.termer.twinemedia.db.Database.client
-import net.termer.twinemedia.dataobject.List
-import net.termer.twinemedia.dataobject.ListInfo
+import net.termer.twinemedia.dataobject.ListRow
+import net.termer.twinemedia.dataobject.ListDto
 import net.termer.twinemedia.enumeration.ListType
 import net.termer.twinemedia.enumeration.ListVisibility
 import net.termer.twinemedia.util.toJsonArray
@@ -214,12 +214,12 @@ class ListsModel(context: Context?, ignoreContext: Boolean): Model(context, igno
 	 * @return All rows from database search
 	 * @since 1.4.0
 	 */
-	suspend fun fetchList(id: Int): RowSet<List> {
+	suspend fun fetchList(id: Int): RowSet<ListRow> {
 	return SqlTemplate
 			.forQuery(client, """
 				SELECT * FROM lists WHERE ${viewWhereFilter()} AND id = #{id}
 			""".trimIndent())
-			.mapTo(List.MAPPER)
+			.mapTo(ListRow.MAPPER)
 			.execute(hashMapOf<String, Any>(
 				"id" to id
 			)).await()
@@ -230,12 +230,12 @@ class ListsModel(context: Context?, ignoreContext: Boolean): Model(context, igno
 	 * @return All rows from database search
 	 * @since 1.4.0
 	 */
-	suspend fun fetchList(listId: String): RowSet<List> {
+	suspend fun fetchList(listId: String): RowSet<ListRow> {
 		return SqlTemplate
 			.forQuery(client, """
 				SELECT * FROM lists WHERE ${viewWhereFilter()} AND list_id = #{listId}
 			""".trimIndent())
-			.mapTo(List.MAPPER)
+			.mapTo(ListRow.MAPPER)
 			.execute(hashMapOf<String, Any>(
 				"listId" to listId
 			)).await()
@@ -247,7 +247,7 @@ class ListsModel(context: Context?, ignoreContext: Boolean): Model(context, igno
 	 * @return The info for the specified list
 	 * @since 1.4.0
 	 */
-	suspend fun fetchListInfo(listId: String): RowSet<ListInfo> {
+	suspend fun fetchListInfo(listId: String): RowSet<ListDto> {
 		return SqlTemplate
 			.forQuery(client, """
 				${infoSelect()}
@@ -255,7 +255,7 @@ class ListsModel(context: Context?, ignoreContext: Boolean): Model(context, igno
 				${viewWhereFilter()}
 				AND list_id = #{listId}
 			""".trimIndent())
-			.mapTo(ListInfo.MAPPER)
+			.mapTo(ListDto.MAPPER)
 			.execute(hashMapOf<String, Any>(
 				"listId" to listId
 			)).await()
@@ -267,7 +267,7 @@ class ListsModel(context: Context?, ignoreContext: Boolean): Model(context, igno
 	 * @return The info for the specified list
 	 * @since 1.4.0
 	 */
-	suspend fun fetchListInfo(id: Int): RowSet<ListInfo> {
+	suspend fun fetchListInfo(id: Int): RowSet<ListDto> {
 		return SqlTemplate
 			.forQuery(client, """
 				${infoSelect()}
@@ -275,7 +275,7 @@ class ListsModel(context: Context?, ignoreContext: Boolean): Model(context, igno
 				${viewWhereFilter()}
 				AND id = #{id}
 			""".trimIndent())
-			.mapTo(ListInfo.MAPPER)
+			.mapTo(ListDto.MAPPER)
 			.execute(hashMapOf<String, Any>(
 				"id" to id
 			)).await()
@@ -291,7 +291,7 @@ class ListsModel(context: Context?, ignoreContext: Boolean): Model(context, igno
 	 * @return All list info in the specified range
 	 * @since 1.4.0
 	 */
-	suspend fun fetchLists(offset: Int, limit: Int, order: Int, type: ListType?, mediaContainCheck: String?): RowSet<ListInfo> {
+	suspend fun fetchLists(offset: Int, limit: Int, order: Int, type: ListType?, mediaContainCheck: String?): RowSet<ListDto> {
 		val containsStr = if(mediaContainCheck == null)
 			""
 		else
@@ -318,7 +318,7 @@ class ListsModel(context: Context?, ignoreContext: Boolean): Model(context, igno
 				${orderBy(order)}
 				OFFSET #{offset} LIMIT #{limit}
 			""".trimIndent())
-			.mapTo(ListInfo.MAPPER)
+			.mapTo(ListDto.MAPPER)
 			.execute(
 				hashMapOf(
 					"offset" to offset,
@@ -342,7 +342,7 @@ class ListsModel(context: Context?, ignoreContext: Boolean): Model(context, igno
 	 * @return The info of all lists matching the specified plaintext query
 	 * @since 1.4.0
 	 */
-	suspend fun fetchListsByPlaintextQuery(query: String, offset: Int, limit: Int, order: Int, type: ListType?, mediaContainCheck: String?, searchNames: Boolean, searchDescs: Boolean): RowSet<ListInfo> {
+	suspend fun fetchListsByPlaintextQuery(query: String, offset: Int, limit: Int, order: Int, type: ListType?, mediaContainCheck: String?, searchNames: Boolean, searchDescs: Boolean): RowSet<ListDto> {
 		val containsStr = if(mediaContainCheck == null)
 			""
 		else
@@ -388,7 +388,7 @@ class ListsModel(context: Context?, ignoreContext: Boolean): Model(context, igno
 				${orderBy(order)}
 				OFFSET #{offset} LIMIT #{limit}
 			""".trimIndent())
-			.mapTo(ListInfo.MAPPER)
+			.mapTo(ListDto.MAPPER)
 			.execute(
 				hashMapOf(
 					"query" to query,
