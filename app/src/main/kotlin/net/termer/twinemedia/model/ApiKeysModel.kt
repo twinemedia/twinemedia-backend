@@ -4,8 +4,8 @@ import io.vertx.kotlin.coroutines.await
 import io.vertx.sqlclient.RowSet
 import io.vertx.sqlclient.templates.SqlTemplate
 import net.termer.twinemedia.db.Database.client
-import net.termer.twinemedia.db.dataobject.ApiKey
-import net.termer.twinemedia.db.dataobject.ApiKeyDto
+import net.termer.twinemedia.dataobject.ApiKeyRow
+import net.termer.twinemedia.dataobject.ApiKeyDto
 import net.termer.twinemedia.util.toJsonArray
 
 /**
@@ -145,12 +145,12 @@ class ApiKeysModel(context: Context?, ignoreContext: Boolean): Model(context, ig
 	 * @return The raw entry for the key
 	 * @since 1.4.0
 	 */
-	suspend fun fetchApiKey(keyId: String): RowSet<ApiKey> {
+	suspend fun fetchApiKey(keyId: String): RowSet<ApiKeyRow> {
 		return SqlTemplate
 			.forQuery(client, """
 				SELECT * FROM apikeys WHERE key_id = #{keyId}
 			""".trimIndent())
-			.mapTo(ApiKey.MAPPER)
+			.mapTo(ApiKeyRow.MAPPER)
 			.execute(hashMapOf<String, Any>(
 				"keyId" to keyId
 			)).await()
@@ -162,12 +162,12 @@ class ApiKeysModel(context: Context?, ignoreContext: Boolean): Model(context, ig
 	 * @return The raw entry for the key
 	 * @since 1.4.0
 	 */
-	suspend fun fetchApiKeyById(id: Int): RowSet<ApiKey> {
+	suspend fun fetchApiKeyById(id: Int): RowSet<ApiKeyRow> {
 		return SqlTemplate
 			.forQuery(client, """
 				SELECT * FROM apikeys WHERE id = #{id}
 			""".trimIndent())
-			.mapTo(ApiKey.MAPPER)
+			.mapTo(ApiKeyRow.MAPPER)
 			.execute(hashMapOf<String, Any>(
 				"id" to id
 			)).await()

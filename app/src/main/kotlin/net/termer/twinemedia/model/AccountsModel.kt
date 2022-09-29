@@ -4,8 +4,8 @@ import io.vertx.kotlin.coroutines.await
 import io.vertx.sqlclient.RowSet
 import io.vertx.sqlclient.templates.SqlTemplate
 import net.termer.twinemedia.db.Database.client
-import net.termer.twinemedia.db.dataobject.AccountDto
-import net.termer.twinemedia.db.dataobject.Account
+import net.termer.twinemedia.dataobject.AccountDto
+import net.termer.twinemedia.dataobject.AccountRow
 import net.termer.twinemedia.util.toJsonArray
 
 /**
@@ -162,12 +162,12 @@ class AccountsModel(context: Context?, ignoreContext: Boolean): Model(context, i
 	 * @return All rows from database search
 	 * @since 1.4.0
 	 */
-	suspend fun fetchAccountByEmail(email: String): RowSet<Account> {
+	suspend fun fetchAccountByEmail(email: String): RowSet<AccountRow> {
 		return SqlTemplate
 			.forQuery(client, """
 				SELECT * FROM accounts WHERE LOWER(account_email) = LOWER(#{email})
 			""".trimIndent())
-			.mapTo(Account.MAPPER)
+			.mapTo(AccountRow.MAPPER)
 			.execute(hashMapOf<String, Any>(
 				"email" to email
 			)).await()
@@ -179,12 +179,12 @@ class AccountsModel(context: Context?, ignoreContext: Boolean): Model(context, i
 	 * @return All rows from database search
 	 * @since 1.4.0
 	 */
-	suspend fun fetchAccountById(id: Int): RowSet<Account> {
+	suspend fun fetchAccountById(id: Int): RowSet<AccountRow> {
 		return SqlTemplate
 			.forQuery(client, """
 				SELECT * FROM accounts WHERE accounts.id = #{id}
 			""".trimIndent())
-			.mapTo(Account.MAPPER)
+			.mapTo(AccountRow.MAPPER)
 			.execute(hashMapOf<String, Any>(
 				"id" to id
 			)).await()
@@ -196,7 +196,7 @@ class AccountsModel(context: Context?, ignoreContext: Boolean): Model(context, i
 	 * @return All rows from database search
 	 * @since 1.4.0
 	 */
-	suspend fun fetchAccountAndApiKeyByKeyId(keyId: String): RowSet<Account> {
+	suspend fun fetchAccountAndApiKeyByKeyId(keyId: String): RowSet<AccountRow> {
 		return SqlTemplate
 			.forQuery(client, """
 				SELECT
@@ -207,7 +207,7 @@ class AccountsModel(context: Context?, ignoreContext: Boolean): Model(context, i
 				JOIN apikeys ON key_owner = accounts.id
 				WHERE key_id = #{keyId}
 			""".trimIndent())
-			.mapTo(Account.MAPPER)
+			.mapTo(AccountRow.MAPPER)
 			.execute(hashMapOf<String, Any>(
 				"keyId" to keyId
 			)).await()
@@ -236,12 +236,12 @@ class AccountsModel(context: Context?, ignoreContext: Boolean): Model(context, i
 	 * @return All accounts that are administrators
 	 * @since 1.4.0
 	 */
-	suspend fun fetchAdminAccounts(): RowSet<Account> {
+	suspend fun fetchAdminAccounts(): RowSet<AccountRow> {
 		return SqlTemplate
 			.forQuery(client, """
 				SELECT * FROM accounts WHERE account_admin = true
 			""".trimIndent())
-			.mapTo(Account.MAPPER)
+			.mapTo(AccountRow.MAPPER)
 			.execute(hashMapOf()).await()
 	}
 

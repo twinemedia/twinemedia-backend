@@ -5,22 +5,22 @@ import io.vertx.kotlin.coroutines.await
 import io.vertx.sqlclient.RowSet
 import io.vertx.sqlclient.templates.SqlTemplate
 import net.termer.twinemedia.db.Database.client
-import net.termer.twinemedia.db.dataobject.Account
-import net.termer.twinemedia.db.dataobject.ProcessPreset
-import net.termer.twinemedia.db.dataobject.ProcessPresetInfo
+import net.termer.twinemedia.dataobject.AccountRow
+import net.termer.twinemedia.dataobject.ProcessPreset
+import net.termer.twinemedia.dataobject.ProcessPresetInfo
 
 /**
  * Database model for process presets
  * @since 1.2.0
  */
 class ProcessesModel {
-	private var _account: Account? = null
+	private var _account: AccountRow? = null
 
 	/**
 	 * The account associated with this model instance
 	 * @since 1.2.0
 	 */
-	var account: Account?
+	var account: AccountRow?
 		get() = _account
 		set(value) { _account = value }
 
@@ -29,7 +29,7 @@ class ProcessesModel {
 	 * @param account The account to use for this model instance
 	 * @since 1.2.0
 	 */
-	constructor(account: Account) {
+	constructor(account: AccountRow) {
 		this.account = account
 	}
 	/**

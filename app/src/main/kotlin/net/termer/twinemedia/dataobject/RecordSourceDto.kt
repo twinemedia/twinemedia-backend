@@ -1,28 +1,35 @@
-package net.termer.twinemedia.db.dataobject
+package net.termer.twinemedia.dataobject
 
 import io.vertx.kotlin.core.json.jsonObjectOf
 import net.termer.twinemedia.util.JsonSerializable
 
 /**
- * DTO for a record's creator account.
+ * DTO for a record's file source.
  * Used in properties of other DTOs.
  * @since 2.0.0
  */
-class RecordCreatorDto(
+class RecordSourceDto(
 	/**
-	 * The creator account's alphanumeric ID
+	 * The file source's alphanumeric ID
 	 * @since 2.0.0
 	 */
 	val id: String,
 
 	/**
-	 * The creator account's name
+	 * The file source's name
 	 * @since 2.0.0
 	 */
-	val name: String
+	val name: String,
+
+	/**
+	 * The file source's type
+	 * @since 2.0.0
+	 */
+	val type: String
 ): JsonSerializable {
 	override fun toJson() = jsonObjectOf(
 		"id" to id,
-		"name" to name
+		"name" to name,
+		"type" to type
 	)
 }

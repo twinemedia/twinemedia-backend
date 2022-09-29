@@ -5,9 +5,8 @@ import io.vertx.kotlin.coroutines.await
 import io.vertx.sqlclient.RowSet
 import io.vertx.sqlclient.templates.SqlTemplate
 import net.termer.twinemedia.db.Database.client
-import net.termer.twinemedia.db.dataobject.Account
-import net.termer.twinemedia.db.dataobject.File
-import net.termer.twinemedia.db.dataobject.FileInfo
+import net.termer.twinemedia.dataobject.FileRow
+import net.termer.twinemedia.dataobject.FileDto
 import net.termer.twinemedia.util.toJsonArray
 import java.lang.StringBuilder
 import java.time.OffsetDateTime
@@ -265,12 +264,12 @@ class MediaModel(context: Context?, ignoreContext: Boolean): Model(context, igno
 	 * @return The specified media file
 	 * @since 1.4.0
 	 */
-	suspend fun fetchMedia(mediaId: String): RowSet<File> {
+	suspend fun fetchMedia(mediaId: String): RowSet<FileRow> {
 		return SqlTemplate
 				.forQuery(client, """
 					SELECT * FROM files WHERE ${viewWhereFilter()} AND file_id = #{mediaId}
 				""".trimIndent())
-				.mapTo(File.MAPPER)
+				.mapTo(FileRow.MAPPER)
 				.execute(hashMapOf<String, Any>(
 						"mediaId" to mediaId
 				)).await()
@@ -285,7 +284,7 @@ class MediaModel(context: Context?, ignoreContext: Boolean): Model(context, igno
 	 * @return All media files in the specified range
 	 * @since 1.4.0
 	 */
-	suspend fun fetchMediaList(offset: Int, limit: Int, mime: String, order: Int): RowSet<FileInfo> {
+	suspend fun fetchMediaList(offset: Int, limit: Int, mime: String, order: Int): RowSet<FileDto> {
 		val params = hashMapOf<String, Any?>(
 				"offset" to offset,
 				"limit" to limit,
@@ -303,7 +302,7 @@ class MediaModel(context: Context?, ignoreContext: Boolean): Model(context, igno
 					${orderBy(order)}
 					OFFSET #{offset} LIMIT #{limit}
 				""".trimIndent())
-				.mapTo(FileInfo.MAPPER)
+				.mapTo(FileDto.MAPPER)
 				.execute(params).await()
 	}
 
@@ -313,7 +312,7 @@ class MediaModel(context: Context?, ignoreContext: Boolean): Model(context, igno
 	 * @return The info for the specified media file
 	 * @since 1.4.0
 	 */
-	suspend fun fetchMediaInfo(mediaId: String): RowSet<FileInfo> {
+	suspend fun fetchMediaInfo(mediaId: String): RowSet<FileDto> {
 		return SqlTemplate
 				.forQuery(client, """
 					${infoSelect("file_description AS description")}
@@ -321,7 +320,7 @@ class MediaModel(context: Context?, ignoreContext: Boolean): Model(context, igno
 					${viewWhereFilter()}
 					AND file_id = #{mediaId}
 				""".trimIndent())
-				.mapTo(FileInfo.MAPPER)
+				.mapTo(FileDto.MAPPER)
 				.execute(hashMapOf<String, Any>(
 						"mediaId" to mediaId
 				)).await()
@@ -333,7 +332,7 @@ class MediaModel(context: Context?, ignoreContext: Boolean): Model(context, igno
 	 * @return The info for the specified media file
 	 * @since 1.4.0
 	 */
-	suspend fun fetchMediaInfo(id: Int): RowSet<FileInfo> {
+	suspend fun fetchMediaInfo(id: Int): RowSet<FileDto> {
 		return SqlTemplate
 				.forQuery(client, """
 					${infoSelect("file_description AS description")}
@@ -341,7 +340,7 @@ class MediaModel(context: Context?, ignoreContext: Boolean): Model(context, igno
 					${viewWhereFilter()}
 					AND media.id = #{id}
 				""".trimIndent())
-				.mapTo(FileInfo.MAPPER)
+				.mapTo(FileDto.MAPPER)
 				.execute(hashMapOf<String, Any>(
 						"id" to id
 				)).await()
@@ -353,7 +352,7 @@ class MediaModel(context: Context?, ignoreContext: Boolean): Model(context, igno
 	 * @return All info for the children of the specified media file
 	 * @since 1.4.0
 	 */
-	suspend fun fetchMediaChildrenInfo(id: Int): RowSet<FileInfo> {
+	suspend fun fetchMediaChildrenInfo(id: Int): RowSet<FileDto> {
 		return SqlTemplate
 				.forQuery(client, """
 					${infoSelect()}
@@ -361,7 +360,7 @@ class MediaModel(context: Context?, ignoreContext: Boolean): Model(context, igno
 					${viewWhereFilter()}
 					AND file_parent = #{id}
 				""".trimIndent())
-				.mapTo(FileInfo.MAPPER)
+				.mapTo(FileDto.MAPPER)
 				.execute(hashMapOf<String, Any>(
 						"id" to id
 				)).await()
@@ -373,7 +372,7 @@ class MediaModel(context: Context?, ignoreContext: Boolean): Model(context, igno
 	 * @return All data for the children of the specified media file
 	 * @since 1.4.0
 	 */
-	suspend fun fetchMediaChildren(id: Int): RowSet<File> {
+	suspend fun fetchMediaChildren(id: Int): RowSet<FileRow> {
 		return SqlTemplate
 				.forQuery(client, """
 					SELECT
@@ -383,7 +382,7 @@ class MediaModel(context: Context?, ignoreContext: Boolean): Model(context, igno
 					${viewWhereFilter()}
 					AND file_parent = #{id}
 				""".trimIndent())
-				.mapTo(File.MAPPER)
+				.mapTo(FileRow.MAPPER)
 				.execute(hashMapOf<String, Any>(
 						"id" to id
 				)).await()
@@ -395,7 +394,7 @@ class MediaModel(context: Context?, ignoreContext: Boolean): Model(context, igno
 	 * @return All media files with the specified hash
 	 * @since 1.4.0
 	 */
-	suspend fun fetchMediaByHash(hash: String): RowSet<File> {
+	suspend fun fetchMediaByHash(hash: String): RowSet<FileRow> {
 		return SqlTemplate
 				.forQuery(client, """
 					SELECT * FROM files
@@ -403,7 +402,7 @@ class MediaModel(context: Context?, ignoreContext: Boolean): Model(context, igno
 					${listWhereFilter()}
 					AND file_hash = #{hash}
 				""".trimIndent())
-				.mapTo(File.MAPPER)
+				.mapTo(FileRow.MAPPER)
 				.execute(hashMapOf<String, Any>(
 						"hash" to hash
 				)).await()
@@ -415,7 +414,7 @@ class MediaModel(context: Context?, ignoreContext: Boolean): Model(context, igno
 	 * @param source The ID of the source to check in
 	 * @since 1.5.0
 	 */
-	suspend fun fetchMediaByHashAndSource(hash: String, source: Int): RowSet<File> {
+	suspend fun fetchMediaByHashAndSource(hash: String, source: Int): RowSet<FileRow> {
 		return SqlTemplate
 				.forQuery(client, """
 					SELECT * FROM files
@@ -424,7 +423,7 @@ class MediaModel(context: Context?, ignoreContext: Boolean): Model(context, igno
 					AND file_hash = #{hash}
 					AND file_source = #{source}
 				""".trimIndent())
-				.mapTo(File.MAPPER)
+				.mapTo(FileRow.MAPPER)
 				.execute(hashMapOf<String, Any>(
 						"hash" to hash,
 						"source" to source
@@ -442,7 +441,7 @@ class MediaModel(context: Context?, ignoreContext: Boolean): Model(context, igno
 	 * @return The all media file info entries that contain the specified tags
 	 * @since 1.4.0
 	 */
-	suspend fun fetchMediaListByTags(tags: Array<String>, excludeTags: Array<String>?, mime: String, order: Int, offset: Int, limit: Int): RowSet<FileInfo> {
+	suspend fun fetchMediaListByTags(tags: Array<String>, excludeTags: Array<String>?, mime: String, order: Int, offset: Int, limit: Int): RowSet<FileDto> {
 		val params = hashMapOf<String, Any?>(
 				"mime" to mime,
 				"offset" to offset,
@@ -478,7 +477,7 @@ class MediaModel(context: Context?, ignoreContext: Boolean): Model(context, igno
 
 		return SqlTemplate
 				.forQuery(client, sql)
-				.mapTo(FileInfo.MAPPER)
+				.mapTo(FileDto.MAPPER)
 				.execute(params).await()
 	}
 
@@ -496,7 +495,7 @@ class MediaModel(context: Context?, ignoreContext: Boolean): Model(context, igno
 	 * @return All media files matching the specified plaintext query
 	 * @since 1.4.0
 	 */
-	suspend fun fetchMediaByPlaintextQuery(query: String, offset: Int, limit: Int, order: Int, mime: String, searchNames: Boolean, searchFilenames: Boolean, searchTags: Boolean, searchDescs: Boolean): RowSet<FileInfo> {
+	suspend fun fetchMediaByPlaintextQuery(query: String, offset: Int, limit: Int, order: Int, mime: String, searchNames: Boolean, searchFilenames: Boolean, searchTags: Boolean, searchDescs: Boolean): RowSet<FileDto> {
 		val params = hashMapOf<String, Any?>(
 				"mime" to mime,
 				"offset" to offset,
@@ -537,7 +536,7 @@ class MediaModel(context: Context?, ignoreContext: Boolean): Model(context, igno
 					${orderBy(order)}
 					OFFSET #{offset} LIMIT #{limit}
 				""".trimIndent())
-				.mapTo(FileInfo.MAPPER)
+				.mapTo(FileDto.MAPPER)
 				.execute(params).await()
 	}
 
@@ -554,7 +553,7 @@ class MediaModel(context: Context?, ignoreContext: Boolean): Model(context, igno
 	 * @param order The order to return the media files
 	 * @since 1.4.2
 	 */
-	suspend fun fetchMediaListByTagsDateRangeAndCreator(tags: Array<String>?, excludeTags: Array<String>?, createdBefore: OffsetDateTime?, createdAfter: OffsetDateTime?, mime: String?, creator: Int?, offset: Int, limit: Int, order: Int): RowSet<FileInfo> {
+	suspend fun fetchMediaListByTagsDateRangeAndCreator(tags: Array<String>?, excludeTags: Array<String>?, createdBefore: OffsetDateTime?, createdAfter: OffsetDateTime?, mime: String?, creator: Int?, offset: Int, limit: Int, order: Int): RowSet<FileDto> {
 		val params = hashMapOf<String, Any?>(
 				"createdBefore" to createdBefore,
 				"createdAfter" to createdAfter,
@@ -616,7 +615,7 @@ class MediaModel(context: Context?, ignoreContext: Boolean): Model(context, igno
 					${orderBy(order)}
 					OFFSET #{offset} LIMIT #{limit}
 				""".trimIndent())
-				.mapTo(FileInfo.MAPPER)
+				.mapTo(FileDto.MAPPER)
 				.execute(params).await()
 	}
 
@@ -629,7 +628,7 @@ class MediaModel(context: Context?, ignoreContext: Boolean): Model(context, igno
 	 * @return All media files in the specified range
 	 * @since 1.4.0
 	 */
-	suspend fun fetchMediaListByListId(offset: Int, limit: Int, list: Int, order: Int): RowSet<FileInfo> {
+	suspend fun fetchMediaListByListId(offset: Int, limit: Int, list: Int, order: Int): RowSet<FileDto> {
 		val params = hashMapOf<String, Any?>(
 				"offset" to offset,
 				"limit" to limit,
@@ -647,7 +646,7 @@ class MediaModel(context: Context?, ignoreContext: Boolean): Model(context, igno
 					${orderBy(order)}
 					OFFSET #{offset} LIMIT #{limit}
 				""".trimIndent())
-				.mapTo(FileInfo.MAPPER)
+				.mapTo(FileDto.MAPPER)
 				.execute(params).await()
 	}
 
@@ -659,7 +658,7 @@ class MediaModel(context: Context?, ignoreContext: Boolean): Model(context, igno
 	 * @param order The order to return the media files
 	 * @since 1.5.0
 	 */
-	suspend fun fetchMediaBySource(source: Int, offset: Int, limit: Int, order: Int): RowSet<File> {
+	suspend fun fetchMediaBySource(source: Int, offset: Int, limit: Int, order: Int): RowSet<FileRow> {
 		return SqlTemplate
 				.forQuery(client, """
 					SELECT * FROM files
@@ -669,7 +668,7 @@ class MediaModel(context: Context?, ignoreContext: Boolean): Model(context, igno
 					${orderBy(order)}
 					OFFSET #{offset} LIMIT #{limit}
 				""".trimIndent())
-				.mapTo(File.MAPPER)
+				.mapTo(FileRow.MAPPER)
 				.execute(hashMapOf<String, Any>(
 						"source" to source,
 						"offset" to offset,

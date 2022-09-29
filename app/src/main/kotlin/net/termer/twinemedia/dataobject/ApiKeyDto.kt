@@ -1,23 +1,20 @@
-package net.termer.twinemedia.db.dataobject
+package net.termer.twinemedia.dataobject
 
+import io.vertx.kotlin.core.json.jsonObjectOf
 import io.vertx.sqlclient.templates.RowMapper
+import net.termer.twinemedia.util.JsonSerializable
+import net.termer.twinemedia.util.toJsonArray
 import net.termer.twinemedia.util.toStringArray
 import java.time.OffsetDateTime
 
 /**
- * Data class for an API key
+ * DTO for an API key
  * @since 1.4.0
  */
-class ApiKey(
-	/**
-	 * The key's internal sequential ID
-	 * @since 1.4.0
-	 */
-	val internalId: Int,
-
+class ApiKeyDto(
 	/**
 	 * The key's alphanumeric ID
-	 * @since 2.0.0
+	 * @since 1.4.0
 	 */
 	val id: String,
 
@@ -40,10 +37,10 @@ class ApiKey(
 	val jwt: String,
 
 	/**
-	 * The key creator's account ID
-	 * @since 2.0.0
+	 * The key's creator
+	 * @since 1.4.0
 	 */
-	val creatorId: Int,
+	val creator: RecordCreatorDto,
 
 	/**
 	 * The key's creation timestamp
@@ -56,20 +53,32 @@ class ApiKey(
 	 * @since 2.0.0
 	 */
 	val modifiedTs: OffsetDateTime
-) {
+): JsonSerializable() {
+	override fun toJson() = jsonObjectOf(
+		"id" to id,
+		"name" to name,
+		"permissions" to permissions.toJsonArray(),
+		"jwt" to jwt,
+		"creator" to creator.toJson(),
+		"createdTs" to createdTs.toString(),
+		"modifiedTs" to modifiedTs.toString()
+	)
+
 	companion object {
 		/**
 		 * The row mapper for this type of row
 		 * @since 1.4.0
 		 */
 		val MAPPER = RowMapper { row ->
-			ApiKey(
-				internalId = row.getInteger("id"),
+			ApiKeyDto(
 				id = row.getString("key_id"),
 				name = row.getString("key_name"),
 				permissions = row.getJsonArray("key_permissions").toStringArray(),
 				jwt = row.getString("key_jwt"),
-				creatorId = row.getInteger("key_creator"),
+				creator = RecordCreatorDto(
+					id = row.getString("key_creator_id"),
+					name = row.getString("key_creator_name")
+				),
 				createdTs = row.getOffsetDateTime("key_created_ts"),
 				modifiedTs = row.getOffsetDateTime("key_modified_ts")
 			)

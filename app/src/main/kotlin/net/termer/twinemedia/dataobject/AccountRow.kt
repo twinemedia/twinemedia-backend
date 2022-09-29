@@ -1,4 +1,4 @@
-package net.termer.twinemedia.db.dataobject
+package net.termer.twinemedia.dataobject
 
 import io.vertx.core.Vertx
 import io.vertx.core.json.JsonObject
@@ -13,7 +13,7 @@ import java.time.OffsetDateTime
  * Data class for an account
  * @since 1.2.0
  */
-class Account(
+class AccountRow(
 	/**
 	 * The key's internal sequential ID
 	 * @since 2.0.0
@@ -169,7 +169,7 @@ class Account(
          * @since 1.4.0
          */
 		val MAPPER = RowMapper { row ->
-			Account(
+			AccountRow(
                 internalId = row.getInteger("id"),
 				id = row.getString("account_id"),
                 email = row.getString("account_email"),

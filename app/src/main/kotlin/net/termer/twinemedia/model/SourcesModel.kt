@@ -4,8 +4,10 @@ import io.vertx.core.json.JsonObject
 import io.vertx.kotlin.coroutines.await
 import io.vertx.sqlclient.RowSet
 import io.vertx.sqlclient.templates.SqlTemplate
+import net.termer.twinemedia.dataobject.AccountRow
+import net.termer.twinemedia.dataobject.Source
+import net.termer.twinemedia.dataobject.SourceInfo
 import net.termer.twinemedia.db.Database.client
-import net.termer.twinemedia.db.dataobject.*
 import net.termer.twinemedia.source.FileSourceManager
 
 /**
@@ -13,13 +15,13 @@ import net.termer.twinemedia.source.FileSourceManager
  * @since 1.5.0
  */
 class SourcesModel {
-	private var _account: Account? = null
+	private var _account: AccountRow? = null
 
 	/**
 	 * The account associated with this model instance
 	 * @since 1.5.0
 	 */
-	var account: Account?
+	var account: AccountRow?
 		get() = _account
 		set(value) { _account = value }
 
@@ -28,7 +30,7 @@ class SourcesModel {
 	 * @param account The account to use for this model instance
 	 * @since 1.5.0
 	 */
-	constructor(account: Account) {
+	constructor(account: AccountRow) {
 		this.account = account
 	}
 	/**

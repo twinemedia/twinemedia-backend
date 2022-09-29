@@ -4,8 +4,8 @@ import io.vertx.kotlin.coroutines.await
 import io.vertx.sqlclient.RowSet
 import io.vertx.sqlclient.templates.SqlTemplate
 import net.termer.twinemedia.db.Database.client
-import net.termer.twinemedia.db.dataobject.List
-import net.termer.twinemedia.db.dataobject.ListInfo
+import net.termer.twinemedia.dataobject.List
+import net.termer.twinemedia.dataobject.ListInfo
 import net.termer.twinemedia.enumeration.ListType
 import net.termer.twinemedia.enumeration.ListVisibility
 import net.termer.twinemedia.util.toJsonArray

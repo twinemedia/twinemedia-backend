@@ -6,10 +6,16 @@ import io.vertx.core.json.JsonObject
  * Interface for classes that can be serialized to a [JsonObject]
  * @since 2.0.0
  */
-interface JsonSerializable {
+abstract class JsonSerializable {
 	/**
 	 * Returns a JSON-serialized representation of this object
-	 * @since 1.0.0
+	 * @since 2.0.0
 	 */
-	fun toJson(): JsonObject
+	abstract fun toJson(): JsonObject
+
+	/**
+	 * Returns the JSON representation of this object
+	 * @since 2.0.0
+	 */
+	override fun toString() = toJson().toString()
 }

@@ -1,4 +1,4 @@
-package net.termer.twinemedia.db.dataobject
+package net.termer.twinemedia.dataobject
 
 import io.vertx.core.json.JsonObject
 import io.vertx.sqlclient.templates.RowMapper

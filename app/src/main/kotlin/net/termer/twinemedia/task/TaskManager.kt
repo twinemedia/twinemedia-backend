@@ -3,7 +3,7 @@ package net.termer.twinemedia.task
 import io.vertx.core.Handler
 import io.vertx.kotlin.core.json.jsonObjectOf
 import kotlinx.coroutines.DelicateCoroutinesApi
-import net.termer.twinemedia.db.dataobject.Account
+import net.termer.twinemedia.dataobject.AccountRow
 import java.util.concurrent.ConcurrentHashMap
 
 /**
@@ -77,7 +77,7 @@ class TaskManager {
 	 * @return Whether the provided account can view the specified task
 	 * @since 1.5.0
 	 */
-	fun canAccountViewTask(account: Account, task: Task): Boolean {
+	fun canAccountViewTask(account: AccountRow, task: Task): Boolean {
 		return task.subjects.contains(account.id) || (task.isGlobal && (task.viewPermission == null || account.hasPermission(task.viewPermission)))
 	}
 
@@ -87,7 +87,7 @@ class TaskManager {
 	 * @return All tasks that are visible to the provided account
 	 * @since 1.5.0
 	 */
-	fun tasksViewableByAccount(account: Account): Array<Task> {
+	fun tasksViewableByAccount(account: AccountRow): Array<Task> {
 		val tasks = tasks
 		val res = ArrayList<Task>()
 
@@ -105,7 +105,7 @@ class TaskManager {
 	 * @return Whether the provided account can cancel the specified task
 	 * @since 1.5.0
 	 */
-	fun canAccountCancelTask(account: Account, task: Task): Boolean {
+	fun canAccountCancelTask(account: AccountRow, task: Task): Boolean {
 		return task.isCancellable && canAccountViewTask(account, task) && (task.cancelPermission == null || account.hasPermission(task.cancelPermission))
 	}
 

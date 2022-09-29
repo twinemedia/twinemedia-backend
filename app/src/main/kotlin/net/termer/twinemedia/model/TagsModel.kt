@@ -4,21 +4,21 @@ import io.vertx.kotlin.coroutines.await
 import io.vertx.sqlclient.RowSet
 import io.vertx.sqlclient.templates.SqlTemplate
 import net.termer.twinemedia.db.Database.client
-import net.termer.twinemedia.db.dataobject.Account
-import net.termer.twinemedia.db.dataobject.Tag
+import net.termer.twinemedia.dataobject.AccountRow
+import net.termer.twinemedia.dataobject.Tag
 
 /**
  * Database model for tags
  * @since 1.2.0
  */
 class TagsModel {
-	private var _account: Account? = null
+	private var _account: AccountRow? = null
 
 	/**
 	 * The account associated with this model instance
 	 * @since 1.2.0
 	 */
-	var account: Account?
+	var account: AccountRow?
 		get() = _account
 		set(value) { _account = value }
 
@@ -27,7 +27,7 @@ class TagsModel {
 	 * @param account The account to use for this model instance
 	 * @since 1.2.0
 	 */
-	constructor(account: Account) {
+	constructor(account: AccountRow) {
 		this.account = account
 	}
 	/**

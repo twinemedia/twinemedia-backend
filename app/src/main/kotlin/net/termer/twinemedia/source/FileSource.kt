@@ -4,7 +4,7 @@ import io.vertx.core.Vertx
 import io.vertx.core.buffer.Buffer
 import io.vertx.core.streams.ReadStream
 import io.vertx.core.streams.WriteStream
-import net.termer.twinemedia.db.dataobject.File
+import net.termer.twinemedia.dataobject.FileRow
 import net.termer.twinemedia.source.config.FileSourceConfig
 import net.termer.twinemedia.util.ConcurrentLock
 
@@ -104,7 +104,7 @@ interface FileSource {
 	 *
 	 * The file in the [StreamAndFile] returned by this method may or may not contain as detailed information as that returned by [getFile], and in fact may return no useful metadata at all.
 	 * If detailed information is required, [getFile] should be used.
-	 * The metadata returned from this method is used by the application to serve more accurate information when serving files, so a lack of important information will just result in information being pulled from the [File] entry of the file being served.
+	 * The metadata returned from this method is used by the application to serve more accurate information when serving files, so a lack of important information will just result in information being pulled from the [FileRow] entry of the file being served.
 	 * NEVER send information that may be wrong in this method. If information is a guess or not guaranteed to be correct, DO NOT SEND IT.
 	 * No information is better than incorrect information.
 	 * @param key The file's key

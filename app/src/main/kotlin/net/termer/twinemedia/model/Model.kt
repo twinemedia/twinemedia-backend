@@ -1,6 +1,6 @@
 package net.termer.twinemedia.model
 
-import net.termer.twinemedia.db.dataobject.Account
+import net.termer.twinemedia.dataobject.AccountRow
 
 /**
  * Abstract class to be implemented by database models.
@@ -28,6 +28,6 @@ abstract class Model(
 		 * The observer's account
 		 * @since 2.0.0
 		 */
-		val account: Account
+		val account: AccountRow
 	)
 }

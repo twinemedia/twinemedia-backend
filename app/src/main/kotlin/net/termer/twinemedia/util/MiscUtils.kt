@@ -2,6 +2,7 @@ package net.termer.twinemedia.util
 
 import io.vertx.core.Promise
 import io.vertx.core.json.JsonArray
+import io.vertx.core.json.JsonObject
 import io.vertx.kotlin.core.json.get
 import io.vertx.kotlin.coroutines.await
 import java.text.SimpleDateFormat
@@ -114,6 +115,20 @@ fun JsonArray.toIntArray() = ArrayList<Int>(size()).apply {
 			add(item.toInt())
 	}
 }.toTypedArray()
+
+/**
+ * Converts this array of JsonSerializable objects into a JsonArray
+ * @return This array as a JsonArray
+ * @since 2.0.0
+ */
+fun Array<JsonSerializable>.toJsonArray(): JsonArray {
+	val jsonArr = JsonArray(ArrayList<JsonObject>(size))
+
+	for(item in this)
+		jsonArr.add(item.toJson())
+
+	return jsonArr
+}
 
 /**
  * Converts this array into a JsonArray

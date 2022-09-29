@@ -1,4 +1,4 @@
-package net.termer.twinemedia.db.dataobject
+package net.termer.twinemedia.dataobject
 
 import io.vertx.kotlin.core.json.jsonObjectOf
 import io.vertx.sqlclient.templates.RowMapper
@@ -64,7 +64,7 @@ class AccountDto(
 	 * @since 2.0.0
 	 */
 	val modifiedTs: OffsetDateTime
-): JsonSerializable {
+): JsonSerializable() {
 	override fun toJson() = jsonObjectOf(
 		"id" to id,
 		"email" to email,
