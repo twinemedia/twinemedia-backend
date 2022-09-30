@@ -6,8 +6,8 @@ import io.vertx.sqlclient.RowSet
 import io.vertx.sqlclient.templates.SqlTemplate
 import net.termer.twinemedia.db.Database.client
 import net.termer.twinemedia.dataobject.AccountRow
-import net.termer.twinemedia.dataobject.ProcessPreset
-import net.termer.twinemedia.dataobject.ProcessPresetInfo
+import net.termer.twinemedia.dataobject.ProcessPresetRow
+import net.termer.twinemedia.dataobject.ProcessPresetDto
 
 /**
  * Database model for process presets
@@ -181,12 +181,12 @@ class ProcessesModel {
 	 * @return All data for the specified process
 	 * @since 1.4.0
 	 */
-	suspend fun fetchProcess(id: Int): RowSet<ProcessPreset> {
+	suspend fun fetchProcess(id: Int): RowSet<ProcessPresetRow> {
 		return SqlTemplate
 				.forQuery(client, """
 					SELECT * FROM processes WHERE ${viewWhereFilter()} AND id = #{id}
 				""".trimIndent())
-				.mapTo(ProcessPreset.MAPPER)
+				.mapTo(ProcessPresetRow.MAPPER)
 				.execute(hashMapOf<String, Any>(
 						"id" to id
 				)).await()
@@ -198,7 +198,7 @@ class ProcessesModel {
 	 * @return Info for the specified process
 	 * @since 1.4.0
 	 */
-	suspend fun fetchProcessInfo(id: Int): RowSet<ProcessPresetInfo> {
+	suspend fun fetchProcessInfo(id: Int): RowSet<ProcessPresetDto> {
 		return SqlTemplate
 				.forQuery(client, """
 					${infoSelect()}
@@ -206,7 +206,7 @@ class ProcessesModel {
 					${viewWhereFilter()}
 					AND processes.id = #{id}
 				""".trimIndent())
-				.mapTo(ProcessPresetInfo.MAPPER)
+				.mapTo(ProcessPresetDto.MAPPER)
 				.execute(hashMapOf<String, Any>(
 						"id" to id
 				)).await()
@@ -220,7 +220,7 @@ class ProcessesModel {
 	 * @return Info for all processes
 	 * @since 1.4.0
 	 */
-	suspend fun fetchProcesses(offset: Int, limit: Int, order: Int): RowSet<ProcessPresetInfo> {
+	suspend fun fetchProcesses(offset: Int, limit: Int, order: Int): RowSet<ProcessPresetDto> {
 		return SqlTemplate
 				.forQuery(client, """
 					${infoSelect()}
@@ -228,7 +228,7 @@ class ProcessesModel {
 					${orderBy(order)}
 					OFFSET #{offset} LIMIT #{limit}
 				""".trimIndent())
-				.mapTo(ProcessPresetInfo.MAPPER)
+				.mapTo(ProcessPresetDto.MAPPER)
 				.execute(hashMapOf<String, Any>(
 						"offset" to offset,
 						"limit" to limit
@@ -241,7 +241,7 @@ class ProcessesModel {
 	 * @return All processes for the specified mime
 	 * @since 1.4.0
 	 */
-	suspend fun fetchProcessesForMime(mime: String): RowSet<ProcessPresetInfo> {
+	suspend fun fetchProcessesForMime(mime: String): RowSet<ProcessPresetDto> {
 		return SqlTemplate
 				.forQuery(client, """
 					${infoSelect()}
@@ -249,7 +249,7 @@ class ProcessesModel {
 					${listWhereFilter()}
 					AND process_mime = #{mime}
 				""".trimIndent())
-				.mapTo(ProcessPresetInfo.MAPPER)
+				.mapTo(ProcessPresetDto.MAPPER)
 				.execute(hashMapOf<String, Any>(
 						"mime" to mime
 				)).await()
@@ -262,7 +262,7 @@ class ProcessesModel {
 	 * @return All processes for the specified mime
 	 * @since 1.4.0
 	 */
-	suspend fun fetchProcessesForMimeAndAccount(mime: String, account: Int): RowSet<ProcessPresetInfo> {
+	suspend fun fetchProcessesForMimeAndAccount(mime: String, account: Int): RowSet<ProcessPresetDto> {
 		return SqlTemplate
 				.forQuery(client, """
 					${infoSelect()}
@@ -271,7 +271,7 @@ class ProcessesModel {
 					AND #{mime} LIKE process_mime 
 					AND process_creator = #{account}
 				""".trimIndent())
-				.mapTo(ProcessPresetInfo.MAPPER)
+				.mapTo(ProcessPresetDto.MAPPER)
 				.execute(hashMapOf<String, Any>(
 						"mime" to mime,
 						"account" to account
