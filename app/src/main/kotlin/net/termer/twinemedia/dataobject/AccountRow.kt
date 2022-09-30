@@ -6,7 +6,6 @@ import io.vertx.kotlin.core.json.jsonObjectOf
 import io.vertx.sqlclient.templates.RowMapper
 import net.termer.twinemedia.db.hasCol
 import net.termer.twinemedia.util.containsPermission
-import net.termer.twinemedia.util.toStringArray
 import java.time.OffsetDateTime
 
 /**
@@ -174,10 +173,10 @@ class AccountRow(
 				id = row.getString("account_id"),
                 email = row.getString("account_email"),
                 name = row.getString("account_name"),
-                permissions = row.getJsonArray("account_permissions").toStringArray(),
+                permissions = row.getArrayOfStrings("account_permissions"),
                 isAdmin = row.getBoolean("account_admin"),
                 hash = row.getString("account_hash"),
-                excludeTags = row.getJsonArray("account_exclude_tags").toStringArray(),
+                excludeTags = row.getArrayOfStrings("account_exclude_tags"),
                 excludeOtherFiles = row.getBoolean("account_exclude_other_files"),
                 excludeOtherLists = row.getBoolean("account_exclude_other_lists"),
                 excludeOtherTags = row.getBoolean("account_exclude_other_tags"),
@@ -185,7 +184,7 @@ class AccountRow(
 				excludeOtherSources = row.getBoolean("account_exclude_other_sources"),
                 isApiKey = row.hasCol("key_id"),
                 keyPermissions = if(row.hasCol("key_id"))
-                    row.getJsonArray("key_permissions").toStringArray()
+                    row.getArrayOfStrings("key_permissions")
                 else null,
 				defaultSourceId = row.getInteger("account_default_source"),
 				fileCount = row.getInteger("account_file_count"),

@@ -3,7 +3,6 @@ package net.termer.twinemedia.dataobject
 import io.vertx.kotlin.core.json.jsonObjectOf
 import io.vertx.sqlclient.templates.RowMapper
 import net.termer.twinemedia.util.JsonSerializable
-import net.termer.twinemedia.util.toStringArray
 import java.time.OffsetDateTime
 
 /**
@@ -90,7 +89,7 @@ class AccountDto(
 				email = row.getString("account_email"),
 				name = row.getString("account_name"),
 				isAdmin = row.getBoolean("account_admin"),
-				permissions = row.getJsonArray("account_permissions").toStringArray(),
+				permissions = row.getArrayOfStrings("account_permissions"),
 				defaultSource = if(defaultSourceId == null) null else RecordSourceDto(
 					id = defaultSourceId,
 					name = row.getString("account_default_source_name"),

@@ -156,8 +156,8 @@ class ListDto(
 				type = intToListType(row.getInteger("list_type"))!!,
 				// Same rationale for this column as well
 				visibility = intToListVisibility(row.getInteger("list_visibility"))!!,
-				sourceTags = row.getJsonArray("list_source_tags").toStringArray(),
-				sourceExcludeTags = row.getJsonArray("list_source_exclude_tags").toStringArray(),
+				sourceTags = row.getArrayOfStrings("list_source_tags"),
+				sourceExcludeTags = row.getArrayOfStrings("list_source_exclude_tags"),
 				sourceMime = row.getString("list_source_mime"),
 				sourceCreatedBefore = row.getOffsetDateTime("list_source_created_before"),
 				sourceCreatedAfter = row.getOffsetDateTime("list_source_created_after"),

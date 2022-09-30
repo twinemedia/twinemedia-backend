@@ -5,7 +5,6 @@ import io.vertx.kotlin.core.json.jsonObjectOf
 import io.vertx.sqlclient.templates.RowMapper
 import net.termer.twinemedia.db.hasCol
 import net.termer.twinemedia.util.JsonSerializable
-import net.termer.twinemedia.util.toIntArray
 import net.termer.twinemedia.util.toJsonArray
 import java.time.OffsetDateTime
 

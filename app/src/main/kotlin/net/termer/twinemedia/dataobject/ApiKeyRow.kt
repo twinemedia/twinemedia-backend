@@ -1,7 +1,6 @@
 package net.termer.twinemedia.dataobject
 
 import io.vertx.sqlclient.templates.RowMapper
-import net.termer.twinemedia.util.toStringArray
 import java.time.OffsetDateTime
 
 /**
@@ -67,7 +66,7 @@ class ApiKeyRow(
 				internalId = row.getInteger("id"),
 				id = row.getString("key_id"),
 				name = row.getString("key_name"),
-				permissions = row.getJsonArray("key_permissions").toStringArray(),
+				permissions = row.getArrayOfStrings("key_permissions"),
 				jwt = row.getString("key_jwt"),
 				creatorId = row.getInteger("key_creator"),
 				createdTs = row.getOffsetDateTime("key_created_ts"),

@@ -67,13 +67,13 @@ class FileRow(
 	 * The file creator's account ID, or null if the account no longer exists
 	 * @since 1.4.0
 	 */
-	val creator: Int?,
+	val creatorId: Int?,
 
 	/**
 	 * The file's parent ID, of null if not a child
 	 * @since 1.4.0
 	 */
-	val parent: Int?,
+	val parentId: Int?,
 
 	/**
 	 * The file's hash
@@ -145,8 +145,8 @@ class FileRow(
 				key = row.getString("file_key"),
 				description = row.getString("file_description"),
 				meta = row.getJsonObject("file_meta"),
-				creator = row.getInteger("file_creator"),
-				parent = row.getInteger("file_parent"),
+				creatorId = row.getInteger("file_creator"),
+				parentId = row.getInteger("file_parent"),
 				hash = row.getString("file_hash"),
 				thumbnailKey = row.getString("file_thumbnail_key"),
 				isProcessing = row.getBoolean("file_processing"),
@@ -172,5 +172,5 @@ class FileRow(
 	 * @since 2.0.0
 	 */
 	val isChild: Boolean
-		get() = parent != null
+		get() = parentId != null
 }

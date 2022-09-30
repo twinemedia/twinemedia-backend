@@ -4,7 +4,6 @@ import io.vertx.kotlin.core.json.jsonObjectOf
 import io.vertx.sqlclient.templates.RowMapper
 import net.termer.twinemedia.util.JsonSerializable
 import net.termer.twinemedia.util.toJsonArray
-import net.termer.twinemedia.util.toStringArray
 import java.time.OffsetDateTime
 
 /**
@@ -73,7 +72,7 @@ class ApiKeyDto(
 			ApiKeyDto(
 				id = row.getString("key_id"),
 				name = row.getString("key_name"),
-				permissions = row.getJsonArray("key_permissions").toStringArray(),
+				permissions = row.getArrayOfStrings("key_permissions"),
 				jwt = row.getString("key_jwt"),
 				creator = RecordCreatorDto(
 					id = row.getString("key_creator_id"),
