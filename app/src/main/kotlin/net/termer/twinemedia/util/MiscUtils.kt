@@ -121,7 +121,7 @@ fun JsonArray.toIntArray() = ArrayList<Int>(size()).apply {
  * @return This array as a JsonArray
  * @since 2.0.0
  */
-fun Array<JsonSerializable>.toJsonArray(): JsonArray {
+fun Array<out JsonSerializable>.toJsonArray(): JsonArray {
 	val jsonArr = JsonArray(ArrayList<JsonObject>(size))
 
 	for(item in this)

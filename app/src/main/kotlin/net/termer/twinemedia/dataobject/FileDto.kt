@@ -99,7 +99,7 @@ class FileDto(
 	 * An array containing the file's tags, or null if they were not fetched
 	 * @since 2.0.0
 	 */
-	val tags: Array<Int>? = null, // TODO Use an array of TagDto objects that can be populated using some util function or something
+	val tags: Array<TagDto>? = null,
 
 	/**
 	 * The file's parent, or null if the file has no parent or if it was not fetched
