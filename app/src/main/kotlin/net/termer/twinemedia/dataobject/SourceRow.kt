@@ -7,44 +7,56 @@ import java.time.OffsetDateTime
 
 /**
  * Data class for a file source
- * @since 1.5.0
+ * @since 2.0.0
  */
-class Source(
+class SourceRow(
 	/**
 	 * The file source's internal sequential ID
-	 * @since 1.5.0
+	 * @since 2.0.0
 	 */
-	val id: Int,
+	val internalId: Int,
+
+	/**
+	 * The file source's alphanumeric ID
+	 * @since 2.0.0
+	 */
+	val id: String,
 
 	/**
 	 * The file source's type
-	 * @since 1.5.0
+	 * @since 2.0.0
 	 */
 	val type: String,
 
 	/**
 	 * The file source's name
-	 * @since 1.5.0
+	 * @since 2.0.0
 	 */
 	val name: String,
 
 	/**
 	 * The file source's configuration (different structure for each type, validate against the appropriate [FileSource] implementation)
-	 * @since 1.5.0
+	 * @since 2.0.0
 	 */
 	val config: JsonObject,
 
 	/**
 	 * The file source creator's account ID
-	 * @since 1.5.0
+	 * @since 2.0.0
 	 */
-	val creator: Int,
+	val creatorId: Int?,
 
 	/**
 	 * Whether the file source is available to be used by all users
-	 * @since 1.5.0
+	 * @since 2.0.0
 	 */
 	val isGlobal: Boolean,
+
+	/**
+	 * The number of files associated with the file source
+	 * @since 2.0.0
+	 */
+	val fileCount: Int,
 
 	/**
 	 * The file source's creation timestamp
@@ -61,16 +73,18 @@ class Source(
 	companion object {
 		/**
 		 * The row mapper for this type of row
-		 * @since 1.5.0
+		 * @since 2.0.0
 		 */
 		val MAPPER = RowMapper { row ->
-			Source(
-				id = row.getInteger("id"),
+			SourceRow(
+				internalId = row.getInteger("id"),
+				id = row.getString("source_id"),
 				type = row.getString("source_type"),
 				name = row.getString("source_name"),
 				config = row.getJsonObject("source_config"),
-				creator = row.getInteger("source_creator"),
+				creatorId = row.getInteger("source_creator"),
 				isGlobal = row.getBoolean("source_global"),
+				fileCount = row.getInteger("source_file_count"),
 				createdTs = row.getOffsetDateTime("source_created_ts"),
 				modifiedTs = row.getOffsetDateTime("source_modified_ts")
 			)

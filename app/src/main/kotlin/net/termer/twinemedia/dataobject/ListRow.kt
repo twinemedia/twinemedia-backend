@@ -38,10 +38,10 @@ class ListRow(
 	val description: String,
 
 	/**
-	 * The list creator's account ID
+	 * The list creator's account ID, or null if the account no longer exists
 	 * @since 2.0.0
 	 */
-	val creator: Int,
+	val creatorId: Int?,
 
 	/**
 	 * The list's type
@@ -127,7 +127,7 @@ class ListRow(
 				id = row.getString("list_id"),
 				name = row.getString("list_name"),
 				description = row.getString("list_description"),
-				creator = row.getInteger("list_creator"),
+				creatorId = row.getInteger("list_creator"),
 				// Allow throwing of NPE here because an invalid type should never have been in the database in the first place
 				type = intToListType(row.getInteger("list_type"))!!,
 				// Same rationale for this column as well

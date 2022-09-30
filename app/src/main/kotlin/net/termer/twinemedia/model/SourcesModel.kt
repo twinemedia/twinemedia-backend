@@ -5,8 +5,8 @@ import io.vertx.kotlin.coroutines.await
 import io.vertx.sqlclient.RowSet
 import io.vertx.sqlclient.templates.SqlTemplate
 import net.termer.twinemedia.dataobject.AccountRow
-import net.termer.twinemedia.dataobject.Source
-import net.termer.twinemedia.dataobject.SourceInfo
+import net.termer.twinemedia.dataobject.SourceRow
+import net.termer.twinemedia.dataobject.SourceDto
 import net.termer.twinemedia.db.Database.client
 import net.termer.twinemedia.source.FileSourceManager
 
@@ -188,14 +188,14 @@ class SourcesModel {
 	 * @return The specified source
 	 * @since 1.5.0
 	 */
-	suspend fun fetchSource(id: Int): RowSet<Source> {
+	suspend fun fetchSource(id: Int): RowSet<SourceRow> {
 		return SqlTemplate
 				.forQuery(client, """
 					SELECT * FROM sources
 					WHERE ${viewWhereFilter()}
 					AND sources.id = #{id}
 				""".trimIndent())
-				.mapTo(Source.MAPPER)
+				.mapTo(SourceRow.MAPPER)
 				.execute(hashMapOf<String, Any>(
 						"id" to id
 				)).await()
@@ -207,14 +207,14 @@ class SourcesModel {
 	 * @return The specified source's info
 	 * @since 1.5.0
 	 */
-	suspend fun fetchSourceInfo(id: Int): RowSet<SourceInfo> {
+	suspend fun fetchSourceInfo(id: Int): RowSet<SourceDto> {
 		return SqlTemplate
 				.forQuery(client, """
 					${infoSelect("source_config AS config")}
 					WHERE ${viewWhereFilter()}
 					AND sources.id = #{id}
 				""".trimIndent())
-				.mapTo(SourceInfo.MAPPER)
+				.mapTo(SourceDto.MAPPER)
 				.execute(hashMapOf<String, Any>(
 						"id" to id
 				)).await()
@@ -228,7 +228,7 @@ class SourcesModel {
 	 * @return All sources
 	 * @since 1.5.0
 	 */
-	suspend fun fetchAllSources(offset: Int, limit: Int, order: Int): RowSet<Source> {
+	suspend fun fetchAllSources(offset: Int, limit: Int, order: Int): RowSet<SourceRow> {
 		return SqlTemplate
 				.forQuery(client, """
 					SELECT * FROM sources
@@ -236,7 +236,7 @@ class SourcesModel {
 					${orderBy(order)}
 					OFFSET #{offset} LIMIT #{limit}
 				""".trimIndent())
-				.mapTo(Source.MAPPER)
+				.mapTo(SourceRow.MAPPER)
 				.execute(hashMapOf<String, Any>(
 						"offset" to offset,
 						"limit" to limit
@@ -251,7 +251,7 @@ class SourcesModel {
 	 * @return Info for all sources
 	 * @since 1.5.0
 	 */
-	suspend fun fetchSources(offset: Int, limit: Int, order: Int): RowSet<SourceInfo> {
+	suspend fun fetchSources(offset: Int, limit: Int, order: Int): RowSet<SourceDto> {
 		return SqlTemplate
 				.forQuery(client, """
 					${infoSelect()}
@@ -259,7 +259,7 @@ class SourcesModel {
 					${orderBy(order)}
 					OFFSET #{offset} LIMIT #{limit}
 				""".trimIndent())
-				.mapTo(SourceInfo.MAPPER)
+				.mapTo(SourceDto.MAPPER)
 				.execute(hashMapOf<String, Any>(
 						"offset" to offset,
 						"limit" to limit
@@ -275,7 +275,7 @@ class SourcesModel {
 	 * @return Info for all sources with the specified creator
 	 * @since 1.5.0
 	 */
-	suspend fun fetchSourcesByCreator(creator: Int, offset: Int, limit: Int, order: Int): RowSet<SourceInfo> {
+	suspend fun fetchSourcesByCreator(creator: Int, offset: Int, limit: Int, order: Int): RowSet<SourceDto> {
 		return SqlTemplate
 				.forQuery(client, """
 					${infoSelect()}
@@ -284,7 +284,7 @@ class SourcesModel {
 					${orderBy(order)}
 					OFFSET #{offset} LIMIT #{limit}
 				""".trimIndent())
-				.mapTo(SourceInfo.MAPPER)
+				.mapTo(SourceDto.MAPPER)
 				.execute(hashMapOf<String, Any>(
 						"creator" to creator,
 						"offset" to offset,
@@ -302,7 +302,7 @@ class SourcesModel {
 	 * @return Info for all sources with the specified creator
 	 * @since 1.5.0
 	 */
-	suspend fun fetchSourcesByCreatorAndOrPlaintextQuery(creator: Int?, query: String?, offset: Int, limit: Int, order: Int): RowSet<SourceInfo> {
+	suspend fun fetchSourcesByCreatorAndOrPlaintextQuery(creator: Int?, query: String?, offset: Int, limit: Int, order: Int): RowSet<SourceDto> {
 		return SqlTemplate
 				.forQuery(client, """
 					${infoSelect()}
@@ -312,7 +312,7 @@ class SourcesModel {
 					${orderBy(order)}
 					OFFSET #{offset} LIMIT #{limit}
 				""".trimIndent())
-				.mapTo(SourceInfo.MAPPER)
+				.mapTo(SourceDto.MAPPER)
 				.execute(hashMapOf<String, Any?>(
 						"creator" to creator,
 						"queryRaw" to query,
