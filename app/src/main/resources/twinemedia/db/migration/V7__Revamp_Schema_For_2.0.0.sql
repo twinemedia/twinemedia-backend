@@ -366,14 +366,11 @@ alter table process_presets
     rename column process_settings to preset_settings;
 alter table process_presets
     rename column process_creator to preset_creator;
-alter table process_presets
-    alter column preset_creator drop not null;
-update process_presets set preset_creator = null
-    where (select count(*) from accounts where accounts.id = preset_creator) < 1;
+delete from process_presets where (select count(*) from accounts where accounts.id = preset_creator) < 1;
 alter table process_presets
     add constraint process_preset_creator_fk
         foreign key (preset_creator) references accounts (id)
-        on delete set null;
+        on delete cascade;
 alter table process_presets
     rename column process_created_on to preset_created_ts;
 alter table process_presets
