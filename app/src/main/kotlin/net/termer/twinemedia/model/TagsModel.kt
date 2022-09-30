@@ -5,7 +5,7 @@ import io.vertx.sqlclient.RowSet
 import io.vertx.sqlclient.templates.SqlTemplate
 import net.termer.twinemedia.db.Database.client
 import net.termer.twinemedia.dataobject.AccountRow
-import net.termer.twinemedia.dataobject.Tag
+import net.termer.twinemedia.dataobject.TagRow
 
 /**
  * Database model for tags
@@ -85,7 +85,7 @@ class TagsModel {
 	 * @return All tags matching the specified term
 	 * @since 1.4.0
 	 */
-	suspend fun fetchTagsByTerm(term: String, offset: Int, limit: Int, order: Int): RowSet<Tag> {
+	suspend fun fetchTagsByTerm(term: String, offset: Int, limit: Int, order: Int): RowSet<TagRow> {
 		return SqlTemplate
 				.forQuery(client, """
 					SELECT
@@ -110,7 +110,7 @@ class TagsModel {
 					${orderBy(order)}
 					OFFSET #{offset} LIMIT #{limit}
 				""".trimIndent())
-				.mapTo(Tag.MAPPER)
+				.mapTo(TagRow.MAPPER)
 				.execute(hashMapOf<String, Any>(
 						"term" to term,
 						"offset" to offset,
@@ -126,7 +126,7 @@ class TagsModel {
 	 * @return All tags
 	 * @since 1.4.0
 	 */
-	suspend fun fetchAllTags(offset: Int, limit: Int, order: Int): RowSet<Tag> {
+	suspend fun fetchAllTags(offset: Int, limit: Int, order: Int): RowSet<TagRow> {
 		return SqlTemplate
 				.forQuery(client, """
 					SELECT
@@ -150,7 +150,7 @@ class TagsModel {
 					${orderBy(order)}
 					OFFSET #{offset} LIMIT #{limit}
 				""".trimIndent())
-				.mapTo(Tag.MAPPER)
+				.mapTo(TagRow.MAPPER)
 				.execute(hashMapOf<String, Any>(
 						"offset" to offset,
 						"limit" to limit
@@ -163,7 +163,7 @@ class TagsModel {
 	 * @return All info about the specified tag
 	 * @since 1.4.0
 	 */
-	suspend fun fetchTagInfo(tag: String): RowSet<Tag> {
+	suspend fun fetchTagInfo(tag: String): RowSet<TagRow> {
 		return SqlTemplate
 				.forQuery(client, """
 					SELECT
@@ -174,7 +174,7 @@ class TagsModel {
 					${whereFilter()}
 					AND media_tags::jsonb ? LOWER(#{tag})
 				""".trimIndent())
-				.mapTo(Tag.MAPPER)
+				.mapTo(TagRow.MAPPER)
 				.execute(hashMapOf<String, Any>(
 						"tag" to tag
 				)).await()
