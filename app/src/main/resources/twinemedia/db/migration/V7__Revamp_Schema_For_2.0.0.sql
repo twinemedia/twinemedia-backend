@@ -37,6 +37,7 @@ create table tags
     id              serial                                           not null,
     tag_id          char(10)                                         not null,
     tag_name        varchar(256)                                     not null,
+    tag_description varchar(1024)                         not null default '',
     tag_creator     integer,
     tag_file_count  integer                                not null default 0,
     tag_created_ts  timestamp with time zone default NOW(),
