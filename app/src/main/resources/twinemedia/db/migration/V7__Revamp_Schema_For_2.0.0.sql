@@ -1,12 +1,24 @@
 --- UTIL FUNCTIONS ---
 create function pg_temp.gen_id() returns text as
-$$
-    select
+$$ begin
+    return (select
         array_to_string(array(
             select substr('abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789_-', ((random()*(64-1)+1)::integer), 1)
             from generate_series(1, 10)
         ), '')
-$$ language sql;
+    );
+end $$ language plpgsql;
+create function pg_temp.jsonb_to_str_array(json_array jsonb) returns text[] as
+$$ begin
+    if json_array is null then
+        return (select null::text[]);
+    else
+        return (
+            select coalesce(array_agg(substr(value::text, 2, length(value::text)-2)), array[]::text[])
+            from json_array_elements(json_array::json) json_vals
+        );
+    end if;
+end $$ language plpgsql;
 --- END UTIL FUNCTIONS ---
 
 -- Rename tags to "tags_view" so that we can still access it before deleting it
@@ -128,6 +140,18 @@ alter table accounts
 create unique index account_email_idx
     on accounts (lower(account_email));
 alter table accounts
+    alter column account_permissions drop default;
+alter table accounts
+    alter column account_permissions type varchar(256)[] using pg_temp.jsonb_to_str_array(account_permissions);
+alter table accounts
+    alter column account_permissions set default array[]::varchar(256)[];
+alter table accounts
+    alter column account_exclude_tags drop default;
+alter table accounts
+    alter column account_exclude_tags type varchar(256)[] using pg_temp.jsonb_to_str_array(account_exclude_tags);
+alter table accounts
+    alter column account_exclude_tags set default array[]::varchar(256)[];
+alter table accounts
     alter column account_default_source drop not null;
 alter table accounts
     alter column account_default_source drop default;
@@ -169,6 +193,12 @@ create unique index api_key_id_idx
     on api_keys (key_id);
 alter table api_keys
     alter column key_name type varchar(256);
+alter table api_keys
+    alter column key_permissions drop default;
+alter table api_keys
+    alter column key_permissions type varchar(256)[] using pg_temp.jsonb_to_str_array(key_permissions);
+alter table api_keys
+    alter column key_permissions set default array[]::varchar(256)[];
 alter table api_keys
     rename column key_owner to key_creator;
 delete from api_keys where (select count(*) from accounts where accounts.id = key_creator) < 1;
@@ -326,6 +356,18 @@ alter table lists
     add constraint list_creator_fk
         foreign key (list_creator) references accounts (id)
         on delete set null;
+alter table lists
+    alter column list_source_tags drop default;
+alter table lists
+    alter column list_source_tags type varchar(256)[] using pg_temp.jsonb_to_str_array(list_source_tags);
+alter table lists
+    alter column list_source_tags set default array[]::varchar(256)[];
+alter table lists
+    alter column list_source_exclude_tags drop default;
+alter table lists
+    alter column list_source_exclude_tags type varchar(256)[] using pg_temp.jsonb_to_str_array(list_source_exclude_tags);
+alter table lists
+    alter column list_source_exclude_tags set default array[]::varchar(256)[];
 alter table lists
     rename column list_created_on to list_created_ts;
 alter table lists
@@ -555,4 +597,5 @@ create trigger handle_list_type_change
 
 --- CLEAN UP UTIL FUNCTIONS ---
 drop function pg_temp.gen_id;
+drop function pg_temp.jsonb_to_str_array;
 --- END CLEAN UP UTIL FUNCTIONS ---
