@@ -20,7 +20,7 @@ class RecordCreatorDto(
 	 * @since 2.0.0
 	 */
 	val name: String
-): JsonSerializable {
+): JsonSerializable() {
 	override fun toJson() = jsonObjectOf(
 		"id" to id,
 		"name" to name

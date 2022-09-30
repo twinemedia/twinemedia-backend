@@ -26,7 +26,7 @@ class RecordSourceDto(
 	 * @since 2.0.0
 	 */
 	val type: String
-): JsonSerializable {
+): JsonSerializable() {
 	override fun toJson() = jsonObjectOf(
 		"id" to id,
 		"name" to name,
