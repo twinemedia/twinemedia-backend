@@ -10,7 +10,7 @@ import java.time.OffsetDateTime
 
 /**
  * Data class for an account
- * @since 1.2.0
+ * @since 2.0.0
  */
 class AccountRow(
 	/**
@@ -27,19 +27,19 @@ class AccountRow(
 
 	/**
      * The account's email address
-     * @since 1.2.0
+     * @since 2.0.0
      */
     val email: String,
 
 	/**
      * The account's name
-     * @since 1.2.0
+     * @since 2.0.0
      */
     val name: String,
 
 	/**
      * An array of the account's permissions
-     * @since 1.2.0
+     * @since 2.0.0
      */
     val permissions: Array<String>,
 
@@ -51,55 +51,55 @@ class AccountRow(
 
 	/**
      * The account's password hash
-     * @since 1.2.0
+     * @since 2.0.0
      */
     val hash: String,
 
 	/**
      * The tags to exclude globally when listing and searching files
-     * @since 1.2.0
+     * @since 2.0.0
      */
     val excludeTags: Array<String>,
 
 	/**
      * Whether to globally exclude files created by other accounts
-     * @since 1.2.0
+     * @since 2.0.0
      */
     val excludeOtherFiles: Boolean,
 
 	/**
      * Whether to globally exclude lists created by other accounts
-     * @since 1.2.0
+     * @since 2.0.0
      */
     val excludeOtherLists: Boolean,
 
 	/**
      * Whether to globally exclude tags on files created by other accounts
-     * @since 1.2.0
+     * @since 2.0.0
      */
     val excludeOtherTags: Boolean,
 
 	/**
      * Whether to globally exclude process presets created by other accounts
-     * @since 1.2.0
+     * @since 2.0.0
      */
     val excludeOtherProcesses: Boolean,
 
 	/**
      * Whether to globally exclude file sources created by other accounts
-     * @since 1.5.0
+     * @since 2.0.0
      */
     val excludeOtherSources: Boolean,
 
 	/**
      * Whether this account is being accessed by an API key
-     * @since 1.3.0
+     * @since 2.0.0
      */
     val isApiKey: Boolean = false,
 
 	/**
      * An array of permissions that this key is authorized to use
-     * @since 1.3.0
+     * @since 2.0.0
      */
     val keyPermissions: Array<String>? = null,
 
@@ -143,7 +143,7 @@ class AccountRow(
 	/**
 	 * Returns whether this user has administrator permissions
 	 * @return whether this user has administrator permissions
-	 * @since 1.3.0
+	 * @since 2.0.0
 	 */
 	fun hasAdminPermission() = !isApiKey && isAdmin
 
@@ -152,7 +152,7 @@ class AccountRow(
 	 * @param vertx The Vert.x instance to use for sending the event
 	 * @param type The event type
 	 * @param json The event's JSON body
-	 * @since 1.5.0
+	 * @since 2.0.0
 	 */
 	fun sendEvent(vertx: Vertx, type: String, json: JsonObject = JsonObject()) {
 		vertx.eventBus().publish("twinemedia.event.account", jsonObjectOf(
@@ -165,7 +165,7 @@ class AccountRow(
 	companion object {
         /**
          * The row mapper for this type of row
-         * @since 1.4.0
+         * @since 2.0.0
          */
 		val MAPPER = RowMapper { row ->
 			AccountRow(

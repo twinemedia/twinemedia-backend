@@ -6,18 +6,18 @@ import java.time.OffsetDateTime
 
 /**
  * Data class for a file
- * @since 1.4.0
+ * @since 2.0.0
  */
 class FileRow(
 	/**
 	 * The file's internal sequential ID
-	 * @since 1.4.0
+	 * @since 2.0.0
 	 */
 	val internalId: Int,
 
 	/**
 	 * The file's alphanumeric ID
-	 * @since 1.4.0
+	 * @since 2.0.0
 	 */
 	val id: String,
 
@@ -29,61 +29,61 @@ class FileRow(
 
 	/**
 	 * The file's name
-	 * @since 1.4.0
+	 * @since 2.0.0
 	 */
 	val name: String,
 
 	/**
 	 * The file's size in bytes
-	 * @since 1.4.0
+	 * @since 2.0.0
 	 */
 	val size: Long,
 
 	/**
 	 * The file's MIME type
-	 * @since 1.4.0
+	 * @since 2.0.0
 	 */
 	val mime: String,
 
 	/**
 	 * The file's key on the file source on which it is stored
-	 * @since 1.4.0
+	 * @since 2.0.0
 	 */
 	val key: String,
 
 	/**
 	 * The file's description
-	 * @since 1.4.0
+	 * @since 2.0.0
 	 */
 	val description: String,
 
 	/**
 	 * Additional metadata for the file (such as video/audio bitrate, resolution, etc.) in JSON format
-	 * @since 1.4.0
+	 * @since 2.0.0
 	 */
 	val meta: JsonObject,
 
 	/**
 	 * The file creator's account ID, or null if the account no longer exists
-	 * @since 1.4.0
+	 * @since 2.0.0
 	 */
 	val creatorId: Int?,
 
 	/**
 	 * The file's parent ID, of null if not a child
-	 * @since 1.4.0
+	 * @since 2.0.0
 	 */
 	val parentId: Int?,
 
 	/**
 	 * The file's hash
-	 * @since 1.4.0
+	 * @since 2.0.0
 	 */
 	val hash: String,
 
 	/**
 	 * The file's thumbnail key, or null if the file has no thumbnail
-	 * @since 1.4.0
+	 * @since 2.0.0
 	 */
 	val thumbnailKey: String?,
 
@@ -95,7 +95,7 @@ class FileRow(
 
 	/**
 	 * The error that caused the file's processing to fail, or null if no error has occurred
-	 * @since 1.4.0
+	 * @since 2.0.0
 	 */
 	val processError: String?,
 
@@ -132,7 +132,7 @@ class FileRow(
 	companion object {
 		/**
 		 * The row mapper for this type of row
-		 * @since 1.4.0
+		 * @since 2.0.0
 		 */
 		val MAPPER = RowMapper { row ->
 			FileRow(

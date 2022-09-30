@@ -5,12 +5,12 @@ import java.time.OffsetDateTime
 
 /**
  * Data class for an API key
- * @since 1.4.0
+ * @since 2.0.0
  */
 class ApiKeyRow(
 	/**
 	 * The key's internal sequential ID
-	 * @since 1.4.0
+	 * @since 2.0.0
 	 */
 	val internalId: Int,
 
@@ -22,19 +22,19 @@ class ApiKeyRow(
 
 	/**
 	 * The user-defined name of the key
-	 * @since 1.4.0
+	 * @since 2.0.0
 	 */
 	val name: String,
 
 	/**
 	 * The permissions this key was granted
-	 * @since 1.4.0
+	 * @since 2.0.0
 	 */
 	val permissions: Array<String>,
 
 	/**
 	 * The key's JWT authentication token
-	 * @since 1.4.0
+	 * @since 2.0.0
 	 */
 	val jwt: String,
 
@@ -59,7 +59,7 @@ class ApiKeyRow(
 	companion object {
 		/**
 		 * The row mapper for this type of row
-		 * @since 1.4.0
+		 * @since 2.0.0
 		 */
 		val MAPPER = RowMapper { row ->
 			ApiKeyRow(
