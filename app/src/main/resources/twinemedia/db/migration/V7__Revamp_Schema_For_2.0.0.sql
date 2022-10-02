@@ -118,8 +118,8 @@ do $$
         -- Update tag file counts and creation timestamps
         update tags set
             tag_file_count = (select count(*) from tag_uses where use_tag = tags.id),
-            tag_created_ts = (select use_created_ts from tag_uses where use_tag = tags.id order by tag_created_ts limit 1),
-            tag_modified_ts = (select use_created_ts from tag_uses where use_tag = tags.id order by tag_created_ts limit 1);
+            tag_created_ts = coalesce((select use_created_ts from tag_uses where use_tag = tags.id order by tag_created_ts limit 1), now()),
+            tag_modified_ts = coalesce((select use_created_ts from tag_uses where use_tag = tags.id order by tag_created_ts limit 1), now());
 
         -- Disallow nulls now that timestamps are populated
         alter table tags
