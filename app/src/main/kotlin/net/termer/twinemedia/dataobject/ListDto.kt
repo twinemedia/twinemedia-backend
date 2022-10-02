@@ -1,7 +1,7 @@
 package net.termer.twinemedia.dataobject
 
 import io.vertx.kotlin.core.json.jsonObjectOf
-import io.vertx.sqlclient.templates.RowMapper
+import io.vertx.sqlclient.Row
 import net.termer.twinemedia.enumeration.ListType
 import net.termer.twinemedia.enumeration.ListVisibility
 import net.termer.twinemedia.util.*
@@ -137,10 +137,10 @@ class ListDto(
 
 	companion object {
 		/**
-		 * The row mapper for this type of row
+		 * Maps a row to a new object instance
 		 * @since 2.0.0
 		 */
-		val MAPPER = RowMapper { row ->
+		fun fromRow(row: Row) {
 			val listCreatorId = row.getString("list_creator_id")
 
 			ListDto(

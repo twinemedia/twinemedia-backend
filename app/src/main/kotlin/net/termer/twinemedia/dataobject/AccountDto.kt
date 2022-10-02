@@ -1,7 +1,7 @@
 package net.termer.twinemedia.dataobject
 
 import io.vertx.kotlin.core.json.jsonObjectOf
-import io.vertx.sqlclient.templates.RowMapper
+import io.vertx.sqlclient.Row
 import net.termer.twinemedia.util.JsonSerializable
 import java.time.OffsetDateTime
 
@@ -78,10 +78,10 @@ class AccountDto(
 
 	companion object {
 		/**
-		 * The row mapper for this type of row
+		 * Maps a row to a new object instance
 		 * @since 2.0.0
 		 */
-		val MAPPER = RowMapper { row ->
+		fun fromRow(row: Row) {
 			val defaultSourceId = row.getString("account_default_source_id")
 
 			AccountDto(

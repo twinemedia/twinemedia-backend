@@ -1,6 +1,6 @@
 package net.termer.twinemedia.dataobject
 
-import io.vertx.sqlclient.templates.RowMapper
+import io.vertx.sqlclient.Row
 import java.time.OffsetDateTime
 
 /**
@@ -58,10 +58,10 @@ class TagRow(
 ) {
 	companion object {
 		/**
-		 * The row mapper for this type of row
+		 * Maps a row to a new object instance
 		 * @since 2.0.0
 		 */
-		val MAPPER = RowMapper { row ->
+		fun fromRow(row: Row) {
 			TagRow(
 				internalId = row.getInteger("id"),
 				id = row.getString("tag_id"),

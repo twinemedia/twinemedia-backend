@@ -1,7 +1,7 @@
 package net.termer.twinemedia.dataobject
 
 import io.vertx.kotlin.core.json.jsonObjectOf
-import io.vertx.sqlclient.templates.RowMapper
+import io.vertx.sqlclient.Row
 import net.termer.twinemedia.util.JsonSerializable
 import net.termer.twinemedia.util.toJsonArray
 import java.time.OffsetDateTime
@@ -65,22 +65,20 @@ class ApiKeyDto(
 
 	companion object {
 		/**
-		 * The row mapper for this type of row
-		 * @since 1.4.0
+		 * Maps a row to a new object instance
+		 * @since 2.0.0
 		 */
-		val MAPPER = RowMapper { row ->
-			ApiKeyDto(
-				id = row.getString("key_id"),
-				name = row.getString("key_name"),
-				permissions = row.getArrayOfStrings("key_permissions"),
-				jwt = row.getString("key_jwt"),
-				creator = RecordCreatorDto(
-					id = row.getString("key_creator_id"),
-					name = row.getString("key_creator_name")
-				),
-				createdTs = row.getOffsetDateTime("key_created_ts"),
-				modifiedTs = row.getOffsetDateTime("key_modified_ts")
-			)
-		}
+		fun fromRow(row: Row) = ApiKeyDto(
+			id = row.getString("key_id"),
+			name = row.getString("key_name"),
+			permissions = row.getArrayOfStrings("key_permissions"),
+			jwt = row.getString("key_jwt"),
+			creator = RecordCreatorDto(
+				id = row.getString("key_creator_id"),
+				name = row.getString("key_creator_name")
+			),
+			createdTs = row.getOffsetDateTime("key_created_ts"),
+			modifiedTs = row.getOffsetDateTime("key_modified_ts")
+		)
 	}
 }

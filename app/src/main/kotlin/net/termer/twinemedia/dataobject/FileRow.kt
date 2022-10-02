@@ -1,7 +1,7 @@
 package net.termer.twinemedia.dataobject
 
 import io.vertx.core.json.JsonObject
-import io.vertx.sqlclient.templates.RowMapper
+import io.vertx.sqlclient.Row
 import java.time.OffsetDateTime
 
 /**
@@ -131,33 +131,31 @@ class FileRow(
 ) {
 	companion object {
 		/**
-		 * The row mapper for this type of row
+		 * Maps a row to a new object instance
 		 * @since 2.0.0
 		 */
-		val MAPPER = RowMapper { row ->
-			FileRow(
-				internalId = row.getInteger("id"),
-				id = row.getString("file_id"),
-				title = row.getString("file_name"),
-				name = row.getString("file_filename"),
-				size = row.getLong("file_size"),
-				mime = row.getString("file_mime"),
-				key = row.getString("file_key"),
-				description = row.getString("file_description"),
-				meta = row.getJsonObject("file_meta"),
-				creatorId = row.getInteger("file_creator"),
-				parentId = row.getInteger("file_parent"),
-				hash = row.getString("file_hash"),
-				thumbnailKey = row.getString("file_thumbnail_key"),
-				isProcessing = row.getBoolean("file_processing"),
-				processError = row.getString("file_process_error"),
-				sourceId = row.getInteger("file_source"),
-				tagCount = row.getInteger("file_tag_count"),
-				childCount = row.getInteger("file_child_count"),
-				createdTs = row.getOffsetDateTime("file_created_ts"),
-				modifiedTs = row.getOffsetDateTime("file_modified_ts")
-			)
-		}
+		fun fromRow(row: Row) = FileRow(
+			internalId = row.getInteger("id"),
+			id = row.getString("file_id"),
+			title = row.getString("file_name"),
+			name = row.getString("file_filename"),
+			size = row.getLong("file_size"),
+			mime = row.getString("file_mime"),
+			key = row.getString("file_key"),
+			description = row.getString("file_description"),
+			meta = row.getJsonObject("file_meta"),
+			creatorId = row.getInteger("file_creator"),
+			parentId = row.getInteger("file_parent"),
+			hash = row.getString("file_hash"),
+			thumbnailKey = row.getString("file_thumbnail_key"),
+			isProcessing = row.getBoolean("file_processing"),
+			processError = row.getString("file_process_error"),
+			sourceId = row.getInteger("file_source"),
+			tagCount = row.getInteger("file_tag_count"),
+			childCount = row.getInteger("file_child_count"),
+			createdTs = row.getOffsetDateTime("file_created_ts"),
+			modifiedTs = row.getOffsetDateTime("file_modified_ts")
+		)
 	}
 
 	/**

@@ -2,7 +2,7 @@ package net.termer.twinemedia.dataobject
 
 import io.vertx.core.json.JsonObject
 import io.vertx.kotlin.core.json.jsonObjectOf
-import io.vertx.sqlclient.templates.RowMapper
+import io.vertx.sqlclient.Row
 import net.termer.twinemedia.util.JsonSerializable
 import net.termer.twinemedia.util.hasCol
 import java.time.OffsetDateTime
@@ -66,10 +66,10 @@ class TagDto(
 
 	companion object {
 		/**
-		 * The row mapper for this type of row
+		 * Maps a row to a new object instance
 		 * @since 2.0.0
 		 */
-		val MAPPER = RowMapper { row ->
+		fun fromRow(row: Row) {
 			val tagCreatorId = row.getString("tag_creator_id")
 
 			TagDto(

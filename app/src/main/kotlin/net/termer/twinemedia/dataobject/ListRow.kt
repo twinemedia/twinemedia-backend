@@ -1,6 +1,6 @@
 package net.termer.twinemedia.dataobject
 
-import io.vertx.sqlclient.templates.RowMapper
+import io.vertx.sqlclient.Row
 import net.termer.twinemedia.enumeration.ListType
 import net.termer.twinemedia.enumeration.ListVisibility
 import net.termer.twinemedia.util.intToListType
@@ -118,30 +118,28 @@ class ListRow(
 ) {
 	companion object {
 		/**
-		 * The row mapper for this type of row
+		 * Maps a row to a new object instance
 		 * @since 2.0.0
 		 */
-		val MAPPER = RowMapper { row ->
-			ListRow(
-				internalId = row.getInteger("id"),
-				id = row.getString("list_id"),
-				name = row.getString("list_name"),
-				description = row.getString("list_description"),
-				creatorId = row.getInteger("list_creator"),
-				// Allow throwing of NPE here because an invalid type should never have been in the database in the first place
-				type = intToListType(row.getInteger("list_type"))!!,
-				// Same rationale for this column as well
-				visibility = intToListVisibility(row.getInteger("list_visibility"))!!,
-				sourceTags = row.getArrayOfStrings("list_source_tag_ids"),
-				sourceExcludeTags = row.getArrayOfStrings("list_source_exclude_tag_ids"),
-				sourceMime = row.getString("list_source_mime"),
-				sourceCreatedBefore = row.getOffsetDateTime("list_source_created_before"),
-				sourceCreatedAfter = row.getOffsetDateTime("list_source_created_after"),
-				showAllUserFiles = row.getBoolean("list_show_all_user_files"),
-				itemCount = row.getInteger("list_item_count"),
-				createdTs = row.getOffsetDateTime("list_created_ts"),
-				modifiedTs = row.getOffsetDateTime("list_modified_ts")
-			)
-		}
+		fun fromRow(row: Row) = ListRow(
+			internalId = row.getInteger("id"),
+			id = row.getString("list_id"),
+			name = row.getString("list_name"),
+			description = row.getString("list_description"),
+			creatorId = row.getInteger("list_creator"),
+			// Allow throwing of NPE here because an invalid type should never have been in the database in the first place
+			type = intToListType(row.getInteger("list_type"))!!,
+			// Same rationale for this column as well
+			visibility = intToListVisibility(row.getInteger("list_visibility"))!!,
+			sourceTags = row.getArrayOfStrings("list_source_tag_ids"),
+			sourceExcludeTags = row.getArrayOfStrings("list_source_exclude_tag_ids"),
+			sourceMime = row.getString("list_source_mime"),
+			sourceCreatedBefore = row.getOffsetDateTime("list_source_created_before"),
+			sourceCreatedAfter = row.getOffsetDateTime("list_source_created_after"),
+			showAllUserFiles = row.getBoolean("list_show_all_user_files"),
+			itemCount = row.getInteger("list_item_count"),
+			createdTs = row.getOffsetDateTime("list_created_ts"),
+			modifiedTs = row.getOffsetDateTime("list_modified_ts")
+		)
 	}
 }

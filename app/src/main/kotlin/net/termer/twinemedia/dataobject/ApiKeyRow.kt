@@ -1,6 +1,6 @@
 package net.termer.twinemedia.dataobject
 
-import io.vertx.sqlclient.templates.RowMapper
+import io.vertx.sqlclient.Row
 import java.time.OffsetDateTime
 
 /**
@@ -58,20 +58,18 @@ class ApiKeyRow(
 ) {
 	companion object {
 		/**
-		 * The row mapper for this type of row
+		 * Maps a row to a new object instance
 		 * @since 2.0.0
 		 */
-		val MAPPER = RowMapper { row ->
-			ApiKeyRow(
-				internalId = row.getInteger("id"),
-				id = row.getString("key_id"),
-				name = row.getString("key_name"),
-				permissions = row.getArrayOfStrings("key_permissions"),
-				jwt = row.getString("key_jwt"),
-				creatorId = row.getInteger("key_creator"),
-				createdTs = row.getOffsetDateTime("key_created_ts"),
-				modifiedTs = row.getOffsetDateTime("key_modified_ts")
-			)
-		}
+		fun fromRow(row: Row) = ApiKeyRow(
+			internalId = row.getInteger("id"),
+			id = row.getString("key_id"),
+			name = row.getString("key_name"),
+			permissions = row.getArrayOfStrings("key_permissions"),
+			jwt = row.getString("key_jwt"),
+			creatorId = row.getInteger("key_creator"),
+			createdTs = row.getOffsetDateTime("key_created_ts"),
+			modifiedTs = row.getOffsetDateTime("key_modified_ts")
+		)
 	}
 }

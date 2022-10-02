@@ -2,7 +2,7 @@ package net.termer.twinemedia.dataobject
 
 import io.vertx.core.json.JsonObject
 import io.vertx.kotlin.core.json.jsonObjectOf
-import io.vertx.sqlclient.templates.RowMapper
+import io.vertx.sqlclient.Row
 import net.termer.twinemedia.util.JsonSerializable
 import net.termer.twinemedia.util.hasCol
 import net.termer.twinemedia.util.toJsonArray
@@ -66,10 +66,10 @@ class FileDto(
 	val mime: String,
 
 	/**
-	 * Additional metadata for the file (such as video/audio bitrate, resolution, etc.) in JSON format
+	 * Additional metadata for the file (such as video/audio bitrate, resolution, etc.) in JSON format, or null if it was not included
 	 * @since 2.0.0
 	 */
-	val meta: JsonObject,
+	val meta: JsonObject?,
 
 	/**
 	 * The file's hash
@@ -174,10 +174,10 @@ class FileDto(
 
 	companion object {
 		/**
-		 * The row mapper for this type of row
+		 * Maps a row to a new object instance
 		 * @since 2.0.0
 		 */
-		val MAPPER = RowMapper { row ->
+		fun fromRow(row: Row) {
 			val fileCreatorId = row.getString("file_creator_id")
 
 			FileDto(
@@ -189,7 +189,7 @@ class FileDto(
 				description = if(row.hasCol("file_description")) row.getString("file_description") else null,
 				size = row.getLong("file_size"),
 				mime = row.getString("file_mime"),
-				meta = row.getJsonObject("file_meta"),
+				meta = if(row.hasCol("file_meta")) row.getJsonObject("file_meta") else null,
 				hash = row.getString("file_hash"),
 				hasThumbnail = row.getBoolean("file_has_thumbnail"),
 				creator = if(fileCreatorId == null) null else RecordCreatorDto(
