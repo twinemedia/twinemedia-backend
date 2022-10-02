@@ -36,7 +36,6 @@ dependencies {
     implementation("io.vertx:vertx-lang-kotlin:$vertxVersion")
     implementation("io.vertx:vertx-lang-kotlin-coroutines:$vertxVersion")
     implementation("io.vertx:vertx-auth-jwt:$vertxVersion")
-    implementation("io.vertx:vertx-sql-client-templates:$vertxVersion")
 
     // Logging
     implementation("org.slf4j:slf4j-api:1.7.32")
@@ -59,6 +58,8 @@ dependencies {
     implementation("org.flywaydb:flyway-core:9.0.4")
     implementation("com.ongres.scram:client:2.1")
     implementation("commons-cli:commons-cli:1.5.0")
+    implementation("org.jooq:jooq:3.17.4")
+
 
     // Code generation
     implementation("com.github.wowselim.eventbus-service:eventbus-service-core:2.1.0")

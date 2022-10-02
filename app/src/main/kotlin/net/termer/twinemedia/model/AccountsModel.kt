@@ -6,7 +6,12 @@ import io.vertx.sqlclient.templates.SqlTemplate
 import net.termer.twinemedia.db.Database.client
 import net.termer.twinemedia.dataobject.AccountDto
 import net.termer.twinemedia.dataobject.AccountRow
+import net.termer.twinemedia.dataobject.RowIdPair
+import net.termer.twinemedia.util.fetchOneAsync
+import net.termer.twinemedia.util.genRowId
 import net.termer.twinemedia.util.toJsonArray
+import org.jooq.Query
+import org.jooq.impl.DSL.*;
 
 /**
  * Database model for accounts
@@ -21,6 +26,13 @@ class AccountsModel(context: Context?, ignoreContext: Boolean): Model(context, i
 		val INSTANCE = AccountsModel(null, true)
 	}
 
+	enum class Order {
+		CREATED_TS,
+		MODIFIED_TS,
+		NAME_ALPHABETICALLY,
+		EMAIL_ALPHABETICALLY
+	}
+
 	/**
 	 * Utility function to generate an ORDER BY statement based on an integer corresponding to a combination of criteria and order.
 	 * Order key:
@@ -33,7 +45,9 @@ class AccountsModel(context: Context?, ignoreContext: Boolean): Model(context, i
 	 * @param order The order
 	 * @return The appropriate "ORDER BY" SQL for the selected order
 	 */
-	private fun orderBy(order: Int): String {
+	private fun Query.orderBy(order: Int): String {
+		orderBy(field(""))
+
 		return "ORDER BY " + when(order) {
 			1 -> "account_creation_date ASC"
 			2 -> "account_name ASC"
@@ -45,67 +59,56 @@ class AccountsModel(context: Context?, ignoreContext: Boolean): Model(context, i
 	}
 
 	/**
-	 * SELECT statement for getting info
-	 * @param extra Extra rows to select (can be null for none)
-	 * @return The SELECT statement
+	 * Generates a query for getting info
+	 * @return The query
 	 */
-	private fun infoSelect(extra: String?): String {
-		return """
-			SELECT
-				accounts.id,
-				account_email AS email,
-				account_name AS name,
-				account_admin AS admin,
-				account_permissions AS permissions,
-				account_default_source AS default_source,
-				source_name AS default_source_name,
-				source_type AS default_source_type,
-				account_creation_date AS creation_date,
-				(
-					SELECT COUNT(*) FROM media
-					WHERE media_creator = accounts.id
-				) AS files_created
-				${if(extra.orEmpty().isBlank()) "" else ", $extra"}
-			FROM accounts
-			LEFT JOIN sources ON sources.id = account_default_source
-		""".trimIndent()
-	}
-
-	/**
-	 * SELECT statement for getting info
-	 * @return The SELECT statement
-	 */
-	private fun infoSelect() = infoSelect(null)
+	private fun infoQuery() =
+		select(
+			field("accounts.id"),
+			field("account_email"),
+			field("account_name"),
+			field("account_admin"),
+			field("account_permissions"),
+			field("source_id").`as`("account_default_source_id"),
+			field("source_name").`as`("account_default_source_name"),
+			field("source_type").`as`("account_default_source_type"),
+			field("account_file_count"),
+			field("account_created_ts"),
+			field("account_modified_ts")
+		)
+		.from("accounts")
+		.leftJoin(table("sources")).on(field("sources.id").eq("account_default_source"))
+		.query
 
 	/**
 	 * Creates a new account entry with the provided details
 	 * @param email The email address of the new account
 	 * @param name The name of the new account
-	 * @param admin Whether the new account will be an administrator
+	 * @param isAdmin Whether the new account will be an administrator
 	 * @param permissions An array of permissions that the new account will have
 	 * @param hash The password hash for the new account
-	 * @param defaultSource The default media source for the new account
+	 * @param defaultSourceId The new account's default media source ID, or null for none
 	 * @return The newly created account entry's ID
 	 * @since 1.5.0
 	 */
-	suspend fun createAccountEntry(email: String, name: String, admin: Boolean, permissions: Array<String>, hash: String, defaultSource: Int): Int {
-		return SqlTemplate
-			.forQuery(client, """
-				INSERT INTO accounts
-				( account_email, account_name, account_admin, account_permissions, account_hash, account_default_source )
-				VALUES
-				( #{email}, #{name}, #{admin}, CAST( #{perms} AS jsonb ), #{hash}, #{defaultSource} )
-				RETURNING id
-			""".trimIndent())
-			.execute(hashMapOf<String, Any>(
-				"email" to email,
-				"name" to name,
-				"admin" to admin,
-				"perms" to permissions.toJsonArray(),
-				"hash" to hash,
-				"defaultSource" to defaultSource
-			)).await()
-			.first().getInteger("id")
+	suspend fun createAccountEntry(email: String, name: String, isAdmin: Boolean, permissions: Array<String>, hash: String, defaultSourceId: Int?): RowIdPair {
+		val id = genRowId()
+
+		val internalId = insertInto(
+			table("accounts"),
+			field("account_id"),
+			field("account_email"),
+			field("account_admin"),
+			field("account_permissions"),
+			field("account_hash"),
+			field("account_default_source")
+		)
+			.values(id, email, isAdmin, permissions, hash, defaultSourceId)
+			.returning(field("id"))
+			.fetchOneAsync()
+			.getInteger("id")
+
+		return RowIdPair(internalId, id)
 	}
 
 	/**

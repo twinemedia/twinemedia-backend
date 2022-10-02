@@ -3,7 +3,75 @@ package net.termer.twinemedia.util
 import io.vertx.core.json.DecodeException
 import io.vertx.core.json.JsonArray
 import io.vertx.core.json.JsonObject
+import java.security.SecureRandom
 import kotlin.random.Random
+
+/**
+ * Uppercase latin letters
+ * @since 2.0.0
+ */
+const val LETTERS_UPPERCASE_CHARS = "ABCDEFGHIJKLMNOPQRSTUVWXYZ"
+
+/**
+ * Lowercase latin letters
+ * @since 2.0.0
+ */
+const val LETTERS_LOWERCASE_CHARS = "abcdefghijklmnopqrstuvwxyz"
+
+/**
+ * Uppercase and lowercase latin letters
+ * @since 2.0.0
+ */
+const val LETTERS_CHARS = LETTERS_UPPERCASE_CHARS + LETTERS_LOWERCASE_CHARS
+
+/**
+ * Numbers 0-9
+ * @since 2.0.0
+ */
+const val NUMBERS_CHARS = "0123456789"
+
+/**
+ * Latin letters and numbers 0-9
+ * @since 2.0.0
+ */
+const val LETTERS_NUMBERS_CHARS = LETTERS_CHARS + NUMBERS_CHARS
+
+/**
+ * Latin letters, numbers 0-9 and underscores
+ * @since 2.0.0
+ */
+const val LETTERS_NUMBERS_UNDERSCORES_CHARS = LETTERS_NUMBERS_CHARS + '_'
+
+/**
+ * Latin letters, numbers 0-9, underscores and dashes
+ * @since 2.0.0
+ */
+const val LETTERS_NUMBERS_UNDERSCORES_DASHES_CHARS = "$LETTERS_NUMBERS_UNDERSCORES_CHARS-";
+
+/**
+ * Base64 characters, not including equals signs used for padding
+ */
+const val BASE64_CHARS = "$LETTERS_NUMBERS_CHARS+/"
+
+/**
+ * Base64Url characters.
+ * An alias to [LETTERS_NUMBERS_UNDERSCORES_DASHES_CHARS].
+ * @since 2.0.0
+ */
+const val BASE64_URL_CHARS = LETTERS_NUMBERS_UNDERSCORES_DASHES_CHARS
+
+/**
+ * Characters used in row IDs.
+ * Currently an alias to [LETTERS_NUMBERS_UNDERSCORES_DASHES_CHARS].
+ * @since 2.0.0
+ */
+const val ROW_ID_CHARS = LETTERS_NUMBERS_UNDERSCORES_DASHES_CHARS
+
+/**
+ * The random number generator used for secure random String generation.
+ * Using a non-blocking native randomness provider as a source.
+ */
+private val secureRng = SecureRandom.getInstance("NativePRNGNonBlocking")
 
 /**
  * Trims a String down to the specified length
@@ -134,6 +202,22 @@ fun genStrOf(chars: CharSequence, len: Int): String {
 
 	for(i in 0 until len)
 		res.append(chars[Random.nextInt(0, chars.length)])
+
+	return res.toString()
+}
+
+/**
+ * Generates a String of the specified length using randomly selected chars from the provided char array.
+ * Uses a secure random number generator to ensure non-deterministic results.
+ * @param chars The chars to use for generating the String
+ * @param len The desired output String length
+ * @since 2.0.0
+ */
+fun genSecureStrOf(chars: CharSequence, len: Int): String {
+	val res = StringBuilder(len)
+
+	for(i in 0 until len)
+		res.append(chars[secureRng.nextInt(chars.length)])
 
 	return res.toString()
 }
