@@ -2,7 +2,6 @@ package net.termer.twinemedia.dataobject
 
 import io.vertx.kotlin.core.json.jsonObjectOf
 import io.vertx.sqlclient.templates.RowMapper
-import net.termer.twinemedia.db.hasCol
 import net.termer.twinemedia.enumeration.ListType
 import net.termer.twinemedia.enumeration.ListVisibility
 import net.termer.twinemedia.util.*

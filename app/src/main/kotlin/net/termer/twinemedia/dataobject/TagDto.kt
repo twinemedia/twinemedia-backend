@@ -3,8 +3,8 @@ package net.termer.twinemedia.dataobject
 import io.vertx.core.json.JsonObject
 import io.vertx.kotlin.core.json.jsonObjectOf
 import io.vertx.sqlclient.templates.RowMapper
-import net.termer.twinemedia.db.hasCol
 import net.termer.twinemedia.util.JsonSerializable
+import net.termer.twinemedia.util.hasCol
 import java.time.OffsetDateTime
 
 /**
@@ -75,7 +75,7 @@ class TagDto(
 			TagDto(
 				id = row.getString("tag_id"),
 				name = row.getString("tag_name"),
-				description = if(row.hasCol("file_description")) row.getString("tag_description") else null,
+				description = if(row.hasCol("tag_description")) row.getString("tag_description") else null,
 				creator = if(tagCreatorId == null) null else RecordCreatorDto(
 					id = tagCreatorId,
 					name = row.getString("tag_creator_name")

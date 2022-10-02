@@ -4,8 +4,8 @@ import io.vertx.core.Vertx
 import io.vertx.core.json.JsonObject
 import io.vertx.kotlin.core.json.jsonObjectOf
 import io.vertx.sqlclient.templates.RowMapper
-import net.termer.twinemedia.db.hasCol
 import net.termer.twinemedia.util.containsPermission
+import net.termer.twinemedia.util.hasCol
 import java.time.OffsetDateTime
 
 /**
@@ -104,7 +104,7 @@ class AccountRow(
     val keyPermissions: Array<String>? = null,
 
 	/**
-     * The ID of this account's default file source ID
+     * The ID of this account's default file source ID, or null if none
      * @since 2.0.0
      */
     val defaultSourceId: Int?,
