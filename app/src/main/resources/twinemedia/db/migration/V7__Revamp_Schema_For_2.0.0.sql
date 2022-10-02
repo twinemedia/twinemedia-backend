@@ -118,8 +118,8 @@ do $$
         -- Update tag file counts and creation timestamps
         update tags set
             tag_file_count = (select count(*) from tag_uses where use_tag = tags.id),
-            tag_created_ts = coalesce((select use_created_ts from tag_uses where use_tag = tags.id order by tag_created_ts limit 1), now()) + (floor(random()*10) || ' seconds')::interval, -- Sleep for a small amount of time to make sure now() doesn't yield a duplicate value
-            tag_modified_ts = coalesce((select use_created_ts from tag_uses where use_tag = tags.id order by tag_created_ts limit 1), now()) + (floor(random()*10) || ' seconds')::interval;
+            tag_created_ts = (select use_created_ts from tag_uses where use_tag = tags.id order by tag_created_ts limit 1),
+            tag_modified_ts = (select use_created_ts from tag_uses where use_tag = tags.id order by tag_created_ts limit 1);
 
         -- Disallow nulls now that timestamps are populated
         alter table tags
@@ -165,12 +165,6 @@ alter table accounts
         on delete set null;
 alter table accounts
     rename column account_creation_date to account_created_ts;
-update accounts set account_created_ts = account_created_ts + (floor(random()*1000) || ' milliseconds')::interval
-from (
-    select array_agg(id) id, min(id) idmin FROM accounts
-    group by account_created_ts having count(*) > 1
-) as dup
-where accounts.id = any(dup.id) and accounts.id <> dup.idmin;
 alter table accounts
     add account_modified_ts timestamp with time zone default now();
 update accounts set account_modified_ts = account_created_ts;
@@ -178,10 +172,10 @@ alter table accounts
     alter column account_modified_ts set not null;
 create unique index account_name_and_id_idx
     on accounts (account_name, id);
-create unique index account_created_ts_idx
-    on accounts (account_created_ts);
-create unique index account_modified_ts_idx
-    on accounts (account_modified_ts);
+create unique index account_created_ts_and_id_idx
+    on accounts (account_created_ts, id);
+create unique index account_modified_ts_and_id_idx
+    on accounts (account_modified_ts, id);
 
 -- Alter API keys table to reflect new schema changes
 alter table apikeys
@@ -209,12 +203,6 @@ alter table api_keys
         on delete cascade;
 alter table api_keys
     rename column key_created_on to key_created_ts;
-update api_keys set key_created_ts = key_created_ts + (floor(random()*1000) || ' milliseconds')::interval
-from (
-    select array_agg(id) id, min(id) idmin FROM api_keys
-    group by key_created_ts having count(*) > 1
-) as dup
-where api_keys.id = any(dup.id) and api_keys.id <> dup.idmin;
 alter table api_keys
     add key_modified_ts timestamp with time zone default now();
 create unique index api_key_name_and_id_idx
@@ -222,10 +210,10 @@ create unique index api_key_name_and_id_idx
 update api_keys set key_modified_ts = key_created_ts;
 alter table api_keys
     alter column key_modified_ts set not null;
-create unique index api_key_created_ts_idx
-    on api_keys (key_created_ts);
-create unique index api_key_modified_ts_idx
-    on api_keys (key_modified_ts);
+create unique index api_key_created_ts_and_id_idx
+    on api_keys (key_created_ts, id);
+create unique index api_key_modified_ts_and_id_idx
+    on api_keys (key_modified_ts, id);
 
 -- Alter files table to reflect new schema changes
 alter table files
@@ -302,22 +290,10 @@ create unique index file_title_and_id_idx
     on files (file_title, id);
 create unique index file_size_and_id_idx
     on files (file_size, id);
-update files set file_created_ts = file_created_ts + (floor(random()*1000) || ' milliseconds')::interval
-from (
-    select array_agg(id) id, min(id) idmin FROM files
-    group by file_created_ts having count(*) > 1
-) as dup
-where files.id = any(dup.id) and files.id <> dup.idmin;
-create unique index file_created_ts_idx
-    on files (file_created_ts);
-update files set file_modified_ts = file_modified_ts + (floor(random()*1000) || ' milliseconds')::interval
-from (
-    select array_agg(id) id, min(id) idmin FROM files
-    group by file_modified_ts having count(*) > 1
-) as dup
-where files.id = any(dup.id) and files.id <> dup.idmin;
-create unique index file_modified_ts_idx
-    on files (file_modified_ts);
+create unique index file_created_ts_and_id_idx
+    on files (file_created_ts, id);
+create unique index file_modified_ts_and_id_idx
+    on files (file_modified_ts, id);
 
 -- Convert hash format to hex for all files
 update files SET file_hash = encode(decode(file_hash, 'base64'), 'hex');
@@ -375,22 +351,10 @@ alter table lists
     rename column list_modified_on to list_modified_ts;
 create unique index list_name_and_id_idx
     on lists (list_name, id);
-update lists set list_created_ts = list_created_ts + (floor(random()*1000) || ' milliseconds')::interval
-from (
-    select array_agg(id) id, min(id) idmin FROM lists
-    group by list_created_ts having count(*) > 1
-) as dup
-where lists.id = any(dup.id) and lists.id <> dup.idmin;
-create unique index list_created_ts_idx
-    on lists (list_created_ts);
-update lists set list_modified_ts = list_modified_ts + (floor(random()*1000) || ' milliseconds')::interval
-from (
-    select array_agg(id) id, min(id) idmin FROM lists
-    group by list_modified_ts having count(*) > 1
-) as dup
-where lists.id = any(dup.id) and lists.id <> dup.idmin;
-create unique index list_modified_ts_idx
-    on lists (list_modified_ts);
+create unique index list_created_ts_and_id_idx
+    on lists (list_created_ts, id);
+create unique index list_modified_ts_and_id_idx
+    on lists (list_modified_ts, id);
 
 -- Alter processes table to reflect new schema changes
 alter table processes
@@ -425,22 +389,10 @@ alter table process_presets
     alter column preset_name drop default;
 create unique index process_preset_name_and_id_idx
     on process_presets (preset_name, id);
-update process_presets set preset_created_ts = preset_created_ts + (floor(random()*1000) || ' milliseconds')::interval
-from (
-    select array_agg(id) id, min(id) idmin FROM process_presets
-    group by preset_created_ts having count(*) > 1
-) as dup
-where process_presets.id = any(dup.id) and process_presets.id <> dup.idmin;
-create unique index process_preset_created_ts_idx
-    on process_presets (preset_created_ts);
-update process_presets set preset_modified_ts = preset_modified_ts + (floor(random()*1000) || ' milliseconds')::interval
-from (
-    select array_agg(id) id, min(id) idmin FROM process_presets
-    group by preset_modified_ts having count(*) > 1
-) as dup
-where process_presets.id = any(dup.id) and process_presets.id <> dup.idmin;
-create unique index process_preset_modified_ts_idx
-    on process_presets (preset_modified_ts);
+create unique index process_preset_created_ts_and_id_idx
+    on process_presets (preset_created_ts, id);
+create unique index process_preset_modified_ts_and_id_idx
+    on process_presets (preset_modified_ts, id);
 
 -- Alter sources table to reflect new schema changes
 alter table sources
@@ -459,12 +411,6 @@ alter table sources
         on delete set null;
 alter table sources
     rename column source_created_on to source_created_ts;
-update sources set source_created_ts = source_created_ts + (floor(random()*1000) || ' milliseconds')::interval
-from (
-    select array_agg(id) id, min(id) idmin FROM sources
-    group by source_created_ts having count(*) > 1
-) as dup
-where sources.id = any(dup.id) and sources.id <> dup.idmin;
 alter table sources
     add source_modified_ts timestamp with time zone default now();
 update sources set source_modified_ts = sources.source_created_ts;
@@ -472,10 +418,10 @@ alter table sources
     alter column source_modified_ts set not null;
 create unique index source_name_and_id_idx
     on sources (source_name, id);
-create unique index source_created_ts_idx
-    on sources (source_created_ts);
-create unique index source_modified_ts_idx
-    on sources (source_modified_ts);
+create unique index source_created_ts_and_id_idx
+    on sources (source_created_ts, id);
+create unique index source_modified_ts_and_id_idx
+    on sources (source_modified_ts, id);
 update sources set source_modified_ts = source_created_ts;
 
 -- Add counter columns to tables
