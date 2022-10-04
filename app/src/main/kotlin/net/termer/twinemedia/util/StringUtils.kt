@@ -68,6 +68,20 @@ const val BASE64_URL_CHARS = LETTERS_NUMBERS_UNDERSCORES_DASHES_CHARS
 const val ROW_ID_CHARS = LETTERS_NUMBERS_UNDERSCORES_DASHES_CHARS
 
 /**
+ * Characters considered as "special characters" for purposes such as password strength evaluation.
+ * Derived from standard special characters on a US QWERTY keyboard.
+ * @since 2.0.0
+ */
+const val SPECIAL_CHARS = "`~!@#$%^&*()_-=+\\|;:'\",<.>/?[{]}"
+
+/**
+ * Characters that are not allowed in passwords under any circumstance.
+ * Currently consists of various control characters, and ASCII NULL.
+ * @since 2.0.0
+ */
+const val PASSWORD_INVALID_CHARS = "\n\t\r\u0000"
+
+/**
  * The random number generator used for secure random String generation.
  * Using a non-blocking native randomness provider as a source.
  */
@@ -236,3 +250,24 @@ fun String.withOnlyChars(chars: CharSequence): String {
 
 	return res.toString()
 }
+
+/**
+ * Converts a Base64 String to a Base64Url String
+ * @param base64 The String to convert
+ * @return The converted String
+ * @since 2.0.0
+ */
+fun base64ToBase64Url(base64: String) = base64
+	.replace('+', '-')
+	.replace('/', '_')
+	.replace("=", "")
+
+/**
+ * Converts a Base64Url String to a Base64Url String
+ * @param base64Url The String to convert
+ * @return The converted String
+ * @since 2.0.0
+ */
+fun base64UrlToBase64(base64Url: String) = base64Url
+	.replace('-', '+')
+	.replace('_', '/')

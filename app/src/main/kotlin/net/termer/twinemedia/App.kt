@@ -9,6 +9,7 @@ import kotlinx.coroutines.DelicateCoroutinesApi
 import kotlinx.coroutines.GlobalScope
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.runBlocking
+import net.termer.twinemedia.util.Crypto
 import net.termer.twinemedia.util.toJsonObject
 import net.termer.twinemedia.verticle.ApiVerticle
 import org.apache.commons.cli.DefaultParser
@@ -91,6 +92,9 @@ class App {
 
 			// Create app context with the resources that were just setup
 			val appCtx = AppContext(config)
+
+			// Setup global Crypto instance
+			Crypto.instanceInternal = Crypto(vertx, appCtx)
 
 			// Start verticles in coroutine using Vert.x dispatcher
 			val runtime = Runtime.getRuntime()

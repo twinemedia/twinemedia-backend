@@ -2,14 +2,14 @@ package net.termer.twinemedia
 
 import io.vertx.core.json.DecodeException
 import io.vertx.core.json.JsonObject
-import net.termer.twinemedia.Constants.SPECIAL_CHARS
 import net.termer.twinemedia.util.JsonSerializable
+import net.termer.twinemedia.util.SPECIAL_CHARS
 
 /**
  * TwineMedia configuration class
  * @since 1.0.0
  */
-class AppConfig(
+data class AppConfig(
     /**
      * The application HTTP server's bind host
      * @since 2.0.0
@@ -189,8 +189,25 @@ class AppConfig(
      * For example, on a machine that has 12 threads, a value of -2 will result in 10 threads being used.
      * @since 2.0.0
      */
-    var httpServerThreads: Int = 0
-): JsonSerializable {
+    var httpServerThreads: Int = 0,
+
+    /**
+     * An ideally 26 character long encryption key for the application to use.
+     * This value must be secure, otherwise bad actors could decrypt sensitive data and create their own trusted payloads.
+     * If this value or [encryptionSalt] changes, various values such as pagination tokens will be invalidated.
+     * Care must be exercised when changing these values.
+     * @since 2.0.0
+     */
+    var encryptionKey: String = "something_very_random_and_very_secure",
+
+    /**
+     * An ideally 8 character long encryption salt for application use.
+     * If this value or [encryptionKey] changes, various values such as pagination tokens will be invalidated.
+     * Care must be exercised when changing these values.
+     * @since 2.0.0
+     */
+    var encryptionSalt: String = "something_very_random"
+): JsonSerializable() {
     companion object {
         /**
          * Deserializes the JSON representation of an [AppConfig] to a new [AppConfig] object

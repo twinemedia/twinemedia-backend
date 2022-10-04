@@ -3,14 +3,14 @@ package net.termer.twinemedia.util
 import io.vertx.core.Promise
 import io.vertx.core.json.JsonArray
 import io.vertx.core.json.JsonObject
-import io.vertx.kotlin.core.json.get
 import io.vertx.kotlin.coroutines.await
 import java.text.SimpleDateFormat
+import java.time.Instant
 import java.time.OffsetDateTime
+import java.time.ZoneId
 import java.time.ZoneOffset
 import java.util.*
 import java.util.concurrent.CompletableFuture
-import kotlin.collections.ArrayList
 
 private val simpleDateFormat = SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss.SSS'Z'")
 private val gmtDateFormat = SimpleDateFormat("EEE, dd MMM yyyy HH:mm:ss zzz")
@@ -237,4 +237,112 @@ fun <T: Number> Iterable<Comparable<T>>.least(): T? {
 			res = num as T
 
 	return res
+}
+
+/**
+ * Returns this boolean's opposite value if the provided boolean is true
+ * @return This boolean's opposite value if the provided boolean is true
+ * @since 2.0.0
+ */
+fun Boolean.oppositeIf(otherBool: Boolean) = if(otherBool) !this else this
+
+/**
+ * Converts an integer into its underlying bytes.
+ * Uses big endian encoding.
+ * @return The bytes representing the int
+ * @since 2.0.0
+ */
+fun Int.toBytes() = byteArrayOf(
+	(this shr 24).toByte(),
+	(this shr 16).toByte(),
+	(this shr 8).toByte(),
+	this.toByte()
+)
+
+/**
+ * Converts a long integer into its underlying bytes.
+ * Uses big endian encoding.
+ * @return The bytes representing the long
+ * @since 2.0.0
+ */
+fun Long.toBytes() = byteArrayOf(
+	(this shr 56).toByte(),
+	(this shr 48).toByte(),
+	(this shr 40).toByte(),
+	(this shr 32).toByte(),
+	(this shr 24).toByte(),
+	(this shr 16).toByte(),
+	(this shr 8).toByte(),
+	this.toByte()
+)
+
+/**
+ * Converts a byte array to an integer.
+ * Uses big endian encoding.
+ * @param bytes The bytes to read
+ * @param offset The offset from which to read (defaults to 0)
+ * @return The int
+ * @since 2.0.0
+ */
+fun intFromBytes(bytes: ByteArray, offset: Int = 0): Int {
+	var res = 0
+
+	// Iterating through for loop
+	for (i in offset until offset + 4)
+		res = (res shl 8) + (bytes[i].toInt() and 255)
+
+	return res
+}
+
+/**
+ * Converts a byte array to a long integer.
+ * Uses big endian encoding.
+ * @param bytes The bytes to read
+ * @param offset The offset from which to read (defaults to 0)
+ * @return The long
+ * @since 2.0.0
+ */
+fun longFromBytes(bytes: ByteArray, offset: Int = 0): Long {
+	var res = 0L
+
+	// Iterating through for loop
+	for (i in offset until offset+8)
+		res = (res shl 8) + (bytes[i].toInt() and 255)
+
+	return res
+}
+
+/**
+ * Returns the element at the specified index, or a default value if the index is invalid
+ * @param index The index
+ * @param default The default value to return
+ * @return The element at the specified index, or the default value
+ * @since 2.0.0
+ */
+fun <T> Array<T>.getOr(index: Int, default: T) =
+	if(index < 0 || index >= this.size)
+		default
+	else
+		this[index]
+
+/**
+ * Parses the string into an int, or returns a default value if the string is not a valid int
+ * @param default The default value to return
+ * @return The int or the default value
+ * @since 2.0.0
+ */
+fun String.toIntOr(default: Int) = toIntOrNull() ?: default
+
+/**
+ * Creates an [OffsetDateTime] using an epoch second.
+ * If the epoch second is less than 0, it will return null.
+ * @param epoch The epoch second
+ * @return The resulting [OffsetDateTime], or null if epoch second is invalid
+ * @since 2.0.0
+ */
+fun epochSecondToOffsetDateTime(epoch: Long): OffsetDateTime? {
+	if (epoch < 0)
+		return null
+
+	return OffsetDateTime.ofInstant(Instant.ofEpochSecond(epoch), ZoneId.systemDefault())
 }

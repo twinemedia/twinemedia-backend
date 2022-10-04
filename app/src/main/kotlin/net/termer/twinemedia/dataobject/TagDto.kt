@@ -4,7 +4,7 @@ import io.vertx.core.json.JsonObject
 import io.vertx.kotlin.core.json.jsonObjectOf
 import io.vertx.sqlclient.Row
 import net.termer.twinemedia.util.JsonSerializable
-import net.termer.twinemedia.util.hasCol
+import net.termer.twinemedia.util.db.hasCol
 import java.time.OffsetDateTime
 
 /**

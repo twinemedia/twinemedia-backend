@@ -56,7 +56,7 @@ class ApiKeyDto(
 	override fun toJson() = jsonObjectOf(
 		"id" to id,
 		"name" to name,
-		"permissions" to permissions.toJsonArray(),
+		"permissions" to permissions,
 		"jwt" to jwt,
 		"creator" to creator.toJson(),
 		"createdTs" to createdTs.toString(),

@@ -4,7 +4,7 @@ import io.vertx.core.json.JsonObject
 import io.vertx.kotlin.core.json.jsonObjectOf
 import io.vertx.sqlclient.Row
 import net.termer.twinemedia.util.JsonSerializable
-import net.termer.twinemedia.util.hasCol
+import net.termer.twinemedia.util.db.hasCol
 import net.termer.twinemedia.util.toJsonArray
 import java.time.OffsetDateTime
 
@@ -99,13 +99,13 @@ class FileDto(
 	 * An array containing the file's tags, or null if they were not fetched
 	 * @since 2.0.0
 	 */
-	val tags: Array<TagDto>? = null,
+	var tags: Array<TagDto>? = null,
 
 	/**
 	 * The file's parent, or null if the file has no parent or if it was not fetched
 	 * @since 2.0.0
 	 */
-	val parent: FileDto? = null,
+	var parent: FileDto? = null,
 
 	/**
 	 * The number of children the file has
@@ -117,7 +117,7 @@ class FileDto(
 	 * An array containing the file's children, or null if they were not fetched
 	 * @since 2.0.0
 	 */
-	val children: Array<FileDto>? = null,
+	var children: Array<FileDto>? = null,
 
 	/**
 	 * Whether the file is currently processing
@@ -164,7 +164,7 @@ class FileDto(
 		"tags" to tags?.toJsonArray(),
 		"parent" to parent?.toJson(),
 		"childCount" to childCount,
-		"children" to children,
+		"children" to children?.map { toJson() },
 		"isProcessing" to isProcessing,
 		"processError" to processError,
 		"source" to source.toJson(),

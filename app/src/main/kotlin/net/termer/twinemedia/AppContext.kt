@@ -15,7 +15,7 @@ data class AppContext(
 	 * @since 2.0.0
 	 */
 	val config: AppConfig = AppConfig()
-): JsonSerializable {
+): JsonSerializable() {
 	companion object {
 		/**
 		 * Deserializes the JSON representation of an [AppContext] to a new [AppContext] object

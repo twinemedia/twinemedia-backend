@@ -5,7 +5,7 @@ import io.vertx.core.json.JsonObject
 import io.vertx.kotlin.core.json.jsonObjectOf
 import io.vertx.sqlclient.Row
 import net.termer.twinemedia.util.containsPermission
-import net.termer.twinemedia.util.hasCol
+import net.termer.twinemedia.util.db.hasCol
 import java.time.OffsetDateTime
 
 /**
@@ -13,11 +13,7 @@ import java.time.OffsetDateTime
  * @since 2.0.0
  */
 class AccountRow(
-	/**
-	 * The key's internal sequential ID
-	 * @since 2.0.0
-	 */
-	val internalId: Int,
+	override val internalId: Int,
 
 	/**
      * The account's alphanumeric ID
@@ -115,18 +111,9 @@ class AccountRow(
 	 */
 	val fileCount: Int,
 
-	/**
-     * The account's creation timestamp
-     * @since 2.0.0
-     */
-    val createdTs: OffsetDateTime,
-
-	/**
-     * The account's last modified timestamp
-     * @since 2.0.0
-     */
-    val modifiedTs: OffsetDateTime
-) {
+	override val createdTs: OffsetDateTime,
+	override val modifiedTs: OffsetDateTime
+): StandardRow {
 	/**
 	 * Returns if this user account has the specified permission
 	 * @param permission The permission to check

@@ -5,6 +5,7 @@ import io.vertx.sqlclient.Row
 import net.termer.twinemedia.enumeration.ListType
 import net.termer.twinemedia.enumeration.ListVisibility
 import net.termer.twinemedia.util.*
+import net.termer.twinemedia.util.db.hasCol
 import java.time.OffsetDateTime
 
 /**

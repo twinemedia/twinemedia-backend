@@ -60,7 +60,6 @@ dependencies {
     implementation("commons-cli:commons-cli:1.5.0")
     implementation("org.jooq:jooq:3.17.4")
 
-
     // Code generation
     implementation("com.github.wowselim.eventbus-service:eventbus-service-core:2.1.0")
     kapt("com.github.wowselim.eventbus-service:eventbus-service-codegen:2.1.0")

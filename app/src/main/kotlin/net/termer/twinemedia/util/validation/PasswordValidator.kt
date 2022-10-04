@@ -1,10 +1,9 @@
 package net.termer.twinemedia.util.validation
 
-import kotlinx.coroutines.DelicateCoroutinesApi
 import net.termer.twinemedia.AppConfig
-import net.termer.twinemedia.Constants.NUMBER_CHARS
-import net.termer.twinemedia.Constants.PASSWORD_INVALID_CHARS
-import net.termer.twinemedia.Constants.SPECIAL_CHARS
+import net.termer.twinemedia.util.NUMBERS_CHARS
+import net.termer.twinemedia.util.PASSWORD_INVALID_CHARS
+import net.termer.twinemedia.util.SPECIAL_CHARS
 import net.termer.vertx.kotlin.validation.ParamValidator
 
 /**
@@ -13,7 +12,6 @@ import net.termer.vertx.kotlin.validation.ParamValidator
  * @author termer
  * @since 1.4.0
  */
-@DelicateCoroutinesApi
 open class PasswordValidator(private val config: AppConfig): ParamValidator {
 	override fun validate(param: ParamValidator.Param): ParamValidator.ValidatorResponse {
 		val str = param.value
@@ -35,7 +33,7 @@ open class PasswordValidator(private val config: AppConfig): ParamValidator {
 			// Check for requirements
 			when {
 				char.isUpperCase() -> hasUppercase = true
-				NUMBER_CHARS.contains(char) -> hasNumber = true
+				NUMBERS_CHARS.contains(char) -> hasNumber = true
 				SPECIAL_CHARS.contains(char) -> hasSpecial = true
 			}
 		}

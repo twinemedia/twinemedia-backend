@@ -1,17 +1,20 @@
 package net.termer.twinemedia.model
 
 import io.vertx.kotlin.coroutines.await
+import io.vertx.sqlclient.Row
 import io.vertx.sqlclient.RowSet
-import io.vertx.sqlclient.templates.SqlTemplate
-import net.termer.twinemedia.db.Database.client
 import net.termer.twinemedia.dataobject.AccountDto
 import net.termer.twinemedia.dataobject.AccountRow
 import net.termer.twinemedia.dataobject.RowIdPair
-import net.termer.twinemedia.util.fetchOneAsync
-import net.termer.twinemedia.util.genRowId
+import net.termer.twinemedia.dataobject.StandardRow
+import net.termer.twinemedia.model.pagination.RowPagination
+import net.termer.twinemedia.util.db.fetchManyAsync
+import net.termer.twinemedia.util.db.fetchOneAsync
+import net.termer.twinemedia.util.db.genRowId
 import net.termer.twinemedia.util.toJsonArray
-import org.jooq.Query
+import org.jooq.SelectQuery
 import org.jooq.impl.DSL.*;
+import java.time.OffsetDateTime
 
 /**
  * Database model for accounts
@@ -26,36 +29,57 @@ class AccountsModel(context: Context?, ignoreContext: Boolean): Model(context, i
 		val INSTANCE = AccountsModel(null, true)
 	}
 
-	enum class Order {
+	/**
+	 * Sorting orders
+	 * @since 2.0.0
+	 */
+	enum class SortOrder {
+		/**
+		 * Created timestamp
+		 * @since 2.0.0
+		 */
 		CREATED_TS,
+
+		/**
+		 * Modified timestamp
+		 * @since 2.0.0
+		 */
 		MODIFIED_TS,
+
+		/**
+		 * Account name alphabetically
+		 * @since 2.0.0
+		 */
 		NAME_ALPHABETICALLY,
-		EMAIL_ALPHABETICALLY
+
+		/**
+		 * Account email alphabetically
+		 * @since 2.0.0
+		 */
+		EMAIL_ALPHABETICALLY,
+
+		/**
+		 * The number of files the account has created
+		 * @since 2.0.0
+		 */
+		FILE_COUNT
 	}
 
 	/**
-	 * Utility function to generate an ORDER BY statement based on an integer corresponding to a combination of criteria and order.
-	 * Order key:
-	 * 0 = Creation timestamp, newest to oldest
-	 * 1 = Creation timestamp, oldest to newest
-	 * 2 = Name alphabetically, ascending
-	 * 3 = Name alphabetically, descending
-	 * 4 = Email alphabetically, ascending
-	 * 5 = Email alphabetically, descending
+	 * Applies the correct ORDER BY on the query based on the specified order enum value
 	 * @param order The order
-	 * @return The appropriate "ORDER BY" SQL for the selected order
+	 * @param desc Whether results should be descending
 	 */
-	private fun Query.orderBy(order: Int): String {
-		orderBy(field(""))
+	private fun SelectQuery<*>.orderBy(order: SortOrder, desc: Boolean) {
+		val field = field(when(order) {
+			SortOrder.CREATED_TS -> "account_created_ts"
+			SortOrder.MODIFIED_TS -> "account_modified_ts"
+			SortOrder.NAME_ALPHABETICALLY -> "account_name"
+			SortOrder.EMAIL_ALPHABETICALLY -> "account_email"
+			SortOrder.FILE_COUNT -> "account_file_count"
+		})!!
 
-		return "ORDER BY " + when(order) {
-			1 -> "account_creation_date ASC"
-			2 -> "account_name ASC"
-			3 -> "account_name DESC"
-			4 -> "account_email ASC"
-			5 -> "account_email DESC"
-			else -> "account_creation_date DESC"
-		}
+		orderBy(if(desc) field.desc() else field, field("accounts.id"))
 	}
 
 	/**
@@ -81,7 +105,7 @@ class AccountsModel(context: Context?, ignoreContext: Boolean): Model(context, i
 		.query
 
 	/**
-	 * Creates a new account entry with the provided details
+	 * Creates a new account row with the provided details
 	 * @param email The email address of the new account
 	 * @param name The name of the new account
 	 * @param isAdmin Whether the new account will be an administrator
@@ -91,7 +115,7 @@ class AccountsModel(context: Context?, ignoreContext: Boolean): Model(context, i
 	 * @return The newly created account entry's ID
 	 * @since 1.5.0
 	 */
-	suspend fun createAccountEntry(email: String, name: String, isAdmin: Boolean, permissions: Array<String>, hash: String, defaultSourceId: Int?): RowIdPair {
+	suspend fun createAccountRow(email: String, name: String, isAdmin: Boolean, permissions: Array<String>, hash: String, defaultSourceId: Int?): RowIdPair {
 		val id = genRowId()
 
 		val internalId = insertInto(
@@ -112,26 +136,29 @@ class AccountsModel(context: Context?, ignoreContext: Boolean): Model(context, i
 	}
 
 	/**
-	 * Fetches all account info
-	 * @param offset The offset of the accounts to fetch
-	 * @param limit The amount of accounts to return
-	 * @param order The order to return the accounts
-	 * @return All account info in the specified range
-	 * @since 1.4.0
+	 * Fetches many accounts' info.
+	 * Use [fetchOneInfo] to fetch only one account.
+	 * @param limit The number of results to return
+	 * @param whereInternalIdIs Fetch accounts where the sequential internal ID is this
+	 * @param whereIdIs Fetch accounts where the alphanumeric ID is this
+	 * @param whereEmailIs Fetch accounts where the email is this (case-insensitive)
+	 * @param whereApiKeyIdIs Fetches accounts where the API key TODO
 	 */
-	suspend fun fetchAccountList(offset: Int, limit: Int, order: Int): RowSet<AccountDto> {
-		return SqlTemplate
-			.forQuery(client, """
-				${infoSelect()}
-				${orderBy(order)}
-				OFFSET #{offset} LIMIT #{limit}
-			""".trimIndent())
-			.mapTo(AccountDto.MAPPER)
-			.execute(hashMapOf<String, Any>(
-				"offset" to offset,
-				"limit" to limit
-			)).await()
-	}
+	suspend fun fetchManyInfo(
+		limit: Int,
+		orderBy: SortOrder,
+		cursor:
+		whereInternalIdIs: Int? = null,
+		whereIdIs: String? = null,
+		whereEmailIs: String? = null,
+		whereApiKeyIdIs: String? = null,
+		whereMatchesQuery: String? = null,
+		whereIsAdmin: Boolean? = null,
+		includeApiKeyPermissions: Boolean = false
+	) =
+		infoQuery().apply {
+			addConditions()
+		}
 
 	/**
 	 * Fetches all accounts with names matching the specified plaintext query

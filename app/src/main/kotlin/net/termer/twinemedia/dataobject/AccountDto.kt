@@ -10,6 +10,8 @@ import java.time.OffsetDateTime
  * @since 2.0.0
  */
 class AccountDto(
+	override val internalId: Int,
+
 	/**
 	 * The account's alphanumeric ID
 	 * @since 2.0.0
@@ -52,18 +54,9 @@ class AccountDto(
 	 */
 	val fileCount: Int,
 
-	/**
-	 * The account's creation timestamp
-	 * @since 2.0.0
-	 */
-	val createdTs: OffsetDateTime,
-
-	/**
-	 * The account's last modified timestamp
-	 * @since 2.0.0
-	 */
-	val modifiedTs: OffsetDateTime
-): JsonSerializable() {
+	override val createdTs: OffsetDateTime,
+	override val modifiedTs: OffsetDateTime
+): StandardRow, JsonSerializable() {
 	override fun toJson() = jsonObjectOf(
 		"id" to id,
 		"email" to email,
@@ -85,6 +78,7 @@ class AccountDto(
 			val defaultSourceId = row.getString("account_default_source_id")
 
 			AccountDto(
+				internalId = row.getInteger("id"),
 				id = row.getInteger("account_id"),
 				email = row.getString("account_email"),
 				name = row.getString("account_name"),
