@@ -172,6 +172,8 @@ alter table accounts
     alter column account_modified_ts set not null;
 create unique index account_name_and_id_idx
     on accounts (account_name, id);
+create unique index account_email_and_id_idx
+    on accounts (lower(account_email), id);
 create unique index account_created_ts_and_id_idx
     on accounts (account_created_ts, id);
 create unique index account_modified_ts_and_id_idx
