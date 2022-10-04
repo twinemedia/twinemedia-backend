@@ -74,10 +74,10 @@ class AccountDto(
 		 * Maps a row to a new object instance
 		 * @since 2.0.0
 		 */
-		fun fromRow(row: Row) {
+		fun fromRow(row: Row): AccountDto {
 			val defaultSourceId = row.getString("account_default_source_id")
 
-			AccountDto(
+			return AccountDto(
 				internalId = row.getInteger("id"),
 				id = row.getInteger("account_id"),
 				email = row.getString("account_email"),

@@ -140,8 +140,8 @@ object CommonPagination {
 		internalIdField: Field<Any>,
 		columnValue: TColType?,
 		query: SelectQuery<*>,
-		mapper: CommonRowMapper<TRow>,
 		limit: Int,
+		mapper: CommonRowMapper<TRow>,
 		constructor: CommonPaginationConstructor<TRow, TSortEnum, TColType>,
 		rowColumnAccessor: CommonRowColumnAccessor<TRow, TColType>
 	): RowPagination.Results<TRow, TSortEnum, TColType> {
@@ -191,16 +191,16 @@ object CommonPagination {
 	): RowPagination<TRow, TSortEnum, TColType> {
 		override suspend fun fetch(
 			query: SelectQuery<*>,
-			mapper: CommonRowMapper<TRow>,
-			limit: Int
+			limit: Int,
+			mapper: CommonRowMapper<TRow>
 		) = commonFetch(
 			this,
 			colValField,
 			internalIdField,
 			columnValue,
 			query,
-			mapper,
 			limit,
+			mapper,
 			constructor,
 			rowColumnAccessor
 		)

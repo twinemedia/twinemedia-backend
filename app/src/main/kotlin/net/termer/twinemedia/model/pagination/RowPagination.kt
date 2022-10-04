@@ -88,11 +88,11 @@ interface RowPagination<TRow: StandardRow, TSortEnum: Enum<TSortEnum>, TColType>
 	/**
 	 * Fetches results from a query, applying pagination and reversing results if necessary.
 	 * @param query The query
-	 * @param mapper The row mapper used to convert [Row] objects into [TRow]
 	 * @param limit The maximum number of results to fetch (defaults to [API_MAX_RESULT_LIMIT])
+	 * @param mapper The row mapper used to convert [Row] objects into [TRow]
 	 * @return The paginated query results
 	 */
-	suspend fun fetch(query: SelectQuery<*>, mapper: (row: Row) -> TRow, limit: Int = API_MAX_RESULT_LIMIT): Results<TRow, TSortEnum, TColType>
+	suspend fun fetch(query: SelectQuery<*>, limit: Int = API_MAX_RESULT_LIMIT, mapper: (row: Row) -> TRow): Results<TRow, TSortEnum, TColType>
 
 	/**
 	 * Generates a serialized token representing the pagination info

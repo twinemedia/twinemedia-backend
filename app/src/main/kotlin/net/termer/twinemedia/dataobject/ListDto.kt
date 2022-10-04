@@ -141,10 +141,10 @@ class ListDto(
 		 * Maps a row to a new object instance
 		 * @since 2.0.0
 		 */
-		fun fromRow(row: Row) {
+		fun fromRow(row: Row): ListDto {
 			val listCreatorId = row.getString("list_creator_id")
 
-			ListDto(
+			return ListDto(
 				id = row.getString("list_id"),
 				name = row.getString("list_name"),
 				description = row.getString("list_description"),

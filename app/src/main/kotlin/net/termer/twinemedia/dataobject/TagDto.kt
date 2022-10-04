@@ -69,10 +69,10 @@ class TagDto(
 		 * Maps a row to a new object instance
 		 * @since 2.0.0
 		 */
-		fun fromRow(row: Row) {
+		fun fromRow(row: Row): TagDto {
 			val tagCreatorId = row.getString("tag_creator_id")
 
-			TagDto(
+			return TagDto(
 				id = row.getString("tag_id"),
 				name = row.getString("tag_name"),
 				description = if(row.hasCol("tag_description")) row.getString("tag_description") else null,

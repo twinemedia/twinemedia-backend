@@ -95,6 +95,22 @@ interface AccountPagination<TColType>: RowPagination<AccountDto, AccountsModel.S
 		CommonPagination::rowCreatedTsAccessor
 	) {
 		companion object {
+			/**
+			 * Creates a no-cursor [CreatedTsPagination] object
+			 * @param sortDesc Whether results will be returned in descending order
+			 * @return The [CreatedTsPagination] instance
+			 * @since 2.0.0
+			 */
+			fun create(sortDesc: Boolean) = CreatedTsPagination(
+				CommonPagination.TokenData(
+					sortEnum = AccountsModel.SortOrder.CREATED_TS,
+					isSortedByDesc = sortDesc,
+					isPreviousCursor = false,
+					columnValue = null,
+					internalId = null
+				)
+			)
+
 			fun constructor(isSortedByDesc: Boolean, isPreviousCursor: Boolean, internalId: Int, columnValue: OffsetDateTime) = CreatedTsPagination(
 				CommonPagination.TokenData(
 					AccountsModel.SortOrder.CREATED_TS,
@@ -135,6 +151,22 @@ interface AccountPagination<TColType>: RowPagination<AccountDto, AccountsModel.S
 		rowColumnAccessor = CommonPagination::rowModifiedTsAccessor
 	) {
 		companion object {
+			/**
+			 * Creates a no-cursor [ModifiedTsPagination] object
+			 * @param sortDesc Whether results will be returned in descending order
+			 * @return The [ModifiedTsPagination] instance
+			 * @since 2.0.0
+			 */
+			fun create(sortDesc: Boolean) = ModifiedTsPagination(
+				CommonPagination.TokenData(
+					sortEnum = AccountsModel.SortOrder.MODIFIED_TS,
+					isSortedByDesc = sortDesc,
+					isPreviousCursor = false,
+					columnValue = null,
+					internalId = null
+				)
+			)
+
 			fun constructor(isSortedByDesc: Boolean, isPreviousCursor: Boolean, internalId: Int, columnValue: OffsetDateTime) = ModifiedTsPagination(
 				CommonPagination.TokenData(
 					AccountsModel.SortOrder.MODIFIED_TS,
@@ -174,6 +206,22 @@ interface AccountPagination<TColType>: RowPagination<AccountDto, AccountsModel.S
 		constructor = this::constructor,
 		rowColumnAccessor = this::rowAccessor
 	) {
+		/**
+		 * Creates a no-cursor [NamePagination] object
+		 * @param sortDesc Whether results will be returned in descending order
+		 * @return The [NamePagination] instance
+		 * @since 2.0.0
+		 */
+		fun create(sortDesc: Boolean) = NamePagination(
+			CommonPagination.TokenData(
+				sortEnum = AccountsModel.SortOrder.NAME_ALPHABETICALLY,
+				isSortedByDesc = sortDesc,
+				isPreviousCursor = false,
+				columnValue = null,
+				internalId = null
+			)
+		)
+
 		companion object {
 			fun constructor(isSortedByDesc: Boolean, isPreviousCursor: Boolean, internalId: Int, columnValue: String) = NamePagination(
 				CommonPagination.TokenData(
@@ -217,6 +265,22 @@ interface AccountPagination<TColType>: RowPagination<AccountDto, AccountsModel.S
 		rowColumnAccessor = this::rowAccessor
 	) {
 		companion object {
+			/**
+			 * Creates a no-cursor [EmailPagination] object
+			 * @param sortDesc Whether results will be returned in descending order
+			 * @return The [EmailPagination] instance
+			 * @since 2.0.0
+			 */
+			fun create(sortDesc: Boolean) = EmailPagination(
+				CommonPagination.TokenData(
+					sortEnum = AccountsModel.SortOrder.EMAIL_ALPHABETICALLY,
+					isSortedByDesc = sortDesc,
+					isPreviousCursor = false,
+					columnValue = null,
+					internalId = null
+				)
+			)
+
 			fun constructor(isSortedByDesc: Boolean, isPreviousCursor: Boolean, internalId: Int, columnValue: String) = EmailPagination(
 				CommonPagination.TokenData(
 					AccountsModel.SortOrder.EMAIL_ALPHABETICALLY,
@@ -259,6 +323,22 @@ interface AccountPagination<TColType>: RowPagination<AccountDto, AccountsModel.S
 		rowColumnAccessor = this::rowAccessor
 	) {
 		companion object {
+			/**
+			 * Creates a no-cursor [FileCountPagination] object
+			 * @param sortDesc Whether results will be returned in descending order
+			 * @return The [FileCountPagination] instance
+			 * @since 2.0.0
+			 */
+			fun create(sortDesc: Boolean) = NamePagination(
+				CommonPagination.TokenData(
+					sortEnum = AccountsModel.SortOrder.FILE_COUNT,
+					isSortedByDesc = sortDesc,
+					isPreviousCursor = false,
+					columnValue = null,
+					internalId = null
+				)
+			)
+
 			fun constructor(isSortedByDesc: Boolean, isPreviousCursor: Boolean, internalId: Int, columnValue: Int) = FileCountPagination(
 				CommonPagination.TokenData(
 					AccountsModel.SortOrder.FILE_COUNT,

@@ -177,10 +177,10 @@ class FileDto(
 		 * Maps a row to a new object instance
 		 * @since 2.0.0
 		 */
-		fun fromRow(row: Row) {
+		fun fromRow(row: Row): FileDto {
 			val fileCreatorId = row.getString("file_creator_id")
 
-			FileDto(
+			return FileDto(
 				internalId = row.getInteger("internal_id"), // TODO Still needed?
 				parentInternalId = row.getInteger("parent_internal_id"), // TODO Still needed?
 				id = row.getString("file_id"),

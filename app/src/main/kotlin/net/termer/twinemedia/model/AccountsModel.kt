@@ -1,20 +1,19 @@
 package net.termer.twinemedia.model
 
+import io.vertx.core.http.HttpServerRequest
 import io.vertx.kotlin.coroutines.await
-import io.vertx.sqlclient.Row
 import io.vertx.sqlclient.RowSet
 import net.termer.twinemedia.dataobject.AccountDto
 import net.termer.twinemedia.dataobject.AccountRow
 import net.termer.twinemedia.dataobject.RowIdPair
-import net.termer.twinemedia.dataobject.StandardRow
+import net.termer.twinemedia.model.pagination.AccountPagination
 import net.termer.twinemedia.model.pagination.RowPagination
-import net.termer.twinemedia.util.db.fetchManyAsync
 import net.termer.twinemedia.util.db.fetchOneAsync
+import net.termer.twinemedia.util.db.fetchPaginatedAsync
 import net.termer.twinemedia.util.db.genRowId
 import net.termer.twinemedia.util.toJsonArray
 import org.jooq.SelectQuery
 import org.jooq.impl.DSL.*;
-import java.time.OffsetDateTime
 
 /**
  * Database model for accounts
@@ -66,20 +65,70 @@ class AccountsModel(context: Context?, ignoreContext: Boolean): Model(context, i
 	}
 
 	/**
-	 * Applies the correct ORDER BY on the query based on the specified order enum value
-	 * @param order The order
-	 * @param desc Whether results should be descending
+	 * Filters for fetching accounts
+	 * @since 2.0.0
 	 */
-	private fun SelectQuery<*>.orderBy(order: SortOrder, desc: Boolean) {
-		val field = field(when(order) {
-			SortOrder.CREATED_TS -> "account_created_ts"
-			SortOrder.MODIFIED_TS -> "account_modified_ts"
-			SortOrder.NAME_ALPHABETICALLY -> "account_name"
-			SortOrder.EMAIL_ALPHABETICALLY -> "account_email"
-			SortOrder.FILE_COUNT -> "account_file_count"
-		})!!
+	class FetchOptions(
+		/**
+		 * Fetch accounts where the sequential internal ID is this
+		 * @since 2.0.0
+		 */
+		var whereInternalIdIs: Int? = null,
+		/**
+		 * Fetch accounts where the alphanumeric ID is this
+		 * @since 2.0.0
+		 */
+		var whereIdIs: String? = null,
 
-		orderBy(if(desc) field.desc() else field, field("accounts.id"))
+		/**
+		 * Fetch accounts where the email is this (case-insensitive)
+		 * @since 2.0.0
+		 */
+		var whereEmailIs: String? = null,
+
+		/**
+		 * Fetches accounts where the API key TODO finish describing this
+		 * @since 2.0.0
+		 */
+		var whereApiKeyIdIs: String? = null,
+
+		/**
+		 * Fetches accounts which have metadata that match this plaintext query
+		 * @since 2.0.0
+		 */
+		var whereMatchesQuery: String? = null,
+
+		/**
+		 * Fetches accounts that have this administrator status
+		 * @since 2.0.0
+		 */
+		var whereIsAdmin: Boolean? = null,
+
+		/**
+		 * Whether to include API key permissions TODO finish describing this
+		 * @since 2.0.0
+		 */
+		var includeApiKeyPermissions: Boolean = false
+	): Model.FetchOptions {
+		override fun applyTo(query: SelectQuery<*>) {
+			if(whereInternalIdIs != null)
+				query.addConditions(field("accounts.id").eq(whereInternalIdIs))
+			if(whereIdIs != null)
+				query.addConditions(field("accounts.account_id").eq(whereIdIs))
+			if(whereEmailIs != null)
+				query.addConditions(field("accounts.account_email").equalIgnoreCase(whereEmailIs))
+			//if(includeApiKeyPermissions && whereApiKeyIdIs != null)
+			// TODO Need to figure out what's going on
+			//if(whereMatchesQuery)
+			// TODO Probably needs to use raw SQL with binds for this
+			if(whereIsAdmin != null)
+				query.addConditions(field("accounts.account_admin").eq(whereIsAdmin))
+		}
+
+		override fun useRequest(req: HttpServerRequest) {
+			TODO("Figure out which fields apply to this")
+		}
+
 	}
 
 	/**
@@ -129,7 +178,7 @@ class AccountsModel(context: Context?, ignoreContext: Boolean): Model(context, i
 		)
 			.values(id, email, isAdmin, permissions, hash, defaultSourceId)
 			.returning(field("id"))
-			.fetchOneAsync()
+			.fetchOneAsync()!!
 			.getInteger("id")
 
 		return RowIdPair(internalId, id)
@@ -139,85 +188,44 @@ class AccountsModel(context: Context?, ignoreContext: Boolean): Model(context, i
 	 * Fetches many accounts' info.
 	 * Use [fetchOneInfo] to fetch only one account.
 	 * @param limit The number of results to return
-	 * @param whereInternalIdIs Fetch accounts where the sequential internal ID is this
-	 * @param whereIdIs Fetch accounts where the alphanumeric ID is this
-	 * @param whereEmailIs Fetch accounts where the email is this (case-insensitive)
-	 * @param whereApiKeyIdIs Fetches accounts where the API key TODO
+	 * @param options Additional options to apply
+	 * @return The paginated results
 	 */
-	suspend fun fetchManyInfo(
+	suspend fun <TColType> fetchManyInfo(
+		pagination: AccountPagination<TColType>,
 		limit: Int,
-		orderBy: SortOrder,
-		cursor:
-		whereInternalIdIs: Int? = null,
-		whereIdIs: String? = null,
-		whereEmailIs: String? = null,
-		whereApiKeyIdIs: String? = null,
-		whereMatchesQuery: String? = null,
-		whereIsAdmin: Boolean? = null,
-		includeApiKeyPermissions: Boolean = false
-	) =
-		infoQuery().apply {
-			addConditions()
-		}
+		options: FetchOptions = FetchOptions()
+	): RowPagination.Results<AccountDto, SortOrder, TColType> {
+		val query = infoQuery()
 
-	/**
-	 * Fetches all accounts with names matching the specified plaintext query
-	 * @param query The query to search for
-	 * @param offset The offset of the accounts to fetch
-	 * @param limit The amount of accounts to return
-	 * @param order The order to return the accounts
-	 * @return All accounts with names matching the specified plaintext query
-	 * @since 1.5.0
-	 */
-	suspend fun fetchAccountsByPlaintextQuery(query: String, offset: Int, limit: Int, order: Int): RowSet<AccountDto> {
-		return SqlTemplate
-			.forQuery(client, """
-				${infoSelect()}
-				WHERE (to_tsvector(account_name) @@ plainto_tsquery(#{queryRaw}) OR LOWER(account_name) LIKE LOWER(#{query}))
-				${orderBy(order)}
-				OFFSET #{offset} LIMIT #{limit}
-			""".trimIndent())
-			.mapTo(AccountDto.MAPPER)
-			.execute(hashMapOf<String, Any?>(
-				"queryRaw" to query,
-				"query" to "%$query%",
-				"offset" to offset,
-				"limit" to limit
-			)).await()
+		// TODO Apply context-based filters with a standardized method.
+		// Even if there are currently no filters to be applied, add dummy function for later use and still use it.
+
+		options.applyTo(query)
+
+		return query.fetchPaginatedAsync(pagination, limit) { AccountDto.fromRow(it) }
 	}
 
 	/**
-	 * Fetches all info about an account with the specified email (case-insensitive)
-	 * @param email The email to search
-	 * @return All rows from database search
-	 * @since 1.4.0
+	 * Fetches one account's info.
+	 * Use [fetchManyInfo] to fetch only multiple accounts.
+	 * @param options Additional options to apply
+	 * @return The account DTO, or null if there was no result
 	 */
-	suspend fun fetchAccountByEmail(email: String): RowSet<AccountRow> {
-		return SqlTemplate
-			.forQuery(client, """
-				SELECT * FROM accounts WHERE LOWER(account_email) = LOWER(#{email})
-			""".trimIndent())
-			.mapTo(AccountRow.MAPPER)
-			.execute(hashMapOf<String, Any>(
-				"email" to email
-			)).await()
-	}
+	suspend fun fetchOneInfo(options: FetchOptions = FetchOptions()): AccountDto? {
+		val query = infoQuery()
 
-	/**
-	 * Fetches all info about the account with the specified ID
-	 * @param id The account's ID
-	 * @return All rows from database search
-	 * @since 1.4.0
-	 */
-	suspend fun fetchAccountById(id: Int): RowSet<AccountRow> {
-		return SqlTemplate
-			.forQuery(client, """
-				SELECT * FROM accounts WHERE accounts.id = #{id}
-			""".trimIndent())
-			.mapTo(AccountRow.MAPPER)
-			.execute(hashMapOf<String, Any>(
-				"id" to id
-			)).await()
+		// TODO Apply context-based filters with a standardized method.
+		// Even if there are currently no filters to be applied, add dummy function for later use and still use it.
+
+		options.applyTo(query)
+
+		val row = query.fetchOneAsync()
+
+		return if(row == null)
+			null
+		else
+			AccountDto.fromRow(row)
 	}
 
 	/**
@@ -227,6 +235,7 @@ class AccountsModel(context: Context?, ignoreContext: Boolean): Model(context, i
 	 * @since 1.4.0
 	 */
 	suspend fun fetchAccountAndApiKeyByKeyId(keyId: String): RowSet<AccountRow> {
+		// TODO Take logic from this and use it in FilterOptions.applyTo
 		return SqlTemplate
 			.forQuery(client, """
 				SELECT
@@ -241,53 +250,6 @@ class AccountsModel(context: Context?, ignoreContext: Boolean): Model(context, i
 			.execute(hashMapOf<String, Any>(
 				"keyId" to keyId
 			)).await()
-	}
-
-	/**
-	 * Fetches all general account info about the account with the specified ID
-	 * @param id The account's ID
-	 * @return All rows from database search
-	 * @since 1.4.0
-	 */
-	suspend fun fetchAccountInfoById(id: Int): RowSet<AccountDto> {
-		return SqlTemplate
-			.forQuery(client, """
-				${infoSelect()}
-				WHERE accounts.id = #{id}
-			""".trimIndent())
-			.mapTo(AccountDto.MAPPER)
-			.execute(hashMapOf<String, Any>(
-				"id" to id
-			)).await()
-	}
-
-	/**
-	 * Fetches all admin accounts
-	 * @return All accounts that are administrators
-	 * @since 1.4.0
-	 */
-	suspend fun fetchAdminAccounts(): RowSet<AccountRow> {
-		return SqlTemplate
-			.forQuery(client, """
-				SELECT * FROM accounts WHERE account_admin = true
-			""".trimIndent())
-			.mapTo(AccountRow.MAPPER)
-			.execute(hashMapOf()).await()
-	}
-
-	/**
-	 * Fetches the amount of accounts that do not have a default media source associated with them
-	 * @return The amount of accounts that do not have a default media source associated with them
-	 * @since 1.5.0
-	 */
-	suspend fun fetchAccountsWithoutSourceCount(): Int {
-		return SqlTemplate
-			.forQuery(client, """
-				SELECT COUNT(*) FROM accounts
-				WHERE account_default_source = -1
-			""".trimIndent())
-			.execute(mapOf()).await()
-			.first().getInteger("count")
 	}
 
 	/**

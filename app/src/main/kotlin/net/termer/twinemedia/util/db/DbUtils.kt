@@ -38,11 +38,22 @@ suspend fun Query.fetchManyAsync() =
 		.execute().await()
 
 /**
- * Fetches query results and returns the first row
- * @return The first result row
+ * Fetches query results and returns the first row.
+ * If this is a [SelectQuery] instance, a limit of 1 will be added to it before fetching results.
+ * @return The first result row, or null if there was none
  * @since 2.0.0
  */
-suspend fun Query.fetchOneAsync() = fetchManyAsync().first()
+suspend fun Query.fetchOneAsync(): Row? {
+	if(this is SelectQuery<*>)
+		addLimit(1)
+
+	val res = fetchManyAsync()
+
+	return if(res.size() > 0)
+		res.first()
+	else
+		null
+}
 
 /**
  * Fetches results from a query using the provided [RowPagination] object.
@@ -55,9 +66,9 @@ suspend fun Query.fetchOneAsync() = fetchManyAsync().first()
  */
 suspend fun <TRow: StandardRow, TSortEnum: Enum<TSortEnum>, TColType> SelectQuery<*>.fetchPaginatedAsync(
 	pagination: RowPagination<TRow, TSortEnum, TColType>,
-	mapper: CommonRowMapper<TRow>,
-	limit: Int
-) = pagination.fetch(this, mapper, limit)
+	limit: Int,
+	mapper: CommonRowMapper<TRow>
+) = pagination.fetch(this, limit, mapper)
 
 /**
  * Executes a query

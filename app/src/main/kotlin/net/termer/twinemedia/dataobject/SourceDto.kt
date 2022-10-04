@@ -87,10 +87,10 @@ class SourceDto(
 		 * Maps a row to a new object instance
 		 * @since 2.0.0
 		 */
-		fun fromRow(row: Row) {
+		fun fromRow(row: Row): SourceDto {
 			val sourceCreatorId = row.getString("source_creator_id")
 
-			SourceDto(
+			return SourceDto(
 				id = row.getString("source_id"),
 				type = row.getString("source_type"),
 				name = row.getString("source_name"),
