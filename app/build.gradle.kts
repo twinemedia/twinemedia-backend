@@ -23,7 +23,7 @@ kotlin {
     }
 }
 
-val vertxVersion = "4.3.2"
+val vertxVersion = "4.3.4"
 
 dependencies {
     // Kotlin dependencies
