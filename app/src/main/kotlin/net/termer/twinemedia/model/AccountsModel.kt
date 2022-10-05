@@ -431,7 +431,7 @@ class AccountsModel(context: Context?, ignoreContext: Boolean): Model(context, i
 
 	private fun handleFetchKeyInfo(query: SelectQuery<*>, filters: Filters, fetchApiKeyInfo: Boolean) {
 		if(fetchApiKeyInfo) {
-			query.addSelect(field("api_keys.key_id"), field("api_keys.key_permissions"))
+			query.addSelect(field("api_keys.key_permissions"))
 			query.addJoin(
 				table("api_keys"),
 				field("api_keys.key_owner").eq(field("accounts.id"))

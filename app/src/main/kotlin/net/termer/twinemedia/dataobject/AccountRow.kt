@@ -155,7 +155,7 @@ class AccountRow(
 		 * @since 2.0.0
 		 */
 		fun fromRow(row: Row): AccountRow {
-			val isApiKey = row.hasCol("key_id")
+			val isApiKey = row.hasCol("key_permissions")
 
 			return AccountRow(
 				internalId = row.getInteger("id"),
