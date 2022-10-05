@@ -334,6 +334,19 @@ fun <T> Array<T>.getOr(index: Int, default: T) =
 fun String.toIntOr(default: Int) = toIntOrNull() ?: default
 
 /**
+ * Parses the string into a [Some]<[Int]>, or returns [None]<[Int]> if the string is not a valid int
+ * @return The int or none
+ * @since 2.0.0
+ */
+fun String.toIntOrNone(): Option<Int> {
+	val int = toIntOrNull()
+	return if(int == null)
+		none<Int>()
+	else
+		some(int)
+}
+
+/**
  * Creates an [OffsetDateTime] using an epoch second.
  * If the epoch second is less than 0, it will return null.
  * @param epoch The epoch second

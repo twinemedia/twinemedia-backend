@@ -41,6 +41,7 @@ abstract class Model(
 	 * Interface for model select, update and delete filters.
 	 * Includes filters and related values.
 	 * Filters should have default values where applicable.
+	 * Values should generally be instances of [Option], do not use null to signify that a value should not be used for filtering.
 	 * Using [applyTo] should never modify the instance, and it should be reusable across queries.
 	 * @since 2.0.0
 	 */

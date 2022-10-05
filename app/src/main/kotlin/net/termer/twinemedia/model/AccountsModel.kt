@@ -17,6 +17,8 @@ import org.jooq.ConditionProvider
 import org.jooq.Query
 import org.jooq.UpdateQuery
 import net.termer.twinemedia.util.db.Database.Sql
+import net.termer.twinemedia.util.some
+import org.jooq.SelectQuery
 import org.jooq.impl.DSL.*
 
 /**
@@ -74,61 +76,102 @@ class AccountsModel(context: Context?, ignoreContext: Boolean): Model(context, i
 	 */
 	class Filters(
 		/**
-		 * Matches accounts where the sequential internal ID is this
+		 * Matches accounts where the sequential internal ID is this.
+		 * API-unsafe.
 		 * @since 2.0.0
 		 */
-		var whereInternalIdIs: Int? = null,
+		var whereInternalIdIs: Option<Int> = none(),
 
 		/**
 		 * Matches accounts where the alphanumeric ID is this
+		 * API-safe.
 		 * @since 2.0.0
 		 */
-		var whereIdIs: String? = null,
+		var whereIdIs: Option<String> = none(),
 
 		/**
 		 * Matches accounts where the email is this (case-insensitive)
+		 * API-safe.
 		 * @since 2.0.0
 		 */
-		var whereEmailIs: String? = null,
+		var whereEmailIs: Option<String> = none(),
 
 		/**
 		 * Matches accounts where the ID of the API key associated with it is this.
 		 * Will be set to null if used in a DTO fetch method or if API key fetching is disabled on the row fetch method.
+		 * API-unsafe.
 		 * @since 2.0.0
 		 */
-		var whereApiKeyIdIs: String? = null,
-
-		/**
-		 * Matches accounts where their values match this plaintext query.
-		 * Currently matches the account name and email fields.
-		 * @since 2.0.0
-		 */
-		var whereMatchesQuery: String? = null,
+		var whereApiKeyIdIs: Option<String> = none(),
 
 		/**
 		 * Matches accounts that have this administrator status
+		 * API-safe.
 		 * @since 2.0.0
 		 */
-		var whereIsAdmin: Boolean? = null,
+		var whereAdminStatusIs: Option<Boolean> = none(),
+
+		/**
+		 * Matches accounts where their values match this plaintext query.
+		 * Search fields can be enabled by setting querySearch* properties to true.
+		 *
+		 * @since 2.0.0
+		 */
+		var whereMatchesQuery: Option<String> = none(),
+
+		/**
+		 * Whether [whereMatchesQuery] should search account names
+		 * @since 2.0.0
+		 */
+		var querySearchName: Boolean = true,
+
+		/**
+		 * Whether [whereMatchesQuery] should search account emails
+		 * @since 2.0.0
+		 */
+		var querySearchEmail: Boolean = true
 	): Model.Filters {
 		override fun applyTo(query: ConditionProvider) {
-			if(whereInternalIdIs != null)
-				query.addConditions(field("accounts.id").eq(whereInternalIdIs))
-			if(whereIdIs != null)
-				query.addConditions(field("accounts.account_id").eq(whereIdIs))
-			if(whereEmailIs != null)
-				query.addConditions(field("accounts.account_email").equalIgnoreCase(whereEmailIs))
-			if(whereApiKeyIdIs != null)
-				query.addConditions(field("api_keys.key_id").eq(whereApiKeyIdIs))
-			//if(whereMatchesQuery)
-			// TODO Probably needs to use raw SQL with binds for this
-			if(whereIsAdmin != null)
-				query.addConditions(field("accounts.account_admin").eq(whereIsAdmin))
+			if(whereInternalIdIs is Some)
+				query.addConditions(field("accounts.id").eq((whereInternalIdIs as Some).value))
+			if(whereIdIs is Some)
+				query.addConditions(field("accounts.account_id").eq((whereIdIs as Some).value))
+			if(whereEmailIs is Some)
+				query.addConditions(field("accounts.account_email").equalIgnoreCase((whereEmailIs as Some).value))
+			if(whereApiKeyIdIs is Some)
+				query.addConditions(field("api_keys.key_id").eq((whereApiKeyIdIs as Some).value))
+			if(whereAdminStatusIs is Some)
+				query.addConditions(field("accounts.account_admin").eq((whereAdminStatusIs as Some).value))
+			if(whereMatchesQuery is Some) {
+				// Determine which columns to search
+				val searchParts = ArrayList<String>()
+				if(querySearchName)
+					searchParts.add("accounts.account_name")
+				if(querySearchEmail)
+					searchParts.add("accounts.account_email")
+
+				// Construct search SQL
+				val queryStr = (whereMatchesQuery as Some).value
+				val sql = "(to_tsvector(${searchParts.joinToString(" || ' ' || ")}) @@ plainto_tsquery({0}) OR LOWER(${searchParts.joinToString(" || ' ' || ")}) LIKE LOWER({1})) AND"
+
+				query.addConditions(condition(sql, `val`(queryStr), `val`("%$queryStr%")))
+			}
 		}
 
 		override fun setWithRequest(req: HttpServerRequest) {
-			TODO("Figure out which fields apply to this")
-			// TODO This is the place to enforce maximum pagination limits for requests
+			val params = req.params()
+
+			if(params.contains("whereIdIs"))
+				whereIdIs = some(params["whereIdIs"])
+			if(params.contains("whereEmailIs"))
+				whereEmailIs = some(params["whereEmailIs"])
+			if(params.contains("whereAdminStatusIs"))
+				whereAdminStatusIs = some(params["whereAdminStatusIs"] == "true")
+			if(params.contains("whereMatchesQuery")) {
+				whereMatchesQuery = some(params["whereMatchesQuery"])
+				querySearchName = params["querySearchName"] == "true"
+				querySearchEmail = params["querySearchEmail"] == "true"
+			}
 		}
 
 	}
@@ -178,31 +221,31 @@ class AccountsModel(context: Context?, ignoreContext: Boolean): Model(context, i
 		 * Whether to globally exclude files created by other accounts
 		 * @since 2.0.0
 		 */
-		val excludeOtherFiles: Option<Boolean> = none(),
+		var excludeOtherFiles: Option<Boolean> = none(),
 
 		/**
 		 * Whether to globally exclude lists created by other accounts
 		 * @since 2.0.0
 		 */
-		val excludeOtherLists: Option<Boolean> = none(),
+		var excludeOtherLists: Option<Boolean> = none(),
 
 		/**
 		 * Whether to globally exclude tags on files created by other accounts
 		 * @since 2.0.0
 		 */
-		val excludeOtherTags: Option<Boolean> = none(),
+		var excludeOtherTags: Option<Boolean> = none(),
 
 		/**
 		 * Whether to globally exclude process presets created by other accounts
 		 * @since 2.0.0
 		 */
-		val excludeOtherProcessPresets: Option<Boolean> = none(),
+		var excludeOtherProcessPresets: Option<Boolean> = none(),
 
 		/**
 		 * Whether to globally exclude file sources created by other accounts
 		 * @since 2.0.0
 		 */
-		val excludeOtherSources: Option<Boolean> = none(),
+		var excludeOtherSources: Option<Boolean> = none(),
 
 		/**
 		 * Default source internal ID
@@ -301,13 +344,14 @@ class AccountsModel(context: Context?, ignoreContext: Boolean): Model(context, i
 		val internalId = Sql.insertInto(
 			table("accounts"),
 			field("account_id"),
+			field("account_name"),
 			field("account_email"),
 			field("account_admin"),
 			field("account_permissions"),
 			field("account_hash"),
 			field("account_default_source")
 		)
-			.values(id, email, isAdmin, permissions, hash, defaultSourceId)
+			.values(id, name, email, isAdmin, permissions, hash, defaultSourceId)
 			.returning(field("id"))
 			.fetchOneAwait()!!
 			.getInteger("id")
@@ -332,7 +376,7 @@ class AccountsModel(context: Context?, ignoreContext: Boolean): Model(context, i
 	): List<AccountDto> {
 		val query = infoQuery()
 
-		filters.whereApiKeyIdIs = null
+		filters.whereApiKeyIdIs = none()
 
 		applyContextFilters(query)
 		filters.applyTo(query)
@@ -357,7 +401,7 @@ class AccountsModel(context: Context?, ignoreContext: Boolean): Model(context, i
 	): RowPagination.Results<AccountDto, SortOrder, TColType> {
 		val query = infoQuery()
 
-		filters.whereApiKeyIdIs = null
+		filters.whereApiKeyIdIs = none()
 
 		applyContextFilters(query)
 		filters.applyTo(query)
@@ -374,7 +418,7 @@ class AccountsModel(context: Context?, ignoreContext: Boolean): Model(context, i
 	suspend fun fetchOneDto(filters: Filters = Filters()): AccountDto? {
 		val query = infoQuery()
 
-		filters.whereApiKeyIdIs = null
+		filters.whereApiKeyIdIs = none()
 
 		applyContextFilters(query)
 		filters.applyTo(query)
@@ -386,6 +430,18 @@ class AccountsModel(context: Context?, ignoreContext: Boolean): Model(context, i
 			null
 		else
 			AccountDto.fromRow(row)
+	}
+
+	private fun handleFetchKeyInfo(query: SelectQuery<*>, filters: Filters, fetchApiKeyInfo: Boolean) {
+		if(fetchApiKeyInfo) {
+			query.addSelect(field("api_keys.key_id"), field("api_keys.key_permissions"))
+			query.addJoin(
+				table("api_keys"),
+				field("api_keys.key_owner").eq(field("accounts.id"))
+			)
+		} else {
+			filters.whereApiKeyIdIs = none()
+		}
 	}
 
 	/**
@@ -410,15 +466,7 @@ class AccountsModel(context: Context?, ignoreContext: Boolean): Model(context, i
 				.from(table("accounts"))
 				.query
 
-		if(fetchApiKeyInfo) {
-			query.addSelect(field("api_keys.key_id"), field("api_keys.key_permissions"))
-			query.addJoin(
-				table("api_keys"),
-				field("api_keys.key_owner").eq(field("accounts.id"))
-			)
-		} else {
-			filters.whereApiKeyIdIs = null
-		}
+		handleFetchKeyInfo(query, filters, fetchApiKeyInfo)
 
 		applyContextFilters(query)
 		filters.applyTo(query)
@@ -441,15 +489,7 @@ class AccountsModel(context: Context?, ignoreContext: Boolean): Model(context, i
 				.from(table("accounts"))
 				.query
 
-		if(fetchApiKeyInfo) {
-			query.addSelect(field("api_keys.key_id"), field("api_keys.key_permissions"))
-			query.addJoin(
-				table("api_keys"),
-				field("api_keys.key_owner").eq(field("accounts.id"))
-			)
-		} else {
-			filters.whereApiKeyIdIs = null
-		}
+		handleFetchKeyInfo(query, filters, fetchApiKeyInfo)
 
 		applyContextFilters(query)
 		filters.applyTo(query)
