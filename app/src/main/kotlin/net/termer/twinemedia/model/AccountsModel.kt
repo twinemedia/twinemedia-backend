@@ -143,7 +143,7 @@ class AccountsModel(context: Context?, ignoreContext: Boolean): Model(context, i
 			if(whereAdminStatusIs is Some)
 				query.addConditions(field("accounts.account_admin").eq((whereAdminStatusIs as Some).value))
 			if(whereMatchesQuery is Some) {
-				query.addConditions(createFulltextSearchCondition(
+				query.addFulltextSearchCondition(
 					(whereMatchesQuery as Some).value,
 					ArrayList<String>().apply {
 						if(querySearchName)
@@ -151,7 +151,7 @@ class AccountsModel(context: Context?, ignoreContext: Boolean): Model(context, i
 						if(querySearchEmail)
 							add("accounts.account_email")
 					}
-				))
+				)
 			}
 		}
 

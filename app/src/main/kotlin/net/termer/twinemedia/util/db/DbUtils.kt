@@ -9,6 +9,7 @@ import net.termer.twinemedia.util.ROW_ID_CHARS
 import net.termer.twinemedia.util.Some
 import net.termer.twinemedia.util.genSecureStrOf
 import org.jooq.Condition
+import org.jooq.ConditionProvider
 import org.jooq.Query
 import org.jooq.SelectQuery
 import org.jooq.conf.ParamType
@@ -84,15 +85,23 @@ suspend fun Query.executeAwait() {
 }
 
 /**
- * Creates a jOOQ [Condition] for a fulltext search query
+ * Adds a fulltext search query condition.
+ * Has no effect if [searchColumns] is empty.
  * @param query The search query
  * @param searchColumns The columns to search (DO NOT allow user-supplied values here; they are not escaped)
  * @return The resulting [Condition]
  * @since 2.0.0
  */
-fun createFulltextSearchCondition(query: String, searchColumns: List<String>) = condition(
-	"(to_tsvector(${searchColumns.joinToString(" || ' ' || ")}) @@ plainto_tsquery({0})" +
-			"OR LOWER(${searchColumns.joinToString(" || ' ' || ")}) LIKE LOWER({1}))",
-	`val`(query),
-	`val`("%$query%")
-)
+@Suppress("DEPRECATION")
+fun ConditionProvider.addFulltextSearchCondition(query: String, searchColumns: List<String>) {
+	if(searchColumns.isNotEmpty()) {
+		addConditions(
+			condition(
+				"(to_tsvector(${searchColumns.joinToString(" || ' ' || ")}) @@ plainto_tsquery({0})" +
+						"OR LOWER(${searchColumns.joinToString(" || ' ' || ")}) LIKE LOWER({1}))",
+				`val`(query),
+				`val`("%$query%")
+			)
+		)
+	}
+}
