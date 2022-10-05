@@ -3,7 +3,7 @@ package net.termer.twinemedia.model.pagination
 import io.vertx.sqlclient.Row
 import net.termer.twinemedia.dataobject.StandardRow
 import net.termer.twinemedia.util.*
-import net.termer.twinemedia.util.db.fetchManyAsync
+import net.termer.twinemedia.util.db.fetchManyAwait
 import org.jooq.Field
 import org.jooq.SelectQuery
 import org.jooq.impl.DSL.*
@@ -167,7 +167,7 @@ object CommonPagination {
 				query.addOrderBy(colValField, internalIdField)
 
 			// Fetch results
-			val rows = query.fetchManyAsync().map(mapper)
+			val rows = query.fetchManyAwait().map(mapper)
 			val res = if(isPreviousCursor)
 				rows.asReversed()
 			else

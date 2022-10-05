@@ -32,7 +32,7 @@ fun genRowId(len: Int = 10) = genSecureStrOf(ROW_ID_CHARS, len)
  * @return All result rows
  * @since 2.0.0
  */
-suspend fun Query.fetchManyAsync() =
+suspend fun Query.fetchManyAwait() =
 	Database.client
 		.query(getSQL(ParamType.INLINED))
 		.execute().await()
@@ -43,11 +43,11 @@ suspend fun Query.fetchManyAsync() =
  * @return The first result row, or null if there was none
  * @since 2.0.0
  */
-suspend fun Query.fetchOneAsync(): Row? {
+suspend fun Query.fetchOneAwait(): Row? {
 	if(this is SelectQuery<*>)
 		addLimit(1)
 
-	val res = fetchManyAsync()
+	val res = fetchManyAwait()
 
 	return if(res.size() > 0)
 		res.first()
@@ -74,7 +74,7 @@ suspend fun <TRow: StandardRow, TSortEnum: Enum<TSortEnum>, TColType> SelectQuer
  * Executes a query
  * @since 2.0.0
  */
-suspend fun Query.executeAsync() {
+suspend fun Query.executeAwait() {
 	Database.client
 		.query(getSQL(ParamType.INLINED))
 		.execute().await()

@@ -1,8 +1,12 @@
+@file:Suppress("DEPRECATION")
+
 package net.termer.twinemedia.model
 
 import io.vertx.core.http.HttpServerRequest
 import net.termer.twinemedia.dataobject.AccountRow
-import org.jooq.SelectQuery
+import net.termer.twinemedia.util.Option
+import org.jooq.ConditionProvider
+import org.jooq.UpdateQuery
 
 /**
  * Abstract class to be implemented by database models.
@@ -34,25 +38,43 @@ abstract class Model(
 	)
 
 	/**
-	 * Interface for model fetch options.
+	 * Interface for model select, update and delete filters.
 	 * Includes filters and related values.
-	 * Options should have default values where applicable.
+	 * Filters should have default values where applicable.
 	 * Using [applyTo] should never modify the instance, and it should be reusable across queries.
 	 * @since 2.0.0
 	 */
-	interface FetchOptions {
+	interface Filters {
 		/**
-		 * Applies the filters on the provided select query
-		 * @param query The query
+		 * Applies the filters on the provided query.
+		 * The query must implement [ConditionProvider].
+		 * @param query The query to apply filters on
 		 * @since 2.0.0
 		 */
-		fun applyTo(query: SelectQuery<*>)
+		fun applyTo(query: ConditionProvider)
 
 		/**
-		 * Changes the instance's filters based on the provided [HttpServerRequest]
+		 * Changes the instance's filters based on the provided [HttpServerRequest].
+		 * Only API-safe filters should be changed by this method.
 		 * @param req The request
 		 * @since 2.0.0
 		 */
-		fun useRequest(req: HttpServerRequest)
+		fun setWithRequest(req: HttpServerRequest)
+	}
+
+	/**
+	 * Interface for update values.
+	 * Includes values that are to be updated on model rows.
+	 * Values should be instances of [Option], do not use null to signify that a value should not be updated.
+	 * Using [applyTo] should never modify the instance, and it should be reusable across queries.
+	 * @since 2.0.0
+	 */
+	interface UpdateValues {
+		/**
+		 * Applies the update values to the provided update query
+		 * @param query The update query to apply values on
+		 * @since 2.0.0
+		 */
+		fun applyTo(query: UpdateQuery<*>)
 	}
 }

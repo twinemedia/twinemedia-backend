@@ -8,6 +8,8 @@ import io.vertx.sqlclient.*
 import net.termer.twinemedia.AppConfig
 import org.flywaydb.core.Flyway
 import org.flywaydb.core.api.Location
+import org.jooq.SQLDialect
+import org.jooq.impl.DSL
 
 /**
  * Object containing global database fields
@@ -22,6 +24,12 @@ object Database {
 	 */
 	val client
 		get() = pgClient!!
+
+	/**
+	 * The jOOQ DSLContext instance used by DB models
+	 * @since 2.0.0
+	 */
+	val Sql = DSL.using(SQLDialect.POSTGRES)
 }
 
 /**

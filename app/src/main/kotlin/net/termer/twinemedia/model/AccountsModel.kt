@@ -1,19 +1,23 @@
+@file:Suppress("DEPRECATION")
+
 package net.termer.twinemedia.model
 
 import io.vertx.core.http.HttpServerRequest
-import io.vertx.kotlin.coroutines.await
-import io.vertx.sqlclient.RowSet
+import net.termer.twinemedia.Constants.API_MAX_RESULT_LIMIT
 import net.termer.twinemedia.dataobject.AccountDto
 import net.termer.twinemedia.dataobject.AccountRow
 import net.termer.twinemedia.dataobject.RowIdPair
 import net.termer.twinemedia.model.pagination.AccountPagination
 import net.termer.twinemedia.model.pagination.RowPagination
-import net.termer.twinemedia.util.db.fetchOneAsync
-import net.termer.twinemedia.util.db.fetchPaginatedAsync
-import net.termer.twinemedia.util.db.genRowId
-import net.termer.twinemedia.util.toJsonArray
-import org.jooq.SelectQuery
-import org.jooq.impl.DSL.*;
+import net.termer.twinemedia.util.Option
+import net.termer.twinemedia.util.Some
+import net.termer.twinemedia.util.db.*
+import net.termer.twinemedia.util.none
+import org.jooq.ConditionProvider
+import org.jooq.Query
+import org.jooq.UpdateQuery
+import net.termer.twinemedia.util.db.Database.Sql
+import org.jooq.impl.DSL.*
 
 /**
  * Database model for accounts
@@ -68,75 +72,202 @@ class AccountsModel(context: Context?, ignoreContext: Boolean): Model(context, i
 	 * Filters for fetching accounts
 	 * @since 2.0.0
 	 */
-	class FetchOptions(
+	class Filters(
 		/**
-		 * Fetch accounts where the sequential internal ID is this
+		 * Matches accounts where the sequential internal ID is this
 		 * @since 2.0.0
 		 */
 		var whereInternalIdIs: Int? = null,
+
 		/**
-		 * Fetch accounts where the alphanumeric ID is this
+		 * Matches accounts where the alphanumeric ID is this
 		 * @since 2.0.0
 		 */
 		var whereIdIs: String? = null,
 
 		/**
-		 * Fetch accounts where the email is this (case-insensitive)
+		 * Matches accounts where the email is this (case-insensitive)
 		 * @since 2.0.0
 		 */
 		var whereEmailIs: String? = null,
 
 		/**
-		 * Fetches accounts where the API key TODO finish describing this
+		 * Matches accounts where the ID of the API key associated with it is this.
+		 * Will be set to null if used in a DTO fetch method or if API key fetching is disabled on the row fetch method.
 		 * @since 2.0.0
 		 */
 		var whereApiKeyIdIs: String? = null,
 
 		/**
-		 * Fetches accounts which have metadata that match this plaintext query
+		 * Matches accounts where their values match this plaintext query.
+		 * Currently matches the account name and email fields.
 		 * @since 2.0.0
 		 */
 		var whereMatchesQuery: String? = null,
 
 		/**
-		 * Fetches accounts that have this administrator status
+		 * Matches accounts that have this administrator status
 		 * @since 2.0.0
 		 */
 		var whereIsAdmin: Boolean? = null,
-
-		/**
-		 * Whether to include API key permissions TODO finish describing this
-		 * @since 2.0.0
-		 */
-		var includeApiKeyPermissions: Boolean = false
-	): Model.FetchOptions {
-		override fun applyTo(query: SelectQuery<*>) {
+	): Model.Filters {
+		override fun applyTo(query: ConditionProvider) {
 			if(whereInternalIdIs != null)
 				query.addConditions(field("accounts.id").eq(whereInternalIdIs))
 			if(whereIdIs != null)
 				query.addConditions(field("accounts.account_id").eq(whereIdIs))
 			if(whereEmailIs != null)
 				query.addConditions(field("accounts.account_email").equalIgnoreCase(whereEmailIs))
-			//if(includeApiKeyPermissions && whereApiKeyIdIs != null)
-			// TODO Need to figure out what's going on
+			if(whereApiKeyIdIs != null)
+				query.addConditions(field("api_keys.key_id").eq(whereApiKeyIdIs))
 			//if(whereMatchesQuery)
 			// TODO Probably needs to use raw SQL with binds for this
 			if(whereIsAdmin != null)
 				query.addConditions(field("accounts.account_admin").eq(whereIsAdmin))
 		}
 
-		override fun useRequest(req: HttpServerRequest) {
+		override fun setWithRequest(req: HttpServerRequest) {
 			TODO("Figure out which fields apply to this")
+			// TODO This is the place to enforce maximum pagination limits for requests
 		}
 
 	}
 
 	/**
-	 * Generates a query for getting info
+	 * Values to update on account rows
+	 * @since 2.0.0
+	 */
+	class UpdateValues(
+		/**
+		 * Name
+		 * @since 2.0.0
+		 */
+		var name: Option<String> = none(),
+
+		/**
+		 * Email address
+		 * @since 2.0.0
+		 */
+		var email: Option<String> = none(),
+
+		/**
+		 * Permissions
+		 * @since 2.0.0
+		 */
+		var permissions: Option<Array<String>> = none(),
+
+		/**
+		 * Whether the account is an administrator
+		 * @since 2.0.0
+		 */
+		var isAdmin: Option<Boolean> = none(),
+
+		/**
+		 * Password hash
+		 * @since 2.0.0
+		 */
+		var hash: Option<String> = none(),
+
+		/**
+		 * The tags to exclude globally when listing and searching files
+		 * @since 2.0.0
+		 */
+		var excludeTags: Option<Array<String>> = none(),
+
+		/**
+		 * Whether to globally exclude files created by other accounts
+		 * @since 2.0.0
+		 */
+		val excludeOtherFiles: Option<Boolean> = none(),
+
+		/**
+		 * Whether to globally exclude lists created by other accounts
+		 * @since 2.0.0
+		 */
+		val excludeOtherLists: Option<Boolean> = none(),
+
+		/**
+		 * Whether to globally exclude tags on files created by other accounts
+		 * @since 2.0.0
+		 */
+		val excludeOtherTags: Option<Boolean> = none(),
+
+		/**
+		 * Whether to globally exclude process presets created by other accounts
+		 * @since 2.0.0
+		 */
+		val excludeOtherProcessPresets: Option<Boolean> = none(),
+
+		/**
+		 * Whether to globally exclude file sources created by other accounts
+		 * @since 2.0.0
+		 */
+		val excludeOtherSources: Option<Boolean> = none(),
+
+		/**
+		 * Default source internal ID
+		 * @since 2.0.0
+		 */
+		var defaultSourceId: Option<Int> = none()
+	): Model.UpdateValues {
+		override fun applyTo(query: UpdateQuery<*>) {
+			fun set(name: String, fieldVal: Option<*>, prefix: String = "accounts.account_") {
+				if(fieldVal is Some)
+					query.addValue(field(prefix + name), if(fieldVal.value is Array<*>) array(*fieldVal.value) else fieldVal.value)
+			}
+
+			set("name", name)
+			set("email", email)
+			set("permissions", permissions)
+			set("admin", isAdmin)
+			set("hash", hash)
+			set("exclude_tags", excludeTags)
+			set("exclude_other_files", excludeOtherFiles)
+			set("exclude_other_lists", excludeOtherLists)
+			set("exclude_other_tags", excludeOtherTags)
+			set("exclude_other_process_presets", excludeOtherProcessPresets)
+			set("exclude_other_sources", excludeOtherSources)
+			set("default_source", defaultSourceId)
+		}
+	}
+
+	/**
+	 * Orders the provided query using the specified sort order
+	 * @param order The sort order
+	 * @param orderDesc Whether to sort by descending order
+	 * @return This, to be used fluently
+	 */
+	private fun Query.orderBy(order: SortOrder, orderDesc: Boolean): Query {
+		fun orderBy(name: String) {
+			orderBy(if(orderDesc) field(name).desc() else field(name))
+		}
+
+		when(order) {
+			SortOrder.CREATED_TS -> orderBy("accounts.account_created_ts")
+			SortOrder.MODIFIED_TS -> orderBy("accounts.account_modified_ts")
+			SortOrder.NAME_ALPHABETICALLY -> orderBy("accounts.account_name")
+			SortOrder.EMAIL_ALPHABETICALLY -> orderBy("accounts.account_email")
+			SortOrder.FILE_COUNT -> orderBy("accounts.account_file_count")
+		}
+
+		return this
+	}
+
+	/**
+	 * Applies context filters on a query
+	 * @param query The query to apply the filters on
+	 */
+	private fun applyContextFilters(query: ConditionProvider) {
+		// No filters to apply
+		// Higher level permission checks on controllers restrict access to account data
+	}
+
+	/**
+	 * Generates a query for getting DTO info
 	 * @return The query
 	 */
 	private fun infoQuery() =
-		select(
+		Sql.select(
 			field("accounts.id"),
 			field("account_email"),
 			field("account_name"),
@@ -149,9 +280,9 @@ class AccountsModel(context: Context?, ignoreContext: Boolean): Model(context, i
 			field("account_created_ts"),
 			field("account_modified_ts")
 		)
-		.from("accounts")
-		.leftJoin(table("sources")).on(field("sources.id").eq("account_default_source"))
-		.query
+			.from(table("accounts"))
+			.leftJoin(table("sources")).on(field("sources.id").eq("account_default_source"))
+			.query
 
 	/**
 	 * Creates a new account row with the provided details
@@ -167,7 +298,7 @@ class AccountsModel(context: Context?, ignoreContext: Boolean): Model(context, i
 	suspend fun createAccountRow(email: String, name: String, isAdmin: Boolean, permissions: Array<String>, hash: String, defaultSourceId: Int?): RowIdPair {
 		val id = genRowId()
 
-		val internalId = insertInto(
+		val internalId = Sql.insertInto(
 			table("accounts"),
 			field("account_id"),
 			field("account_email"),
@@ -178,49 +309,78 @@ class AccountsModel(context: Context?, ignoreContext: Boolean): Model(context, i
 		)
 			.values(id, email, isAdmin, permissions, hash, defaultSourceId)
 			.returning(field("id"))
-			.fetchOneAsync()!!
+			.fetchOneAwait()!!
 			.getInteger("id")
 
 		return RowIdPair(internalId, id)
 	}
 
 	/**
-	 * Fetches many accounts' info.
-	 * Use [fetchOneInfo] to fetch only one account.
+	 * Fetches many accounts' info DTOs.
+	 * Use [fetchOneDto] to fetch only one account.
+	 * @param filters Additional filters to apply
+	 * @param order Which order to sort results with (defaults to [SortOrder.CREATED_TS])
+	 * @param orderDesc Whether to sort results in descending order (defaults to false)
+	 * @param limit The number of results to return (defaults to [API_MAX_RESULT_LIMIT])
+	 * @return The results
+	 */
+	suspend fun fetchManyDtos(
+		filters: Filters = Filters(),
+		order: SortOrder = SortOrder.CREATED_TS,
+		orderDesc: Boolean = false,
+		limit: Int = API_MAX_RESULT_LIMIT
+	): List<AccountDto> {
+		val query = infoQuery()
+
+		filters.whereApiKeyIdIs = null
+
+		applyContextFilters(query)
+		filters.applyTo(query)
+		query.orderBy(order, orderDesc)
+		query.addLimit(limit)
+
+		return query.fetchManyAwait().map { AccountDto.fromRow(it) }
+	}
+
+	/**
+	 * Fetches many accounts' info DTOs using pagination.
+	 * Use [fetchOneDto] to fetch only one account.
+	 * @param pagination The pagination data to use
+	 * @param filters Additional filters to apply
 	 * @param limit The number of results to return
-	 * @param options Additional options to apply
 	 * @return The paginated results
 	 */
-	suspend fun <TColType> fetchManyInfo(
+	suspend fun <TColType> fetchManyDtosPaginated(
 		pagination: AccountPagination<TColType>,
 		limit: Int,
-		options: FetchOptions = FetchOptions()
+		filters: Filters = Filters()
 	): RowPagination.Results<AccountDto, SortOrder, TColType> {
 		val query = infoQuery()
 
-		// TODO Apply context-based filters with a standardized method.
-		// Even if there are currently no filters to be applied, add dummy function for later use and still use it.
+		filters.whereApiKeyIdIs = null
 
-		options.applyTo(query)
+		applyContextFilters(query)
+		filters.applyTo(query)
 
 		return query.fetchPaginatedAsync(pagination, limit) { AccountDto.fromRow(it) }
 	}
 
 	/**
-	 * Fetches one account's info.
-	 * Use [fetchManyInfo] to fetch only multiple accounts.
-	 * @param options Additional options to apply
+	 * Fetches one account's info DTO.
+	 * Use [fetchManyDtos] to fetch multiple accounts.
+	 * @param filters Additional filters to apply
 	 * @return The account DTO, or null if there was no result
 	 */
-	suspend fun fetchOneInfo(options: FetchOptions = FetchOptions()): AccountDto? {
+	suspend fun fetchOneDto(filters: Filters = Filters()): AccountDto? {
 		val query = infoQuery()
 
-		// TODO Apply context-based filters with a standardized method.
-		// Even if there are currently no filters to be applied, add dummy function for later use and still use it.
+		filters.whereApiKeyIdIs = null
 
-		options.applyTo(query)
+		applyContextFilters(query)
+		filters.applyTo(query)
+		query.addLimit(1)
 
-		val row = query.fetchOneAsync()
+		val row = query.fetchOneAwait()
 
 		return if(row == null)
 			null
@@ -229,161 +389,138 @@ class AccountsModel(context: Context?, ignoreContext: Boolean): Model(context, i
 	}
 
 	/**
-	 * Fetches all info about the account associated with the specified API key ID
-	 * @param keyId The key ID
-	 * @return All rows from database search
-	 * @since 1.4.0
+	 * Fetches many account rows.
+	 * Use [fetchOneRow] to fetch only one account.
+	 * @param filters Additional filters to apply
+	 * @param order Which order to sort results with (defaults to [SortOrder.CREATED_TS])
+	 * @param orderDesc Whether to sort results in descending order (defaults to false)
+	 * @param limit The number of results to return (defaults to [API_MAX_RESULT_LIMIT])
+	 * @param fetchApiKeyInfo Whether to fetch key info associated with the account (should be used in conjunction with [Filters.whereApiKeyIdIs]) (defaults to false)
+	 * @return The results
 	 */
-	suspend fun fetchAccountAndApiKeyByKeyId(keyId: String): RowSet<AccountRow> {
-		// TODO Take logic from this and use it in FilterOptions.applyTo
-		return SqlTemplate
-			.forQuery(client, """
-				SELECT
-					accounts.*,
-					key_permissions,
-					key_id
-				FROM accounts
-				JOIN apikeys ON key_owner = accounts.id
-				WHERE key_id = #{keyId}
-			""".trimIndent())
-			.mapTo(AccountRow.MAPPER)
-			.execute(hashMapOf<String, Any>(
-				"keyId" to keyId
-			)).await()
+	suspend fun fetchManyRows(
+		filters: Filters = Filters(),
+		order: SortOrder = SortOrder.CREATED_TS,
+		orderDesc: Boolean = false,
+		limit: Int = API_MAX_RESULT_LIMIT,
+		fetchApiKeyInfo: Boolean = false
+	): List<AccountRow> {
+		val query =
+			Sql.select(asterisk())
+				.from(table("accounts"))
+				.query
+
+		if(fetchApiKeyInfo) {
+			query.addSelect(field("api_keys.key_id"), field("api_keys.key_permissions"))
+			query.addJoin(
+				table("api_keys"),
+				field("api_keys.key_owner").eq(field("accounts.id"))
+			)
+		} else {
+			filters.whereApiKeyIdIs = null
+		}
+
+		applyContextFilters(query)
+		filters.applyTo(query)
+		query.orderBy(order, orderDesc)
+		query.addLimit(limit)
+
+		return query.fetchManyAwait().map { AccountRow.fromRow(it) }
 	}
 
 	/**
-	 * Updates an account's info
-	 * @param id The ID of the account
-	 * @param newName The new name for this account
-	 * @param newEmail The new email for this account
-	 * @param isAdmin Whether this account will be an administrator
-	 * @param newPermissions The new permissions for this account
-	 * @param defaultSource The new default source's ID for this account
-	 * @since 1.5.0
+	 * Fetches one account row.
+	 * Use [fetchManyRows] to fetch many accounts.
+	 * @param filters Additional filters to apply
+	 * @param fetchApiKeyInfo Whether to fetch key info associated with the account (should be used in conjunction with [Filters.whereApiKeyIdIs]) (defaults to false)
+	 * @return The account row, or null if there was no result
 	 */
-	suspend fun updateAccountInfo(id: Int, newName: String, newEmail: String, isAdmin: Boolean, newPermissions: Array<String>, defaultSource: Int) {
-		SqlTemplate
-			.forUpdate(client, """
-				UPDATE accounts
-				SET
-					account_name = #{name},
-					account_email = #{email},
-					account_admin = #{admin},
-					account_permissions = CAST( #{perms} AS jsonb ),
-					account_default_source = #{defaultSource}
-				WHERE accounts.id = #{id}
-			""".trimIndent())
-			.execute(hashMapOf<String, Any>(
-				"id" to id,
-				"name" to newName,
-				"email" to newEmail,
-				"admin" to isAdmin,
-				"perms" to newPermissions.toJsonArray(),
-				"defaultSource" to defaultSource
-			)).await()
+	suspend fun fetchOneRow(filters: Filters = Filters(), fetchApiKeyInfo: Boolean = false): AccountRow? {
+		val query =
+			Sql.select(field("accounts.*"))
+				.from(table("accounts"))
+				.query
+
+		if(fetchApiKeyInfo) {
+			query.addSelect(field("api_keys.key_id"), field("api_keys.key_permissions"))
+			query.addJoin(
+				table("api_keys"),
+				field("api_keys.key_owner").eq(field("accounts.id"))
+			)
+		} else {
+			filters.whereApiKeyIdIs = null
+		}
+
+		applyContextFilters(query)
+		filters.applyTo(query)
+		query.addLimit(1)
+
+		val row = query.fetchOneAwait()
+
+		return if(row == null)
+			null
+		else
+			AccountRow.fromRow(row)
 	}
 
 	/**
-	 * Updates an account's info
-	 * @param id The ID of the account
-	 * @param newName The new name for this account
-	 * @param newEmail The new email for this account (null to leave unchanged)
-	 * @param newHash The new password hash for this account (null to leave unchanged)
-	 * @param newDefaultSource The new default media source ID for this account
-	 * @param excludeTags Tags to globally exclude when listing files (from searches, lists, or anywhere else an array of files would be returned other than file children)
-	 * @param excludeOtherMedia Whether to globally exclude media created by other users when viewing or listing any media
-	 * @param excludeOtherLists Whether to globally exclude lists created by other users
-	 * @param excludeOtherTags Whether to globally exclude tags added to files created by other users
-	 * @param excludeOtherProcesses Whether to globally exclude processes created by other users
-	 * @param excludeOtherSources Whether to globally exclude media sources created by other users
-	 * @since 1.5.0
+	 * Updates many account rows
+	 * @param values The values to update
+	 * @param filters Filters for which rows to update
+	 * @param limit The maximum number of rows to update, or null for no limit (defaults to null)
+	 * @param updateModifiedTs Whether to update the accounts' last modified timestamp (defaults to true)
+	 * @since 2.0.0
 	 */
-	suspend fun updateAccountInfo(id: Int, newName: String, newEmail: String?, newHash: String?, newDefaultSource: Int, excludeTags: Array<String>, excludeOtherMedia: Boolean, excludeOtherLists: Boolean, excludeOtherTags: Boolean, excludeOtherProcesses: Boolean, excludeOtherSources: Boolean) {
-		SqlTemplate
-			.forUpdate(client, """
-				UPDATE accounts
-				SET
-					account_name = #{name},
-					${if(newEmail == null) "" else "account_email = #{email},"}
-					${if(newHash == null) "" else "account_hash = #{hash},"}
-					account_default_source = #{defaultSource},
-					account_exclude_tags = CAST( #{excludeTags} AS jsonb ),
-					account_exclude_other_media = #{excludeOtherMedia},
-					account_exclude_other_lists = #{excludeOtherLists},
-					account_exclude_other_tags = #{excludeOtherTags},
-					account_exclude_other_processes = #{excludeOtherProcesses},
-					account_exclude_other_sources = #{excludeOtherSources}
-				WHERE accounts.id = #{id}
-			""".trimIndent())
-			.execute(hashMapOf<String, Any?>(
-				"id" to id,
-				"name" to newName,
-				"email" to newEmail,
-				"hash" to newHash,
-				"defaultSource" to newDefaultSource,
-				"excludeTags" to excludeTags.toJsonArray(),
-				"excludeOtherMedia" to excludeOtherMedia,
-				"excludeOtherLists" to excludeOtherLists,
-				"excludeOtherTags" to excludeOtherTags,
-				"excludeOtherProcesses" to excludeOtherProcesses,
-				"excludeOtherSources" to excludeOtherSources
-			)).await()
+	suspend fun updateManyAccounts(values: UpdateValues, filters: Filters, limit: Int?  = null, updateModifiedTs: Boolean = true) {
+		val query = Sql.updateQuery(table("accounts"))
+
+		applyContextFilters(query)
+		filters.applyTo(query)
+		if(limit != null)
+			query.addLimit(limit)
+
+		values.applyTo(query)
+
+		if(updateModifiedTs)
+			query.addValue(field("accounts.account_modified_ts"), now())
+
+		query.executeAwait()
 	}
 
 	/**
-	 * Updates an account's password hash
-	 * @param id The ID of the account
-	 * @param newHash The new password hash for this account
-	 * @since 1.0.0
+	 * Updates an account row
+	 * @param values The values to update
+	 * @param filters Filters for which row to update
+	 * @param updateModifiedTs Whether to update the accounts' last modified timestamp (defaults to true)
+	 * @since 2.0.0
 	 */
-	suspend fun updateAccountHash(id: Int, newHash: String) {
-		SqlTemplate
-			.forUpdate(client, """
-				UPDATE accounts
-				SET
-					account_hash = #{hash}
-				WHERE accounts.id = #{id}
-			""".trimIndent())
-			.execute(hashMapOf<String, Any>(
-				"id" to id,
-				"hash" to newHash
-			)).await()
+	suspend fun updateOneAccount(values: UpdateValues, filters: Filters, updateModifiedTs: Boolean = true) {
+		updateManyAccounts(values, filters, 1, updateModifiedTs)
 	}
 
 	/**
-	 * Updates the default source of all accounts with the specified default source
-	 * @param oldSource The old source ID
-	 * @param newSource The new source ID
-	 * @since 1.5.0
+	 * Deletes many account rows
+	 * @param filters Filters for which rows to delete
+	 * @param limit The maximum number of rows to delete, or null for no limit (defaults to null)
+	 * @since 2.0.0
 	 */
-	suspend fun updateAccountDefaultSourceByDefaultSource(oldSource: Int, newSource: Int) {
-		SqlTemplate
-			.forUpdate(client, """
-				UPDATE accounts
-				SET
-					account_default_source = #{new}
-				WHERE account_default_source = #{old}
-			""".trimIndent())
-			.execute(hashMapOf<String, Any>(
-				"old" to oldSource,
-				"new" to newSource
-			)).await()
+	suspend fun deleteManyAccounts(filters: Filters, limit: Int? = null) {
+		val query = Sql.deleteQuery(table("accounts"))
+
+		applyContextFilters(query)
+		filters.applyTo(query)
+		if(limit != null)
+			query.addLimit(limit)
+
+		query.executeAwait()
 	}
 
 	/**
-	 * Deletes an account
-	 * @param id The ID of the account to delete
-	 * @since 1.0.0
+	 * Deletes one account row
+	 * @param filters Filters for which row to delete
+	 * @since 2.0.0
 	 */
-	suspend fun deleteAccount(id: Int) {
-		SqlTemplate
-			.forUpdate(client, """
-				DELETE FROM accounts
-				WHERE accounts.id = #{id}
-			""".trimIndent())
-			.execute(hashMapOf<String, Any>(
-				"id" to id
-			)).await()
+	suspend fun deleteOneAccount(filters: Filters) {
+		deleteManyAccounts(filters, 1)
 	}
 }

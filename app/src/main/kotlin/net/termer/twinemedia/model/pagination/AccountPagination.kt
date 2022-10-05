@@ -43,7 +43,18 @@ interface AccountPagination<TColType>: RowPagination<AccountDto, AccountsModel.S
 			val sortEnumVals = AccountsModel.SortOrder.values()
 			val sort = CommonPagination.decodeSortEnum(bytes, sortEnumVals)
 
-			return CommonPagination.Timestamp.decodeTokenBytes(bytes, sortEnumVals, sort).toPagination()
+			return when(sort) {
+				AccountsModel.SortOrder.CREATED_TS ->
+					CommonPagination.Timestamp.decodeTokenBytes(bytes, sortEnumVals, sort).toPagination()
+				AccountsModel.SortOrder.MODIFIED_TS ->
+					CommonPagination.Timestamp.decodeTokenBytes(bytes, sortEnumVals, sort).toPagination()
+				AccountsModel.SortOrder.NAME_ALPHABETICALLY ->
+					CommonPagination.Text.decodeTokenBytes(bytes, sortEnumVals, sort).toPagination()
+				AccountsModel.SortOrder.EMAIL_ALPHABETICALLY ->
+					CommonPagination.Text.decodeTokenBytes(bytes, sortEnumVals, sort).toPagination()
+				AccountsModel.SortOrder.FILE_COUNT ->
+					CommonPagination.Integer.decodeTokenBytes(bytes, sortEnumVals, sort).toPagination()
+			}
 		}
 
 		/**

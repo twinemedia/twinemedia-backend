@@ -76,7 +76,7 @@ class ProcessesModel {
 	private fun listWhereFilter(): String {
 		return when {
 			account == null -> "TRUE"
-			account!!.excludeOtherProcesses -> "process_creator = ${account?.id}"
+			account!!.excludeOtherProcessPresets -> "process_creator = ${account?.id}"
 			account!!.hasPermission("processes.list.all") -> "TRUE"
 			else -> "process_creator = ${account?.id}"
 		}
@@ -89,7 +89,7 @@ class ProcessesModel {
 	private fun viewWhereFilter(): String {
 		return when {
 			account == null -> "TRUE"
-			account!!.excludeOtherProcesses -> "process_creator = ${account?.id}"
+			account!!.excludeOtherProcessPresets -> "process_creator = ${account?.id}"
 			account!!.hasPermission("processes.view.all") -> "TRUE"
 			else -> "process_creator = ${account?.id}"
 		}
@@ -102,7 +102,7 @@ class ProcessesModel {
 	private fun editWhereFilter(): String {
 		return when {
 			account == null -> "TRUE"
-			account!!.excludeOtherProcesses -> "process_creator = ${account?.id}"
+			account!!.excludeOtherProcessPresets -> "process_creator = ${account?.id}"
 			account!!.hasPermission("processes.edit.all") -> "TRUE"
 			else -> "process_creator = ${account?.id}"
 		}
@@ -115,7 +115,7 @@ class ProcessesModel {
 	private fun deleteWhereFilter(): String {
 		return when {
 			account == null -> "TRUE"
-			account!!.excludeOtherProcesses -> "process_creator = ${account?.id}"
+			account!!.excludeOtherProcessPresets -> "process_creator = ${account?.id}"
 			account!!.hasPermission("processes.delete.all") -> "TRUE"
 			else -> "process_creator = ${account?.id}"
 		}
