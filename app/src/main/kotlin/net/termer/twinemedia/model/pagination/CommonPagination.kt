@@ -134,51 +134,6 @@ object CommonPagination {
 		)
 	}
 
-	private suspend fun <TRow: StandardRow, TSortEnum: Enum<TSortEnum>, TColType> commonFetch(
-		pagination: RowPagination<TRow, TSortEnum, TColType>,
-		colField: Field<Any>,
-		internalIdField: Field<Any>,
-		columnValue: TColType?,
-		query: SelectQuery<*>,
-		limit: Int,
-		mapper: CommonRowMapper<TRow>,
-		constructor: CommonPaginationConstructor<TRow, TSortEnum, TColType>,
-		rowColumnAccessor: CommonRowColumnAccessor<TRow, TColType>
-	): RowPagination.Results<TRow, TSortEnum, TColType> {
-		// Apply pagination on query
-		if(columnValue != null && pagination.internalId != null) {
-			val row = row(colField, internalIdField)
-
-			query.addConditions(
-				if (pagination.isSortedByDesc.oppositeIf(pagination.isPreviousCursor))
-					row.lt(row(columnValue, pagination.internalId))
-				else
-					row.gt(row(columnValue, pagination.internalId))
-			)
-		}
-		query.addLimit(limit)
-		if(pagination.isSortedByDesc)
-			query.addOrderBy(colField.desc(), internalIdField.desc())
-		else
-			query.addOrderBy(colField, internalIdField)
-
-		// Fetch results
-		val rows = query.fetchManyAsync().map(mapper)
-		val res = if(pagination.isPreviousCursor)
-			rows.asReversed()
-		else
-			rows
-
-		val first = res.first()
-		val last = if(res.size < limit) null else res.last()
-
-		return RowPagination.Results(
-			results = res,
-			prevPage = constructor(pagination.isSortedByDesc, true, first.internalId, rowColumnAccessor(first)),
-			nextPage = if(last == null) null else constructor(pagination.isSortedByDesc, false, last.internalId, rowColumnAccessor(last))
-		)
-	}
-
 	/**
 	 * The base abstract class for common pagination implementations
 	 * @since 2.0.0
@@ -193,17 +148,40 @@ object CommonPagination {
 			query: SelectQuery<*>,
 			limit: Int,
 			mapper: CommonRowMapper<TRow>
-		) = commonFetch(
-			this,
-			colValField,
-			internalIdField,
-			columnValue,
-			query,
-			limit,
-			mapper,
-			constructor,
-			rowColumnAccessor
-		)
+		): RowPagination.Results<TRow, TSortEnum, TColType> {
+			// Apply pagination on query
+			if(columnValue != null && internalId != null) {
+				val row = row(colValField, internalIdField)
+
+				query.addConditions(
+					if (isSortedByDesc.oppositeIf(isPreviousCursor))
+						row.lt(row(columnValue, internalId))
+					else
+						row.gt(row(columnValue, internalId))
+				)
+			}
+			query.addLimit(limit)
+			if(isSortedByDesc)
+				query.addOrderBy(colValField.desc(), internalIdField.desc())
+			else
+				query.addOrderBy(colValField, internalIdField)
+
+			// Fetch results
+			val rows = query.fetchManyAsync().map(mapper)
+			val res = if(isPreviousCursor)
+				rows.asReversed()
+			else
+				rows
+
+			val first = res.first()
+			val last = if(res.size < limit) null else res.last()
+
+			return RowPagination.Results(
+				results = res,
+				prevPage = constructor(isSortedByDesc, true, first.internalId, rowColumnAccessor(first)),
+				nextPage = if(last == null) null else constructor(isSortedByDesc, false, last.internalId, rowColumnAccessor(last))
+			)
+		}
 
 		protected abstract fun serializeColumnValue(): ByteArray
 
