@@ -293,7 +293,7 @@ class AccountsModel(context: Context?, ignoreContext: Boolean): Model(context, i
 	 * @param hash The password hash for the new account
 	 * @param defaultSourceId The new account's default media source ID, or null for none
 	 * @return The newly created account entry's ID
-	 * @since 1.5.0
+	 * @since 2.0.0
 	 */
 	suspend fun createAccountRow(email: String, name: String, isAdmin: Boolean, permissions: Array<String>, hash: String, defaultSourceId: Int?): RowIdPair {
 		val id = genRowId()
