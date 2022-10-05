@@ -143,18 +143,15 @@ class AccountsModel(context: Context?, ignoreContext: Boolean): Model(context, i
 			if(whereAdminStatusIs is Some)
 				query.addConditions(field("accounts.account_admin").eq((whereAdminStatusIs as Some).value))
 			if(whereMatchesQuery is Some) {
-				// Determine which columns to search
-				val searchParts = ArrayList<String>()
-				if(querySearchName)
-					searchParts.add("accounts.account_name")
-				if(querySearchEmail)
-					searchParts.add("accounts.account_email")
-
-				// Construct search SQL
-				val queryStr = (whereMatchesQuery as Some).value
-				val sql = "(to_tsvector(${searchParts.joinToString(" || ' ' || ")}) @@ plainto_tsquery({0}) OR LOWER(${searchParts.joinToString(" || ' ' || ")}) LIKE LOWER({1})) AND"
-
-				query.addConditions(condition(sql, `val`(queryStr), `val`("%$queryStr%")))
+				query.addConditions(createFulltextSearchCondition(
+					(whereMatchesQuery as Some).value,
+					ArrayList<String>().apply {
+						if(querySearchName)
+							add("accounts.account_name")
+						if(querySearchEmail)
+							add("accounts.account_email")
+					}
+				))
 			}
 		}
 

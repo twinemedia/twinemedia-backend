@@ -6,10 +6,13 @@ import net.termer.twinemedia.dataobject.StandardRow
 import net.termer.twinemedia.model.pagination.CommonRowMapper
 import net.termer.twinemedia.model.pagination.RowPagination
 import net.termer.twinemedia.util.ROW_ID_CHARS
+import net.termer.twinemedia.util.Some
 import net.termer.twinemedia.util.genSecureStrOf
+import org.jooq.Condition
 import org.jooq.Query
 import org.jooq.SelectQuery
 import org.jooq.conf.ParamType
+import org.jooq.impl.DSL.*
 
 /**
  * Returns whether the specified column is present in this row
@@ -79,3 +82,17 @@ suspend fun Query.executeAwait() {
 		.query(getSQL(ParamType.INLINED))
 		.execute().await()
 }
+
+/**
+ * Creates a jOOQ [Condition] for a fulltext search query
+ * @param query The search query
+ * @param searchColumns The columns to search (DO NOT allow user-supplied values here; they are not escaped)
+ * @return The resulting [Condition]
+ * @since 2.0.0
+ */
+fun createFulltextSearchCondition(query: String, searchColumns: List<String>) = condition(
+	"(to_tsvector(${searchColumns.joinToString(" || ' ' || ")}) @@ plainto_tsquery({0})" +
+			"OR LOWER(${searchColumns.joinToString(" || ' ' || ")}) LIKE LOWER({1}))",
+	`val`(query),
+	`val`("%$query%")
+)
