@@ -393,3 +393,10 @@ fun dateStringToOffsetDateTimeOrNone(str: String) = try {
 } catch(e: DateTimeParseException) {
 	none()
 }
+
+/**
+ * Returns [Some]<[T]> or [None]<[T]> if null
+ * @return This wrapped in an [Option] object
+ * @since 2.0.0
+ */
+fun <T> T?.orNone(): Option<T> = if(this == null) none() else some(this)
