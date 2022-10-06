@@ -9,17 +9,15 @@ import net.termer.twinemedia.dataobject.AccountRow
 import net.termer.twinemedia.dataobject.RowIdPair
 import net.termer.twinemedia.model.pagination.AccountPagination
 import net.termer.twinemedia.model.pagination.RowPagination
-import net.termer.twinemedia.util.Option
-import net.termer.twinemedia.util.Some
+import net.termer.twinemedia.util.*
 import net.termer.twinemedia.util.db.*
-import net.termer.twinemedia.util.none
 import org.jooq.ConditionProvider
 import org.jooq.Query
 import org.jooq.UpdateQuery
 import net.termer.twinemedia.util.db.Database.Sql
-import net.termer.twinemedia.util.some
 import org.jooq.SelectQuery
 import org.jooq.impl.DSL.*
+import java.time.OffsetDateTime
 
 /**
  * Database model for accounts
@@ -112,6 +110,34 @@ class AccountsModel(context: Context?, ignoreContext: Boolean): Model(context, i
 		var whereAdminStatusIs: Option<Boolean> = none(),
 
 		/**
+		 * Matches accounts created before this time.
+		 * API-safe.
+		 * @since 2.0.0
+		 */
+		var whereCreatedBefore: Option<OffsetDateTime> = none(),
+
+		/**
+		 * Matches accounts created after this time.
+		 * API-safe.
+		 * @since 2.0.0
+		 */
+		var whereCreatedAfter: Option<OffsetDateTime> = none(),
+
+		/**
+		 * Matches accounts modified before this time.
+		 * API-safe.
+		 * @since 2.0.0
+		 */
+		var whereModifiedBefore: Option<OffsetDateTime> = none(),
+
+		/**
+		 * Matches accounts created after this time.
+		 * API-safe.
+		 * @since 2.0.0
+		 */
+		var whereModifiedAfter: Option<OffsetDateTime> = none(),
+
+		/**
 		 * Matches accounts where their values match this plaintext query.
 		 * Search fields can be enabled by setting querySearch* properties to true.
 		 *
@@ -142,6 +168,14 @@ class AccountsModel(context: Context?, ignoreContext: Boolean): Model(context, i
 				query.addConditions(field("api_keys.key_id").eq((whereApiKeyIdIs as Some).value))
 			if(whereAdminStatusIs is Some)
 				query.addConditions(field("accounts.account_admin").eq((whereAdminStatusIs as Some).value))
+			if(whereCreatedBefore is Some)
+				query.addConditions(field("accounts.account_created_ts").gt((whereCreatedBefore as Some).value))
+			if(whereCreatedAfter is Some)
+				query.addConditions(field("accounts.account_created_ts").gt((whereCreatedAfter as Some).value))
+			if(whereModifiedBefore is Some)
+				query.addConditions(field("accounts.account_modified_ts").gt((whereModifiedBefore as Some).value))
+			if(whereModifiedAfter is Some)
+				query.addConditions(field("accounts.account_modified_ts").gt((whereModifiedAfter as Some).value))
 			if(whereMatchesQuery is Some) {
 				query.addFulltextSearchCondition(
 					(whereMatchesQuery as Some).value,
@@ -164,6 +198,14 @@ class AccountsModel(context: Context?, ignoreContext: Boolean): Model(context, i
 				whereEmailIs = some(params["whereEmailIs"])
 			if(params.contains("whereAdminStatusIs"))
 				whereAdminStatusIs = some(params["whereAdminStatusIs"] == "true")
+			if(params.contains("whereCreatedBefore"))
+				whereCreatedBefore = dateStringToOffsetDateTimeOrNone(params["whereCreatedBefore"])
+			if(params.contains("whereCreatedAfter"))
+				whereCreatedAfter = dateStringToOffsetDateTimeOrNone(params["whereCreatedAfter"])
+			if(params.contains("whereModifiedBefore"))
+				whereModifiedBefore = dateStringToOffsetDateTimeOrNone(params["whereModifiedBefore"])
+			if(params.contains("whereModifiedAfter"))
+				whereModifiedAfter = dateStringToOffsetDateTimeOrNone(params["whereModifiedAfter"])
 			if(params.contains("whereMatchesQuery")) {
 				whereMatchesQuery = some(params["whereMatchesQuery"])
 				querySearchName = params["querySearchName"] == "true"
