@@ -3,7 +3,6 @@ package net.termer.twinemedia.dataobject
 import io.vertx.kotlin.core.json.jsonObjectOf
 import io.vertx.sqlclient.Row
 import net.termer.twinemedia.util.JsonSerializable
-import net.termer.twinemedia.util.toJsonArray
 import java.time.OffsetDateTime
 
 /**
@@ -62,6 +61,7 @@ class ApiKeyDto(
 		 * @since 2.0.0
 		 */
 		fun fromRow(row: Row) = ApiKeyDto(
+			internalId = row.getInteger("id"),
 			id = row.getString("key_id"),
 			name = row.getString("key_name"),
 			permissions = row.getArrayOfStrings("key_permissions"),
