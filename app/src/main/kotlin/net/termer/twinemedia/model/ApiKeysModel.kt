@@ -66,14 +66,14 @@ class ApiKeysModel(context: Context?, ignoreContext: Boolean): Model(context, ig
 		var whereInternalIdIs: Option<Int> = none(),
 
 		/**
-		 * Matches API keys where the alphanumeric ID is this
+		 * Matches API keys where the alphanumeric ID is this.
 		 * API-safe.
 		 * @since 2.0.0
 		 */
 		var whereIdIs: Option<String> = none(),
 
 		/**
-		 * Matches API keys where the creator's internal ID is this
+		 * Matches API keys where the creator's internal ID is this.
 		 * API-unsafe.
 		 * @since 2.0.0
 		 */
@@ -127,7 +127,7 @@ class ApiKeysModel(context: Context?, ignoreContext: Boolean): Model(context, ig
 			if(whereIdIs is Some)
 				query.addConditions(field("api_keys.key_id").eq((whereIdIs as Some).value))
 			if(whereCreatorIdIs is Some)
-				query.addConditions(field("api_keys.api_key_creator").eq((whereCreatorIdIs as Some).value))
+				query.addConditions(field("api_keys.key_creator").eq((whereCreatorIdIs as Some).value))
 			if(whereCreatedBefore is Some)
 				query.addConditions(field("api_keys.key_created_ts").gt((whereCreatedBefore as Some).value))
 			if(whereCreatedAfter is Some)
