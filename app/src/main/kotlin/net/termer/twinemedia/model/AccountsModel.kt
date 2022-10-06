@@ -577,7 +577,7 @@ class AccountsModel(context: Context?, ignoreContext: Boolean): Model(context, i
 	 * Updates an account row
 	 * @param values The values to update
 	 * @param filters Filters for which row to update
-	 * @param updateModifiedTs Whether to update the accounts' last modified timestamp (defaults to true)
+	 * @param updateModifiedTs Whether to update the account's last modified timestamp (defaults to true)
 	 * @since 2.0.0
 	 */
 	suspend fun updateOne(values: UpdateValues, filters: Filters, updateModifiedTs: Boolean = true) {
