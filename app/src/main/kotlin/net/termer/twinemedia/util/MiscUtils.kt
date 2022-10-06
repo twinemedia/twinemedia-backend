@@ -9,6 +9,7 @@ import java.time.Instant
 import java.time.OffsetDateTime
 import java.time.ZoneId
 import java.time.ZoneOffset
+import java.time.format.DateTimeParseException
 import java.util.*
 import java.util.concurrent.CompletableFuture
 
@@ -358,4 +359,37 @@ fun epochSecondToOffsetDateTime(epoch: Long): OffsetDateTime? {
 		return null
 
 	return OffsetDateTime.ofInstant(Instant.ofEpochSecond(epoch), ZoneId.systemDefault())
+}
+
+/**
+ * Parses a date string into an [OffsetDateTime] instance
+ * @param str The date string
+ * @return The [OffsetDateTime]
+ * @throws DateTimeParseException If parsing the date fails (e.g. the string does not represent a valid date)
+ * @since 2.0.0
+ */
+fun dateStringToOffsetDateTime(str: String) = OffsetDateTime.ofInstant(Instant.parse(str), ZoneId.systemDefault())!!
+
+/**
+ * Parses a date string into an [OffsetDateTime] instance, or null if the date string is invalid
+ * @param str The date string
+ * @return The [OffsetDateTime], or null if the date string is invalid
+ * @since 2.0.0
+ */
+fun dateStringToOffsetDateTimeOrNull(str: String) = try {
+	dateStringToOffsetDateTime(str)
+} catch(e: DateTimeParseException) {
+	null
+}
+
+/**
+ * Parses a date string into an [Option]<[OffsetDateTime]> instance, or [None] if the date string is invalid
+ * @param str The date string
+ * @return The [Option]<[OffsetDateTime]>, or [None] if the date string is invalid
+ * @since 2.0.0
+ */
+fun dateStringToOffsetDateTimeOrNone(str: String) = try {
+	some(dateStringToOffsetDateTime(str))
+} catch(e: DateTimeParseException) {
+	none()
 }
