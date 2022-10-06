@@ -67,7 +67,7 @@ class ApiKeysModel(context: Context?, ignoreContext: Boolean): Model(context, ig
 
 		/**
 		 * Matches API keys where the alphanumeric ID is this.
-		 * API-safe.
+		 * API-unsafe.
 		 * @since 2.0.0
 		 */
 		var whereIdIs: Option<String> = none(),
@@ -150,8 +150,6 @@ class ApiKeysModel(context: Context?, ignoreContext: Boolean): Model(context, ig
 		override fun setWithRequest(req: HttpServerRequest) {
 			val params = req.params()
 
-			if(params.contains("whereIdIs"))
-				whereIdIs = some(params["whereIdIs"])
 			if(params.contains("whereCreatedBefore"))
 				whereCreatedBefore = dateStringToOffsetDateTimeOrNone(params["whereCreatedBefore"])
 			if(params.contains("whereCreatedAfter"))

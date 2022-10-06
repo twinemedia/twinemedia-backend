@@ -81,14 +81,14 @@ class AccountsModel(context: Context?, ignoreContext: Boolean): Model(context, i
 		var whereInternalIdIs: Option<Int> = none(),
 
 		/**
-		 * Matches accounts where the alphanumeric ID is this
-		 * API-safe.
+		 * Matches accounts where the alphanumeric ID is this.
+		 * API-unsafe.
 		 * @since 2.0.0
 		 */
 		var whereIdIs: Option<String> = none(),
 
 		/**
-		 * Matches accounts where the email is this (case-insensitive)
+		 * Matches accounts where the email is this (case-insensitive).
 		 * API-safe.
 		 * @since 2.0.0
 		 */
@@ -103,7 +103,7 @@ class AccountsModel(context: Context?, ignoreContext: Boolean): Model(context, i
 		var whereApiKeyIdIs: Option<String> = none(),
 
 		/**
-		 * Matches accounts that have this administrator status
+		 * Matches accounts that have this administrator status.
 		 * API-safe.
 		 * @since 2.0.0
 		 */
@@ -192,8 +192,6 @@ class AccountsModel(context: Context?, ignoreContext: Boolean): Model(context, i
 		override fun setWithRequest(req: HttpServerRequest) {
 			val params = req.params()
 
-			if(params.contains("whereIdIs"))
-				whereIdIs = some(params["whereIdIs"])
 			if(params.contains("whereEmailIs"))
 				whereEmailIs = some(params["whereEmailIs"])
 			if(params.contains("whereAdminStatusIs"))
