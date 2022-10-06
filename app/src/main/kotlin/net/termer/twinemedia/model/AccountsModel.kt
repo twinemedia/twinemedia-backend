@@ -557,7 +557,7 @@ class AccountsModel(context: Context?, ignoreContext: Boolean): Model(context, i
 	 * @param updateModifiedTs Whether to update the accounts' last modified timestamp (defaults to true)
 	 * @since 2.0.0
 	 */
-	suspend fun updateManyAccounts(values: UpdateValues, filters: Filters, limit: Int?  = null, updateModifiedTs: Boolean = true) {
+	suspend fun updateMany(values: UpdateValues, filters: Filters, limit: Int?  = null, updateModifiedTs: Boolean = true) {
 		val query = Sql.updateQuery(table("accounts"))
 
 		applyContextFilters(query)
@@ -580,8 +580,8 @@ class AccountsModel(context: Context?, ignoreContext: Boolean): Model(context, i
 	 * @param updateModifiedTs Whether to update the accounts' last modified timestamp (defaults to true)
 	 * @since 2.0.0
 	 */
-	suspend fun updateOneAccount(values: UpdateValues, filters: Filters, updateModifiedTs: Boolean = true) {
-		updateManyAccounts(values, filters, 1, updateModifiedTs)
+	suspend fun updateOne(values: UpdateValues, filters: Filters, updateModifiedTs: Boolean = true) {
+		updateMany(values, filters, 1, updateModifiedTs)
 	}
 
 	/**
@@ -590,7 +590,7 @@ class AccountsModel(context: Context?, ignoreContext: Boolean): Model(context, i
 	 * @param limit The maximum number of rows to delete, or null for no limit (defaults to null)
 	 * @since 2.0.0
 	 */
-	suspend fun deleteManyAccounts(filters: Filters, limit: Int? = null) {
+	suspend fun deleteMany(filters: Filters, limit: Int? = null) {
 		val query = Sql.deleteQuery(table("accounts"))
 
 		applyContextFilters(query)
@@ -606,7 +606,7 @@ class AccountsModel(context: Context?, ignoreContext: Boolean): Model(context, i
 	 * @param filters Filters for which row to delete
 	 * @since 2.0.0
 	 */
-	suspend fun deleteOneAccount(filters: Filters) {
-		deleteManyAccounts(filters, 1)
+	suspend fun deleteOne(filters: Filters) {
+		deleteMany(filters, 1)
 	}
 }
