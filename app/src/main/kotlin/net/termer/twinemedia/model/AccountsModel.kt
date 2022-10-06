@@ -377,7 +377,14 @@ class AccountsModel(context: Context?, ignoreContext: Boolean): Model(context, i
 	 * @return The newly created account entry's ID
 	 * @since 2.0.0
 	 */
-	suspend fun createAccountRow(email: String, name: String, isAdmin: Boolean, permissions: Array<String>, hash: String, defaultSourceId: Int?): RowIdPair {
+	suspend fun createAccountRow(
+		email: String,
+		name: String,
+		isAdmin: Boolean,
+		permissions: Array<String>,
+		hash: String,
+		defaultSourceId: Int?
+	): RowIdPair {
 		val id = genRowId()
 
 		val internalId = Sql.insertInto(
