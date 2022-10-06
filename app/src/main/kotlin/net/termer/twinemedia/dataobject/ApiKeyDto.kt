@@ -11,6 +11,8 @@ import java.time.OffsetDateTime
  * @since 2.0.0
  */
 class ApiKeyDto(
+	override val internalId: Int,
+
 	/**
 	 * The key's alphanumeric ID
 	 * @since 2.0.0
@@ -41,18 +43,9 @@ class ApiKeyDto(
 	 */
 	val creator: RecordCreatorDto,
 
-	/**
-	 * The key's creation timestamp
-	 * @since 2.0.0
-	 */
-	val createdTs: OffsetDateTime,
-
-	/**
-	 * The key's last modified timestamp
-	 * @since 2.0.0
-	 */
-	val modifiedTs: OffsetDateTime
-): JsonSerializable() {
+	override val createdTs: OffsetDateTime,
+	override val modifiedTs: OffsetDateTime
+): JsonSerializable(), StandardRow {
 	override fun toJson() = jsonObjectOf(
 		"id" to id,
 		"name" to name,

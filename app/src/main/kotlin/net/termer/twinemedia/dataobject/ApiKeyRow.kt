@@ -8,11 +8,7 @@ import java.time.OffsetDateTime
  * @since 2.0.0
  */
 class ApiKeyRow(
-	/**
-	 * The key's internal sequential ID
-	 * @since 2.0.0
-	 */
-	val internalId: Int,
+	override val internalId: Int,
 
 	/**
 	 * The key's alphanumeric ID
@@ -44,18 +40,9 @@ class ApiKeyRow(
 	 */
 	val creatorId: Int,
 
-	/**
-	 * The key's creation timestamp
-	 * @since 2.0.0
-	 */
-	val createdTs: OffsetDateTime,
-
-	/**
-	 * The key's last modified timestamp
-	 * @since 2.0.0
-	 */
-	val modifiedTs: OffsetDateTime
-) {
+	override val createdTs: OffsetDateTime,
+	override val modifiedTs: OffsetDateTime
+): StandardRow {
 	companion object {
 		/**
 		 * Maps a row to a new object instance
