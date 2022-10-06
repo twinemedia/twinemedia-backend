@@ -8,36 +8,36 @@ import java.time.OffsetDateTime
 
 /**
  * DTO for an API key
- * @since 1.4.0
+ * @since 2.0.0
  */
 class ApiKeyDto(
 	/**
 	 * The key's alphanumeric ID
-	 * @since 1.4.0
+	 * @since 2.0.0
 	 */
 	val id: String,
 
 	/**
 	 * The user-defined name of the key
-	 * @since 1.4.0
+	 * @since 2.0.0
 	 */
 	val name: String,
 
 	/**
 	 * The permissions this key was granted
-	 * @since 1.4.0
+	 * @since 2.0.0
 	 */
 	val permissions: Array<String>,
 
 	/**
 	 * The key's JWT authentication token
-	 * @since 1.4.0
+	 * @since 2.0.0
 	 */
 	val jwt: String,
 
 	/**
 	 * The key's creator
-	 * @since 1.4.0
+	 * @since 2.0.0
 	 */
 	val creator: RecordCreatorDto,
 
