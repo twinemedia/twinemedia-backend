@@ -371,7 +371,7 @@ class AccountsModel(context: Context?, ignoreContext: Boolean): Model(context, i
 	 * @param isAdmin Whether the new account will be an administrator
 	 * @param permissions An array of permissions that the new account will have
 	 * @param hash The password hash for the new account
-	 * @param defaultSourceId The new account's default media source ID, or null for none
+	 * @param defaultSourceInternalId The new account's default media source ID, or null for none
 	 * @return The newly created account row's ID
 	 * @since 2.0.0
 	 */
@@ -381,7 +381,7 @@ class AccountsModel(context: Context?, ignoreContext: Boolean): Model(context, i
 		isAdmin: Boolean,
 		permissions: Array<String>,
 		hash: String,
-		defaultSourceId: Int?
+		defaultSourceInternalId: Int?
 	): RowIdPair {
 		val id = genRowId()
 
@@ -395,7 +395,7 @@ class AccountsModel(context: Context?, ignoreContext: Boolean): Model(context, i
 			field("account_hash"),
 			field("account_default_source")
 		)
-			.values(id, name, email, isAdmin, permissions, hash, defaultSourceId)
+			.values(id, name, email, isAdmin, permissions, hash, defaultSourceInternalId)
 			.returning(field("id"))
 			.fetchOneAwait()!!
 			.getInteger("id")

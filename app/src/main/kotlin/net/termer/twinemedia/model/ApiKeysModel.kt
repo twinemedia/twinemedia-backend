@@ -77,7 +77,7 @@ class ApiKeysModel(context: Context?, ignoreContext: Boolean): Model(context, ig
 		 * API-unsafe.
 		 * @since 2.0.0
 		 */
-		var whereCreatorIdIs: Option<Int> = none(),
+		var whereCreatorInternalIdIs: Option<Int> = none(),
 
 		/**
 		 * Matches API keys created before this time.
@@ -126,8 +126,8 @@ class ApiKeysModel(context: Context?, ignoreContext: Boolean): Model(context, ig
 				query.addConditions(field("api_keys.id").eq((whereInternalIdIs as Some).value))
 			if(whereIdIs is Some)
 				query.addConditions(field("api_keys.key_id").eq((whereIdIs as Some).value))
-			if(whereCreatorIdIs is Some)
-				query.addConditions(field("api_keys.key_creator").eq((whereCreatorIdIs as Some).value))
+			if(whereCreatorInternalIdIs is Some)
+				query.addConditions(field("api_keys.key_creator").eq((whereCreatorInternalIdIs as Some).value))
 			if(whereCreatedBefore is Some)
 				query.addConditions(field("api_keys.key_created_ts").gt((whereCreatedBefore as Some).value))
 			if(whereCreatedAfter is Some)
@@ -255,7 +255,7 @@ class ApiKeysModel(context: Context?, ignoreContext: Boolean): Model(context, ig
 	 * @param name The name of the new API key
 	 * @param permissions An array of permissions that the new API key will have
 	 * @param jwt The API key's actual JWT token
-	 * @param creatorId The API key creator's internal ID
+	 * @param creatorInternalId The API key creator's internal ID
 	 * @return The newly created API key row's ID
 	 * @since 2.0.0
 	 */
@@ -263,7 +263,7 @@ class ApiKeysModel(context: Context?, ignoreContext: Boolean): Model(context, ig
 		name: String,
 		permissions: Array<String>,
 		jwt: String,
-		creatorId: Int
+		creatorInternalId: Int
 	): RowIdPair {
 		val id = genRowId()
 
@@ -275,7 +275,7 @@ class ApiKeysModel(context: Context?, ignoreContext: Boolean): Model(context, ig
 			field("key_jwt"),
 			field("key_creator")
 		)
-			.values(id, name, permissions, jwt, creatorId)
+			.values(id, name, permissions, jwt, creatorInternalId)
 			.returning(field("id"))
 			.fetchOneAwait()!!
 			.getInteger("id")
