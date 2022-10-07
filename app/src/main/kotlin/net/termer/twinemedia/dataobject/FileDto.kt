@@ -39,7 +39,7 @@ class FileDto(
 	 * The file's title
 	 * @since 2.0.0
 	 */
-	val title: String?,
+	val title: String,
 
 	/**
 	 * The file's name

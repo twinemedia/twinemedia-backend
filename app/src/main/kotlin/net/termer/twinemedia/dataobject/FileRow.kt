@@ -25,7 +25,7 @@ class FileRow(
 	 * The file's title
 	 * @since 2.0.0
 	 */
-	val title: String?,
+	val title: String,
 
 	/**
 	 * The file's name
@@ -137,8 +137,8 @@ class FileRow(
 		fun fromRow(row: Row) = FileRow(
 			internalId = row.getInteger("id"),
 			id = row.getString("file_id"),
-			title = row.getString("file_name"),
-			name = row.getString("file_filename"),
+			title = row.getString("file_title"),
+			name = row.getString("file_name"),
 			size = row.getLong("file_size"),
 			mime = row.getString("file_mime"),
 			key = row.getString("file_key"),

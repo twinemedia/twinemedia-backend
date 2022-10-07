@@ -230,6 +230,9 @@ create unique index file_id_idx
     on files (file_id);
 alter table files
     rename column media_name to file_title;
+update files set file_title = '' where files.file_title is null;
+alter table files
+    alter column file_title set not null;
 alter table files
     rename column media_filename to file_name;
 alter table files
