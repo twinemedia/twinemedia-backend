@@ -64,16 +64,16 @@ class FileRow(
 	val meta: JsonObject,
 
 	/**
-	 * The file creator's account ID, or null if the account no longer exists
+	 * The file creator's account internal ID, or null if the account no longer exists
 	 * @since 2.0.0
 	 */
-	val creatorId: Int?,
+	val creatorInternalId: Int?,
 
 	/**
-	 * The file's parent ID, of null if not a child
+	 * The file's parent internal ID, of null if not a child
 	 * @since 2.0.0
 	 */
-	val parentId: Int?,
+	val parentInternalId: Int?,
 
 	/**
 	 * The file's hash
@@ -100,10 +100,10 @@ class FileRow(
 	val processError: String?,
 
 	/**
-	 * The file source's ID
+	 * The file source's internal ID
 	 * @since 2.0.0
 	 */
-	val sourceId: Int,
+	val sourceInternalId: Int,
 
 	/**
 	 * The number of tags the file has
@@ -144,13 +144,13 @@ class FileRow(
 			key = row.getString("file_key"),
 			description = row.getString("file_description"),
 			meta = row.getJsonObject("file_meta"),
-			creatorId = row.getInteger("file_creator"),
-			parentId = row.getInteger("file_parent"),
+			creatorInternalId = row.getInteger("file_creator"),
+			parentInternalId = row.getInteger("file_parent"),
 			hash = row.getString("file_hash"),
 			thumbnailKey = row.getString("file_thumbnail_key"),
 			isProcessing = row.getBoolean("file_processing"),
 			processError = row.getString("file_process_error"),
-			sourceId = row.getInteger("file_source"),
+			sourceInternalId = row.getInteger("file_source"),
 			tagCount = row.getInteger("file_tag_count"),
 			childCount = row.getInteger("file_child_count"),
 			createdTs = row.getOffsetDateTime("file_created_ts"),
@@ -170,5 +170,5 @@ class FileRow(
 	 * @since 2.0.0
 	 */
 	val isChild: Boolean
-		get() = parentId != null
+		get() = parentInternalId != null
 }

@@ -100,10 +100,10 @@ class AccountRow(
     val keyPermissions: Array<String>? = null,
 
 	/**
-     * The ID of this account's default file source ID, or null if none
+     * The ID of this account's default file source internal ID, or null if none
      * @since 2.0.0
      */
-    val defaultSourceId: Int?,
+    val defaultSourceInternalId: Int?,
 
 	/**
 	 * The number of files the account has created
@@ -175,7 +175,7 @@ class AccountRow(
 				keyPermissions = if(isApiKey)
 					row.getArrayOfStrings("key_permissions")
 				else null,
-				defaultSourceId = row.getInteger("account_default_source"),
+				defaultSourceInternalId = row.getInteger("account_default_source"),
 				fileCount = row.getInteger("account_file_count"),
 				createdTs = row.getOffsetDateTime("account_created_ts"),
 				modifiedTs = row.getOffsetDateTime("account_modified_ts")

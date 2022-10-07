@@ -40,10 +40,10 @@ class ProcessPresetRow(
 	val settings: JsonObject,
 
 	/**
-	 * The preset creator's account ID
+	 * The preset creator's account internal ID
 	 * @since 2.0.0
 	 */
-	val creator: Int,
+	val creatorInternalId: Int,
 
 	/**
 	 * The preset's creation timestamp
@@ -68,7 +68,7 @@ class ProcessPresetRow(
 			name = row.getString("preset_name"),
 			mime = row.getString("preset_mime"),
 			settings = row.getJsonObject("preset_settings"),
-			creator = row.getInteger("preset_creator"),
+			creatorInternalId = row.getInteger("preset_creator"),
 			createdTs = row.getOffsetDateTime("preset_created_ts"),
 			modifiedTs = row.getOffsetDateTime("preset_modified_ts")
 		)
