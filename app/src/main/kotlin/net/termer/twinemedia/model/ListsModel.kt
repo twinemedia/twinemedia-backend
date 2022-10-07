@@ -1,21 +1,28 @@
+@file:Suppress("DEPRECATION")
+
 package net.termer.twinemedia.model
 
-import io.vertx.kotlin.coroutines.await
-import io.vertx.sqlclient.RowSet
-import io.vertx.sqlclient.templates.SqlTemplate
-import net.termer.twinemedia.db.Database.client
-import net.termer.twinemedia.dataobject.ListRow
-import net.termer.twinemedia.dataobject.ListDto
+import io.vertx.core.http.HttpServerRequest
+import net.termer.twinemedia.Constants.API_MAX_RESULT_LIMIT
+import net.termer.twinemedia.dataobject.*
 import net.termer.twinemedia.enumeration.ListType
 import net.termer.twinemedia.enumeration.ListVisibility
-import net.termer.twinemedia.util.toJsonArray
+import net.termer.twinemedia.model.pagination.ListPagination
+import net.termer.twinemedia.model.pagination.RowPagination
+import net.termer.twinemedia.util.*
+import net.termer.twinemedia.util.db.*
+import org.jooq.ConditionProvider
+import org.jooq.Query
+import org.jooq.UpdateQuery
+import net.termer.twinemedia.util.db.Database.Sql
+import org.jooq.SelectQuery
+import org.jooq.impl.DSL.*
 import java.time.OffsetDateTime
 
 /**
  * Database model for lists
  * @since 1.2.0
  */
-@Suppress("UNCHECKED_CAST")
 class ListsModel(context: Context?, ignoreContext: Boolean): Model(context, ignoreContext) {
 	companion object {
 		/**
@@ -26,567 +33,634 @@ class ListsModel(context: Context?, ignoreContext: Boolean): Model(context, igno
 	}
 
 	/**
-	 * Utility function to generate an ORDER BY statement based on an integer corresponding to a combination of criteria and order.
-	 * Order key:
-	 * 0 = Creation date, newest to oldest
-	 * 1 = Creation date, oldest to newest
-	 * 2 = Name, alphabetically, ascending
-	 * 3 = Name, alphabetically, descending
-	 * 4 = Modified date, newest to oldest
-	 * 5 = Modified date, oldest to newest
-	 * @param order The order
-	 * @return The appropriate "ORDER BY" SQL for the selected order
+	 * Sorting orders
+	 * @since 2.0.0
 	 */
-	private fun orderBy(order: Int): String {
-		return "ORDER BY " + when(order) {
-			1 -> "list_created_on ASC"
-			2 -> "list_name ASC"
-			3 -> "list_name DESC"
-			4 -> "list_modified_on DESC"
-			5 -> "list_modified_on ASC"
-			else -> "list_created_on DESC"
-		}
+	enum class SortOrder {
+		/**
+		 * Created timestamp
+		 * @since 2.0.0
+		 */
+		CREATED_TS,
+
+		/**
+		 * Modified timestamp
+		 * @since 2.0.0
+		 */
+		MODIFIED_TS,
+
+		/**
+		 * List name alphabetically
+		 * @since 2.0.0
+		 */
+		NAME_ALPHABETICALLY,
+
+		/**
+		 * The number of items the list has
+		 * @since 2.0.0
+		 */
+		ITEM_COUNT
 	}
 
 	/**
-	 * Applies a default SQL WHERE filter for listing lists based on the context associated with this model
-	 * @return a default SQL WHERE filter to insert into a query
+	 * Filters for fetching lists
+	 * @since 2.0.0
 	 */
-	private fun listWhereFilter(): String {
-		return when {
-			ignoreContext -> "TRUE"
-			context == null -> "FALSE"
-			context!!.account.excludeOtherLists -> "list_creator = ${context!!.account.id}"
-			context!!.account.hasPermission("lists.list.all") -> "TRUE"
-			else -> "list_creator = ${context!!.account.id}"
-		}
-	}
-	/**
-	 * Applies a default SQL WHERE filter for fetching single lists based on the context associated with this model
-	 * @return a default SQL WHERE filter to insert into a query
-	 */
-	private fun viewWhereFilter(): String {
-		return when {
-			ignoreContext -> "TRUE"
-			context == null -> "FALSE"
-			context!!.account.excludeOtherLists -> "list_creator = ${context!!.account.id}"
-			context!!.account.hasPermission("lists.view.all") -> "TRUE"
-			else -> "list_creator = ${context!!.account.id}"
-		}
-	}
-	/**
-	 * Applies a default SQL WHERE filter for fetching single lists for editing based on the context associated with this model
-	 * @return a default SQL WHERE filter to insert into a query
-	 */
-	private fun editWhereFilter(): String {
-		return when {
-			ignoreContext -> "TRUE"
-			context == null -> "FALSE"
-			context!!.account.excludeOtherLists -> "list_creator = ${context!!.account.id}"
-			context!!.account.hasPermission("lists.edit.all") -> "TRUE"
-			else -> "list_creator = ${context!!.account.id}"
-		}
-	}
-	/**
-	 * Applies a default SQL WHERE filter for fetching single lists for deleting based on the context associated with this model
-	 * @return a default SQL WHERE filter to insert into a query
-	 */
-	private fun deleteWhereFilter(): String {
-		return when {
-			ignoreContext -> "TRUE"
-			context == null -> "FALSE"
-			context!!.account.excludeOtherLists -> "list_creator = ${context!!.account.id}"
-			context!!.account.hasPermission("lists.delete.all") -> "TRUE"
-			else -> "list_creator = ${context!!.account.id}"
-		}
-	}
+	class Filters(
+		/**
+		 * Matches lists where the sequential internal ID is this.
+		 * API-unsafe.
+		 * @since 2.0.0
+		 */
+		var whereInternalIdIs: Option<Int> = none(),
 
-	/**
-	 * SELECT statement for getting info
-	 * @param extra Extra rows to select (can be null for none)
-	 * @return The SELECT statement
-	 */
-	private fun infoSelect(extra: String?): String {
-		return """
-			SELECT
-				CASE WHEN list_type=1 THEN (
-					-1
-				) ELSE (
-					SELECT COUNT(*) FROM listitems
-					WHERE item_list = lists.id
-				) END AS item_count,
-				list_id AS id,
-				list_name AS name,
-				list_description AS description,
-				list_type AS type,
-				list_visibility AS visibility,
-				list_created_on AS created_on,
-				list_modified_on AS modified_on,
-				list_source_tags AS source_tags,
-				list_source_exclude_tags AS source_exclude_tags,
-				list_source_created_before AS source_created_before,
-				list_source_created_after AS source_created_after,
-				list_source_mime AS source_mime,
-				list_show_all_user_files AS show_all_user_files,
-				list_creator AS creator,
-				account_name AS creator_name
-				${if(extra.orEmpty().isBlank()) "" else ", $extra"}
-			FROM lists
-			LEFT JOIN accounts ON accounts.id = list_creator
-		""".trimIndent()
-	}
+		/**
+		 * Matches lists where the alphanumeric ID is this.
+		 * API-safe.
+		 * @since 2.0.0
+		 */
+		var whereIdIs: Option<String> = none(),
 
-	/**
-	 * SELECT statement for getting info
-	 * @return The SELECT statement
-	 * @since 1.4.0
-	 */
-	private fun infoSelect() = infoSelect(null)
+		/**
+		 * Matches lists where the creator's internal ID is this.
+		 * API-unsafe.
+		 * @since 2.0.0
+		 */
+		var whereCreatorIdIs: Option<Int> = none(),
 
-	/**
-	 * Creates a new list
-	 * @param id The alphanumeric list ID
-	 * @param name The name of the list
-	 * @param description The description for the list
-	 * @param creator The ID of the account that created the list
-	 * @param visibility The list's visibility
-	 * @param type The list's type
-	 * @param sourceTags The tags media must possess in order to be displayed in this list (can be null, only applies if type is AUTOMATICALLY_POPULATED)
-	 * @param sourceExcludeTags The tags media must NOT possess in order to be displayed in this list (can be null, only applies if type is AUTOMATICALLY_POPULATED)
-	 * @param sourceCreatedBefore The time media must be created before in order to be displayed in this list (can be null, only applies if type is AUTOMATICALLY_POPULATED)
-	 * @param sourceCreatedAfter The time media must be created after in order to be displayed in this list (can be null, only applies if type is AUTOMATICALLY_POPULATED)
-	 * @param sourceMime The media MIME pattern that media must match in order to be displayed in this list (can be null, only applies if type is AUTOMATICALLY_POPULATED, allows % for use as wildcards)
-	 * @param showAllUserFiles Whether this list will show files from all users and not just the creator's files (only applies if the type is AUTOMATICALLY_POPULATED, otherwise should be false)
-	 * @return The newly created list's ID
-	 * @since 1.5.0
-	 */
-	suspend fun createList(id: String, name: String, description: String?, creator: Int, visibility: ListVisibility, type: ListType, sourceTags: Array<String>?, sourceExcludeTags: Array<String>?, sourceCreatedBefore: OffsetDateTime?, sourceCreatedAfter: OffsetDateTime?, sourceMime: String?, showAllUserFiles: Boolean): Int {
-		return SqlTemplate
-			.forQuery(client, """
-				INSERT INTO lists
-				( list_id, list_name, list_description, list_creator, list_visibility, list_type, list_source_tags, list_source_exclude_tags, list_source_created_before, list_source_created_after, list_source_mime, list_show_all_user_files )
-				VALUES
-				( #{id}, #{name}, #{desc}, #{creator}, #{visibility}, #{type}, CAST( #{sourceTags} AS jsonb ), CAST( #{sourceExcludeTags} AS jsonb ), #{sourceCreatedBefore}, #{sourceCreatedAfter}, #{sourceMime}, #{showAllUserFiles} )
-				RETURNING id
-			""".trimIndent())
-			.execute(hashMapOf(
-				"id" to id,
-				"name" to name,
-				"desc" to description,
-				"creator" to creator,
-				"visibility" to visibility.ordinal,
-				"type" to type.ordinal,
-				"sourceTags" to sourceTags?.toJsonArray(),
-				"sourceExcludeTags" to sourceExcludeTags?.toJsonArray(),
-				"sourceCreatedBefore" to sourceCreatedBefore,
-				"sourceCreatedAfter" to sourceCreatedAfter,
-				"sourceMime" to sourceMime,
-				"showAllUserFiles" to (showAllUserFiles)
-			)).await()
-			.first().getInteger("id")
-	}
+		/**
+		 * Matches lists where the type is this.
+		 * API-safe.
+		 * @since 2.0.0
+		 */
+		var whereTypeIs: Option<ListType> = none(),
 
-	/**
-	 * Creates a new list item entry
-	 * @param list The list to add the item to
-	 * @param item The item (media ID) to add to the list
-	 * @return The newly created list item's ID
-	 * @since 1.5.0
-	 */
-	suspend fun createListItem(list: Int, item: Int): Int {
-		return SqlTemplate
-			.forQuery(client, """
-				INSERT INTO listitems
-				( item_list, item_media )
-				VALUES
-				( #{list}, #{item} )
-				RETURNING id
-			""".trimIndent())
-			.execute(hashMapOf<String, Any>(
-				"list" to list,
-				"item" to item
-			)).await()
-			.first().getInteger("id")
-	}
+		/**
+		 * Matches lists where the visibility is this.
+		 * API-safe.
+		 * @since 2.0.0
+		 */
+		var whereVisibilityIs: Option<ListVisibility> = none(),
 
-	/**
-	 * Fetches the list with the specified ID
-	 * @return All rows from database search
-	 * @since 1.4.0
-	 */
-	suspend fun fetchList(id: Int): RowSet<ListRow> {
-	return SqlTemplate
-			.forQuery(client, """
-				SELECT * FROM lists WHERE ${viewWhereFilter()} AND id = #{id}
-			""".trimIndent())
-			.mapTo(ListRow.MAPPER)
-			.execute(hashMapOf<String, Any>(
-				"id" to id
-			)).await()
-	}
+		/**
+		 * Matches lists created before this time.
+		 * API-safe.
+		 * @since 2.0.0
+		 */
+		var whereCreatedBefore: Option<OffsetDateTime> = none(),
 
-	/**
-	 * Fetches the list with the specified generated ID
-	 * @return All rows from database search
-	 * @since 1.4.0
-	 */
-	suspend fun fetchList(listId: String): RowSet<ListRow> {
-		return SqlTemplate
-			.forQuery(client, """
-				SELECT * FROM lists WHERE ${viewWhereFilter()} AND list_id = #{listId}
-			""".trimIndent())
-			.mapTo(ListRow.MAPPER)
-			.execute(hashMapOf<String, Any>(
-				"listId" to listId
-			)).await()
-	}
+		/**
+		 * Matches lists created after this time.
+		 * API-safe.
+		 * @since 2.0.0
+		 */
+		var whereCreatedAfter: Option<OffsetDateTime> = none(),
 
-	/**
-	 * Fetches info about a list
-	 * @param listId The alphanumeric generated list ID to search
-	 * @return The info for the specified list
-	 * @since 1.4.0
-	 */
-	suspend fun fetchListInfo(listId: String): RowSet<ListDto> {
-		return SqlTemplate
-			.forQuery(client, """
-				${infoSelect()}
-				WHERE
-				${viewWhereFilter()}
-				AND list_id = #{listId}
-			""".trimIndent())
-			.mapTo(ListDto.MAPPER)
-			.execute(hashMapOf<String, Any>(
-				"listId" to listId
-			)).await()
-	}
+		/**
+		 * Matches lists modified before this time.
+		 * API-safe.
+		 * @since 2.0.0
+		 */
+		var whereModifiedBefore: Option<OffsetDateTime> = none(),
 
-	/**
-	 * Fetches info about a list
-	 * @param id The list's internal ID
-	 * @return The info for the specified list
-	 * @since 1.4.0
-	 */
-	suspend fun fetchListInfo(id: Int): RowSet<ListDto> {
-		return SqlTemplate
-			.forQuery(client, """
-				${infoSelect()}
-				WHERE
-				${viewWhereFilter()}
-				AND id = #{id}
-			""".trimIndent())
-			.mapTo(ListDto.MAPPER)
-			.execute(hashMapOf<String, Any>(
-				"id" to id
-			)).await()
-	}
+		/**
+		 * Matches lists created after this time.
+		 * API-safe.
+		 * @since 2.0.0
+		 */
+		var whereModifiedAfter: Option<OffsetDateTime> = none(),
 
-	/**
-	 * Fetches a list of list info
-	 * @param offset The offset of the lists to fetch
-	 * @param limit The amount of lists to return
-	 * @param order The order to return the lists
-	 * @param type The type of lists to return (specify null for any)
-	 * @param mediaContainCheck The media to check if lists contain (can be null to omit)
-	 * @return All list info in the specified range
-	 * @since 1.4.0
-	 */
-	suspend fun fetchLists(offset: Int, limit: Int, order: Int, type: ListType?, mediaContainCheck: String?): RowSet<ListDto> {
-		val containsStr = if(mediaContainCheck == null)
-			""
-		else
-			"""
-			(
-				SELECT COUNT(*) FROM listitems
-				LEFT JOIN media ON media.id = item_media
-				WHERE media_id = #{media}
-				AND item_list = lists.id
-			) = 1 AS contains_media
-		""".trimIndent()
+		/**
+		 * Matches lists where their values match this plaintext query.
+		 * Search fields can be enabled by setting querySearch* properties to true.
+		 *
+		 * @since 2.0.0
+		 */
+		var whereMatchesQuery: Option<String> = none(),
 
-		val listStr = if(type != null)
-			"AND list_type = #{type}"
-		else
-			""
+		/**
+		 * Whether [whereMatchesQuery] should search list names
+		 * @since 2.0.0
+		 */
+		var querySearchName: Boolean = true,
 
-		return SqlTemplate
-			.forQuery(client, """
-				${infoSelect(containsStr)}
-				WHERE
-				${listWhereFilter()}
-				$listStr
-				${orderBy(order)}
-				OFFSET #{offset} LIMIT #{limit}
-			""".trimIndent())
-			.mapTo(ListDto.MAPPER)
-			.execute(
-				hashMapOf(
-					"offset" to offset,
-					"limit" to limit,
-					"type" to type?.ordinal,
-					"media" to mediaContainCheck
-				) as Map<String, Any?>
-			).await()
-	}
-
-	/**
-	 * Fetches a list of list info
-	 * @param query The plaintext query to search for
-	 * @param offset The offset of the lists to fetch
-	 * @param limit The amount of lists to return
-	 * @param order The order to return the lists
-	 * @param type The type of lists to return (specify null for any)
-	 * @param mediaContainCheck The media to check if lists contain (can be null to omit)
-	 * @param searchNames Whether to search the names of lists
-	 * @param searchDescs Whether to search the descriptions of lists
-	 * @return The info of all lists matching the specified plaintext query
-	 * @since 1.4.0
-	 */
-	suspend fun fetchListsByPlaintextQuery(query: String, offset: Int, limit: Int, order: Int, type: ListType?, mediaContainCheck: String?, searchNames: Boolean, searchDescs: Boolean): RowSet<ListDto> {
-		val containsStr = if(mediaContainCheck == null)
-			""
-		else
-			"""
-			(
-				SELECT COUNT(*) FROM listitems
-				LEFT JOIN media ON media.id = item_media
-				WHERE media_id = #{media}
-				AND item_list = lists.id
-			) = 1 AS contains_media
-		"""
-
-		val searchParts = ArrayList<String>()
-		if(searchNames)
-			searchParts.add("COALESCE(list_name, '')")
-		if(searchDescs)
-			searchParts.add("COALESCE(list_description, '')")
-
-		val searchStr = if(searchParts.size > 0)
-			"""
-				AND (to_tsvector(
-					${searchParts.joinToString(" || ' ' || ")}
-				) @@ plainto_tsquery(#{query) OR
-				LOWER(${searchParts.joinToString(" || ' ' || ")}) LIKE LOWER(#{queryLike}))
-			"""
-		else
-			""
-
-		val typeStr = if(type != null)
-			"""
-			AND list_type = #{type}
-		"""
-		else
-			""
-
-		return SqlTemplate
-			.forQuery(client, """
-				${infoSelect(containsStr)}
-				WHERE
-				${listWhereFilter()}
-				$searchStr
-				$typeStr
-				${orderBy(order)}
-				OFFSET #{offset} LIMIT #{limit}
-			""".trimIndent())
-			.mapTo(ListDto.MAPPER)
-			.execute(
-				hashMapOf(
-					"query" to query,
-					"queryLike" to "%$query%",
-					"offset" to offset,
-					"limit" to limit,
-					"type" to type?.ordinal,
-					"media" to mediaContainCheck
-				) as Map<String, Any?>
-			).await()
-	}
-
-	/**
-	 * Returns whether the provided media file ID is in the specified list
-	 * @param list The list's ID
-	 * @param item The item (media file)'s ID
-	 * @return Whether the item is contained in the list
-	 * @since 1.4.0
-	 */
-	suspend fun fetchListContainsItem(list: Int, item: Int): Boolean {
-		return SqlTemplate
-			.forQuery(client, """
-				SELECT
-					(COUNT(*) = 1) AS contains_media
-				FROM listitems
-				WHERE item_media = #{item}
-				AND item_list = #{list}
-			""".trimIndent())
-			.mapTo { row ->
-				row.getBoolean("contains_media")
+		/**
+		 * Whether [whereMatchesQuery] should search list descriptions
+		 * @since 2.0.0
+		 */
+		var querySearchDescription: Boolean = true
+	): Model.Filters {
+		override fun applyTo(query: ConditionProvider) {
+			if(whereInternalIdIs is Some)
+				query.addConditions(field("lists.id").eq((whereInternalIdIs as Some).value))
+			if(whereIdIs is Some)
+				query.addConditions(field("lists.list_id").eq((whereIdIs as Some).value))
+			if(whereTypeIs is Some)
+				query.addConditions(field("lists.list_type").eq((whereTypeIs as Some).value.ordinal))
+			if(whereVisibilityIs is Some)
+				query.addConditions(field("lists.list_visibility").eq((whereVisibilityIs as Some).value.ordinal))
+			if(whereCreatorIdIs is Some)
+				query.addConditions(field("lists.list_creator").eq((whereCreatorIdIs as Some).value))
+			if(whereCreatedBefore is Some)
+				query.addConditions(field("lists.list_created_ts").gt((whereCreatedBefore as Some).value))
+			if(whereCreatedAfter is Some)
+				query.addConditions(field("lists.list_created_ts").gt((whereCreatedAfter as Some).value))
+			if(whereModifiedBefore is Some)
+				query.addConditions(field("lists.list_modified_ts").gt((whereModifiedBefore as Some).value))
+			if(whereModifiedAfter is Some)
+				query.addConditions(field("lists.list_modified_ts").gt((whereModifiedAfter as Some).value))
+			if(whereMatchesQuery is Some) {
+				query.addFulltextSearchCondition(
+					(whereMatchesQuery as Some).value,
+					ArrayList<String>().apply {
+						if(querySearchName)
+							add("lists.list_name")
+						if(querySearchDescription)
+							add("lists.list_description")
+					}
+				)
 			}
-			.execute(hashMapOf<String, Any>(
-				"list" to list,
-				"item" to item
-			)).await().first()
+		}
+
+		override fun setWithRequest(req: HttpServerRequest) {
+			val params = req.params()
+
+			if(params.contains("whereTypeIs"))
+				whereTypeIs = intToListType(params["whereTypeIs"].toIntOrNull() ?: -1).orNone()
+			if(params.contains("whereVisibilityIs"))
+				whereVisibilityIs = intToListVisibility(params["whereVisibilityIs"].toIntOrNull() ?: -1).orNone()
+			if(params.contains("whereCreatedBefore"))
+				whereCreatedBefore = dateStringToOffsetDateTimeOrNone(params["whereCreatedBefore"])
+			if(params.contains("whereCreatedAfter"))
+				whereCreatedAfter = dateStringToOffsetDateTimeOrNone(params["whereCreatedAfter"])
+			if(params.contains("whereModifiedBefore"))
+				whereModifiedBefore = dateStringToOffsetDateTimeOrNone(params["whereModifiedBefore"])
+			if(params.contains("whereModifiedAfter"))
+				whereModifiedAfter = dateStringToOffsetDateTimeOrNone(params["whereModifiedAfter"])
+			if(params.contains("whereMatchesQuery")) {
+				whereMatchesQuery = some(params["whereMatchesQuery"])
+				querySearchName = params["querySearchName"] == "true"
+				querySearchDescription = params["querySearchDescription"] == "true"
+			}
+		}
+
 	}
 
 	/**
-	 * Updates a list to be a normal list with the provided info
-	 * @param id The list's ID
-	 * @param name The list's name
-	 * @param description The list's description (can be null)
-	 * @param visibility The list's visibility
-	 * @since 1.4.0
+	 * Values to update on list rows
+	 * @since 2.0.0
 	 */
-	suspend fun updateListToNormal(id: Int, name: String, description: String?, visibility: ListVisibility) {
-		SqlTemplate
-			.forUpdate(client, """
-				UPDATE lists
-				SET
-					list_name = #{name},
-					list_description = #{desc},
-					list_visibility = #{visibility},
-					list_type = ${ListType.STANDARD.ordinal},
-					list_source_tags = NULL,
-					list_source_exclude_tags = NULL,
-					list_source_created_before = NULL,
-					list_source_created_after = NULL,
-					list_source_mime = NULL,
-					list_show_all_user_files = FALSE,
-					list_modified_on = NOW()
-				WHERE
-				${editWhereFilter()}
-				AND id = #{id}
-			""".trimIndent())
-			.execute(
-				hashMapOf(
-					"id" to id,
-					"name" to name,
-					"desc" to description,
-					"visibility" to visibility.ordinal
-				) as Map<String, Any?>
-			).await()
+	class UpdateValues(
+		/**
+		 * Name
+		 * @since 2.0.0
+		 */
+		var name: Option<String> = none(),
+
+		/**
+		 * Description
+		 * @since 2.0.0
+		 */
+		var description: Option<String> = none(),
+
+		/**
+		 * List type
+		 * @since 2.0.0
+		 */
+		var type: Option<ListType> = none(),
+
+		/**
+		 * List visibility
+		 * @since 2.0.0
+		 */
+		var visibility: Option<ListVisibility> = none(),
+
+		/**
+		 * The tags that files must have to be in this list.
+		 * Only applies to lists with type [ListType.AUTOMATICALLY_POPULATED], should be [None] for other types.
+		 * @since 2.0.0
+		 */
+		val sourceTags: Option<Array<String>>,
+
+		/**
+		 * The tags that files must NOT have to be in this list.
+		 * Only applies to lists with type [ListType.AUTOMATICALLY_POPULATED], should be [None] for other types.
+		 * @since 2.0.0
+		 */
+		val sourceExcludeTags: Option<Array<String>>,
+
+		/**
+		 * The MIME type files must have to be in this list.
+		 * Only applies to lists with type [ListType.AUTOMATICALLY_POPULATED], should be [None] for other types.
+		 * @since 2.0.0
+		 */
+		val sourceMime: Option<String>,
+
+		/**
+		 * The time files must have been uploaded before to be in this list.
+		 * Only applies to lists with type [ListType.AUTOMATICALLY_POPULATED], should be [None] for other types.
+		 * @since 2.0.0
+		 */
+		val sourceCreatedBefore: Option<OffsetDateTime>,
+
+		/**
+		 * The time files must have been uploaded after to be in this list.
+		 * Only applies to lists with type [ListType.AUTOMATICALLY_POPULATED], should be [None] for other types.
+		 * @since 2.0.0
+		 */
+		val sourceCreatedAfter: Option<OffsetDateTime>,
+
+		/**
+		 * Whether files by all users should be shown in list, not just by the list creator.
+		 * Only applies to lists with type [ListType.AUTOMATICALLY_POPULATED], should be [None] for other types.
+		 * @since 2.0.0
+		 */
+		val showAllUserFiles: Option<Boolean>
+	): Model.UpdateValues {
+		override fun applyTo(query: UpdateQuery<*>) {
+			fun set(name: String, fieldVal: Option<*>, prefix: String = "lists.list_") {
+				if(fieldVal is Some)
+					query.addValue(
+						field(prefix + name),
+						when(fieldVal.value) {
+							is Array<*> -> array(*fieldVal.value)
+							is Enum<*> -> fieldVal.value.ordinal
+							else -> fieldVal.value
+						}
+					)
+			}
+
+			set("name", name)
+			set("description", description)
+			set("type", type)
+			set("visibility", visibility)
+			set("source_tags", sourceTags)
+			set("source_exclude_tags", sourceExcludeTags)
+			set("source_mime", sourceMime)
+			set("source_created_before", sourceCreatedBefore)
+			set("source_created_after", sourceCreatedAfter)
+			set("show_all_user_files", showAllUserFiles)
+		}
 	}
 
 	/**
-	 * Updates a list to be an automatically populated list with the provided info
-	 * @param id The list's ID
-	 * @param name The list's name
-	 * @param description The list's description (can be null)
-	 * @param visibility The list's visibility
-	 * @param sourceTags The tags media must possess in order to be displayed in this list (can be null)
-	 * @param sourceExcludeTags The tags media must NOT possess in order to be displayed in this list (can be null)
-	 * @param sourceCreatedBefore The time media must be created before in order to be displayed in this list (can be null)
-	 * @param sourceCreatedAfter The time media must be created after in order to be displayed in this list (can be null)
-	 * @param sourceMime The media MIME pattern that media must match in order to be displayed in this list (can be null, allows % for use as wildcards)
-	 * @since 1.4.2
+	 * Orders the provided query using the specified sort order
+	 * @param order The sort order
+	 * @param orderDesc Whether to sort by descending order
+	 * @return This, to be used fluently
 	 */
-	suspend fun updateListToAutomaticallyPopulated(id: Int, name: String, description: String?, visibility: ListVisibility, sourceTags: Array<String>?, sourceExcludeTags: Array<String>?, sourceCreatedBefore: OffsetDateTime?, sourceCreatedAfter: OffsetDateTime?, sourceMime: String?, showAllUserFiles: Boolean) {
-		SqlTemplate
-			.forUpdate(client, """
-				UPDATE lists
-				SET
-					list_name = #{name},
-					list_description = #{desc},
-					list_visibility = #{visibility},
-					list_type = ${ListType.AUTOMATICALLY_POPULATED.ordinal},
-					list_source_tags = CAST( #{sourceTags} AS jsonb ),
-					list_source_exclude_tags = CAST( #{sourceExcludeTags} AS jsonb ),
-					list_source_created_before = #{sourceCreatedBefore},
-					list_source_created_after = #{sourceCreatedAfter},
-					list_source_mime = #{sourceMime},
-					list_show_all_user_files = #{showAllUserFiles},
-					list_modified_on = NOW()
-				WHERE
-				${editWhereFilter()}
-				AND id = #{id}
-			""".trimIndent())
-			.execute(hashMapOf(
-				"id" to id,
-				"name" to name,
-				"desc" to description,
-				"visibility" to visibility.ordinal,
-				"sourceTags" to sourceTags?.toJsonArray(),
-				"sourceExcludeTags" to sourceExcludeTags?.toJsonArray(),
-				"sourceCreatedBefore" to sourceCreatedBefore,
-				"sourceCreatedAfter" to sourceCreatedAfter,
-				"sourceMime" to sourceMime,
-				"showAllUserFiles" to showAllUserFiles
-			)).await()
+	private fun Query.orderBy(order: SortOrder, orderDesc: Boolean): Query {
+		fun orderBy(name: String) {
+			orderBy(if(orderDesc) field(name).desc() else field(name))
+		}
+
+		when(order) {
+			SortOrder.CREATED_TS -> orderBy("lists.list_created_ts")
+			SortOrder.MODIFIED_TS -> orderBy("lists.list_modified_ts")
+			SortOrder.NAME_ALPHABETICALLY -> orderBy("lists.list_name")
+			SortOrder.ITEM_COUNT -> orderBy("lists.list_item_count")
+		}
+
+		return this
 	}
 
 	/**
-	 * Deletes the list with the specified internal ID
-	 * @param id The list ID
-	 * @since 1.4.0
+	 * Applies context filters on a query
+	 * @param query The query to apply the filters on
 	 */
-	suspend fun deleteList(id: Int) {
-		SqlTemplate
-			.forUpdate(client, """
-				DELETE FROM lists WHERE ${deleteWhereFilter()} AND id = #{id}
-			""".trimIndent())
-			.execute(hashMapOf<String, Any>(
-				"id" to id
-			)).await()
+	private fun applyContextFilters(query: ConditionProvider) {
+		if(!ignoreContext) {
+			if(context == null) {
+				// If there is no context, only show lists that are set to public
+				query.addConditions(field("lists.list_visibility").eq(ListVisibility.PUBLIC.ordinal))
+			} else if(!context!!.account.hasPermission("lists.list.all") || context!!.account.excludeOtherLists) {
+				// If the account does not have lists.list.all, or is excluding lists by other accounts, only show lists by the account
+				query.addConditions(field("lists.list_creator").eq(context!!.account.internalId))
+			}
+		}
 	}
 
 	/**
-	 * Deletes the list with the specified alphanumeric list ID
-	 * @param listId The alphanumeric list ID
-	 * @since 1.0.0
+	 * Generates a query for getting DTO info
+	 * @return The query
 	 */
-	suspend fun deleteList(listId: String) {
-		SqlTemplate
-			.forUpdate(client, """
-				DELETE FROM lists WHERE ${deleteWhereFilter()} AND list_id = #{listId}
-			""".trimIndent())
-			.execute(hashMapOf<String, Any>(
-				"listId" to listId
-			)).await()
+	private fun infoQuery() =
+		Sql.select(
+			field("lists.id"),
+			field("list_name"),
+			field("list_description"),
+			field("account_id").`as`("list_creator_id"),
+			field("account_name").`as`("list_creator_name"),
+			field("list_type"),
+			field("list_visibility"),
+			field("list_source_tags"),
+			field("list_source_exclude_tags"),
+			field("list_source_mime"),
+			field("list_source_created_before"),
+			field("list_source_created_after"),
+			field("list_show_all_user_files"),
+			field("list_item_count"),
+			field("list_created_ts"),
+			field("list_modified_ts")
+		)
+			.from(table("lists"))
+			.leftJoin(table("accounts")).on(field("accounts.id").eq("list_creator"))
+			.query
+
+	/**
+	 * Creates a new list row with the provided details
+	 * @param name The name of the new list
+	 * @param description The list's description (defaults to an empty string)
+	 * @param creatorId The list creator's internal ID
+	 * @param type The list type
+	 * @param visibility The list visibility
+	 * @param sourceTags The tags that files must have to be in this list (value will be ignored if type is not [ListType.AUTOMATICALLY_POPULATED])
+	 * @param sourceExcludeTags The tags that files must NOT have to be in this list (value will be ignored if type is not [ListType.AUTOMATICALLY_POPULATED])
+	 * @param sourceMime The MIME type files must have to be in this list (value will be ignored if type is not [ListType.AUTOMATICALLY_POPULATED])
+	 * @param sourceCreatedBefore The time files must have been uploaded before to be in this list (value will be ignored if type is not [ListType.AUTOMATICALLY_POPULATED])
+	 * @param sourceCreatedAfter The time files must have been uploaded after to be in this list (value will be ignored if type is not [ListType.AUTOMATICALLY_POPULATED])
+	 * @param showAllAccountFiles Whether files by all accounts should be shown in list, not just by the list creator (value will be ignored if type is not [ListType.AUTOMATICALLY_POPULATED])
+	 * @return The newly created list row's ID
+	 * @since 2.0.0
+	 */
+	suspend fun createRow(
+		name: String,
+		description: String,
+		creatorId: Int,
+		type: ListType,
+		visibility: ListVisibility,
+		sourceTags: Array<String>?,
+		sourceExcludeTags: Array<String>?,
+		sourceMime: String?,
+		sourceCreatedBefore: OffsetDateTime?,
+		sourceCreatedAfter: OffsetDateTime?,
+		showAllAccountFiles: Boolean
+	): RowIdPair {
+		val id = genRowId()
+
+		var insertValuesStep = Sql.insertInto(
+			table("lists"),
+			field("list_id"),
+			field("list_name"),
+			field("list_description"),
+			field("list_creator"),
+			field("list_type"),
+			field("list_visibility"),
+			field("list_source_tags"),
+			field("list_source_exclude_tags"),
+			field("list_source_mime"),
+			field("list_source_created_before"),
+			field("list_source_created_after"),
+			field("list_show_all_user_files"),
+			field("list_item_count")
+		)
+
+		// Make sure correct values for the specified type are inserted
+		when(type) {
+			ListType.STANDARD -> insertValuesStep = insertValuesStep.values(
+				id,
+				name,
+				description,
+				creatorId,
+				type,
+				visibility,
+				null,
+				null,
+				null,
+				null,
+				null,
+				false,
+				0
+			)
+			ListType.AUTOMATICALLY_POPULATED -> insertValuesStep = insertValuesStep.values(
+				id,
+				name,
+				description,
+				creatorId,
+				type,
+				visibility,
+				sourceTags,
+				sourceExcludeTags,
+				sourceMime,
+				sourceCreatedBefore,
+				sourceCreatedAfter,
+				showAllAccountFiles,
+				null
+			)
+		}
+
+		val internalId = insertValuesStep
+			.returning(field("id"))
+			.fetchOneAwait()!!
+			.getInteger("id")
+
+		return RowIdPair(internalId, id)
+	}
+
+	private fun handleCheckForFileId(query: SelectQuery<*>, checkForFileId: String?) {
+		if(checkForFileId == null)
+			return
+
+		query.addSelect(
+			field(
+				Sql.selectCount()
+					.from("list_items")
+					.join(table("files")).on(field("files.id").eq("item_file"))
+					.where(field("item_list").eq(field("lists.id")))
+					.and(field("file_id").eq(checkForFileId))
+			).eq(1)
+				.`as`("contains_file")
+		)
 	}
 
 	/**
-	 * Deletes all list items that belong to the specified list
-	 * @param listId The list ID
-	 * @since 1.0.0
+	 * Fetches many lists' info DTOs.
+	 * Use [fetchOneDto] to fetch only one list.
+	 * @param filters Additional filters to apply
+	 * @param order Which order to sort results with (defaults to [SortOrder.CREATED_TS])
+	 * @param orderDesc Whether to sort results in descending order (defaults to false)
+	 * @param limit The number of results to return (defaults to [API_MAX_RESULT_LIMIT])
+	 * @param checkForFileId The file ID to check for in returned lists, or null to not check (defaults to null)
+	 * @return The results
 	 */
-	suspend fun deleteListItemsByListId(listId: Int) {
-		SqlTemplate
-			.forUpdate(client, """
-				DELETE FROM listitems WHERE item_list = #{listId}
-			""".trimIndent())
-			.execute(hashMapOf<String, Any>(
-				"listId" to listId
-			)).await()
+	suspend fun fetchManyDtos(
+		filters: Filters = Filters(),
+		order: SortOrder = SortOrder.CREATED_TS,
+		orderDesc: Boolean = false,
+		limit: Int = API_MAX_RESULT_LIMIT,
+		checkForFileId: String?
+	): List<ListDto> {
+		val query = infoQuery()
+
+		handleCheckForFileId(query, checkForFileId)
+
+		applyContextFilters(query)
+		filters.applyTo(query)
+		query.orderBy(order, orderDesc)
+		query.addLimit(limit)
+
+		return query.fetchManyAwait().map { ListDto.fromRow(it) }
 	}
 
 	/**
-	 * Deletes all list items that are for the specified media file ID
-	 * @param mediaId The media file ID
-	 * @since 1.0.0
+	 * Fetches many lists' info DTOs using pagination.
+	 * Use [fetchOneDto] to fetch only one list.
+	 * @param pagination The pagination data to use
+	 * @param filters Additional filters to apply
+	 * @param limit The number of results to return
+	 * @param checkForFileId The file ID to check for in returned lists, or null to not check (defaults to null)
+	 * @return The paginated results
 	 */
-	suspend fun deleteListItemsByMediaId(mediaId: Int) {
-		SqlTemplate
-			.forUpdate(client, """
-				DELETE FROM listitems WHERE item_media = #{mediaId}
-			""".trimIndent())
-			.execute(hashMapOf<String, Any>(
-				"mediaId" to mediaId
-			)).await()
+	suspend fun <TColType> fetchManyDtosPaginated(
+		pagination: ListPagination<TColType>,
+		limit: Int,
+		filters: Filters = Filters(),
+		checkForFileId: String? = null
+	): RowPagination.Results<ListDto, SortOrder, TColType> {
+		val query = infoQuery()
+
+		handleCheckForFileId(query, checkForFileId)
+
+		applyContextFilters(query)
+		filters.applyTo(query)
+
+		return query.fetchPaginatedAsync(pagination, limit) { ListDto.fromRow(it) }
 	}
 
 	/**
-	 * Deletes a list item based on the item (media file) and list ID
-	 * @param list The list's ID
-	 * @param file The item's ID
-	 * @since 1.0.0
+	 * Fetches one list's info DTO.
+	 * Use [fetchManyDtos] to fetch multiple lists.
+	 * @param filters Additional filters to apply
+	 * @param checkForFileId The file ID to check for in returned lists, or null to not check (defaults to null)
+	 * @return The list DTO, or null if there was no result
 	 */
-	suspend fun deleteListItemByListAndFile(list: Int, file: Int) {
-		SqlTemplate
-			.forUpdate(client, """
-				DELETE FROM listitems
-				WHERE item_media = #{file}
-				AND item_list = #{list}
-			""".trimIndent())
-			.execute(hashMapOf<String, Any>(
-				"list" to list,
-				"file" to file
-			)).await()
+	suspend fun fetchOneDto(filters: Filters = Filters(), checkForFileId: String?): ListDto? {
+		val query = infoQuery()
+
+		handleCheckForFileId(query, checkForFileId)
+
+		applyContextFilters(query)
+		filters.applyTo(query)
+		query.addLimit(1)
+
+		val row = query.fetchOneAwait()
+
+		return if(row == null)
+			null
+		else
+			ListDto.fromRow(row)
+	}
+
+	/**
+	 * Fetches many list rows.
+	 * Use [fetchOneRow] to fetch only one list.
+	 * @param filters Additional filters to apply
+	 * @param order Which order to sort results with (defaults to [SortOrder.CREATED_TS])
+	 * @param orderDesc Whether to sort results in descending order (defaults to false)
+	 * @param limit The number of results to return (defaults to [API_MAX_RESULT_LIMIT])
+	 * @return The results
+	 */
+	suspend fun fetchManyRows(
+		filters: Filters = Filters(),
+		order: SortOrder = SortOrder.CREATED_TS,
+		orderDesc: Boolean = false,
+		limit: Int = API_MAX_RESULT_LIMIT
+	): List<ListRow> {
+		val query =
+			Sql.select(asterisk())
+				.from(table("lists"))
+				.query
+
+		applyContextFilters(query)
+		filters.applyTo(query)
+		query.orderBy(order, orderDesc)
+		query.addLimit(limit)
+
+		return query.fetchManyAwait().map { ListRow.fromRow(it) }
+	}
+
+	/**
+	 * Fetches one list row.
+	 * Use [fetchManyRows] to fetch many lists.
+	 * @param filters Additional filters to apply
+	 * @return The list row, or null if there was no result
+	 */
+	suspend fun fetchOneRow(filters: Filters = Filters()): ListRow? {
+		val query =
+			Sql.select(field("lists.*"))
+				.from(table("lists"))
+				.query
+
+		applyContextFilters(query)
+		filters.applyTo(query)
+		query.addLimit(1)
+
+		val row = query.fetchOneAwait()
+
+		return if(row == null)
+			null
+		else
+			ListRow.fromRow(row)
+	}
+
+	/**
+	 * Updates many list rows
+	 * @param values The values to update
+	 * @param filters Filters for which rows to update
+	 * @param limit The maximum number of rows to update, or null for no limit (defaults to null)
+	 * @param updateModifiedTs Whether to update the lists' last modified timestamp (defaults to true)
+	 * @since 2.0.0
+	 */
+	suspend fun updateMany(values: UpdateValues, filters: Filters, limit: Int?  = null, updateModifiedTs: Boolean = true) {
+		val query = Sql.updateQuery(table("lists"))
+
+		applyContextFilters(query)
+		filters.applyTo(query)
+		if(limit != null)
+			query.addLimit(limit)
+
+		values.applyTo(query)
+
+		if(updateModifiedTs)
+			query.addValue(field("lists.list_modified_ts"), now())
+
+		query.executeAwait()
+	}
+
+	/**
+	 * Updates a list row
+	 * @param values The values to update
+	 * @param filters Filters for which row to update
+	 * @param updateModifiedTs Whether to update the list's last modified timestamp (defaults to true)
+	 * @since 2.0.0
+	 */
+	suspend fun updateOne(values: UpdateValues, filters: Filters, updateModifiedTs: Boolean = true) {
+		updateMany(values, filters, 1, updateModifiedTs)
+	}
+
+	/**
+	 * Deletes many list rows
+	 * @param filters Filters for which rows to delete
+	 * @param limit The maximum number of rows to delete, or null for no limit (defaults to null)
+	 * @since 2.0.0
+	 */
+	suspend fun deleteMany(filters: Filters, limit: Int? = null) {
+		val query = Sql.deleteQuery(table("lists"))
+
+		applyContextFilters(query)
+		filters.applyTo(query)
+		if(limit != null)
+			query.addLimit(limit)
+
+		query.executeAwait()
+	}
+
+	/**
+	 * Deletes one list row
+	 * @param filters Filters for which row to delete
+	 * @since 2.0.0
+	 */
+	suspend fun deleteOne(filters: Filters) {
+		deleteMany(filters, 1)
 	}
 }

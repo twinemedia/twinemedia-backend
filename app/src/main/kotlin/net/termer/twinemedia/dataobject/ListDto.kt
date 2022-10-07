@@ -13,6 +13,8 @@ import java.time.OffsetDateTime
  * @since 2.0.0
  */
 class ListDto(
+	override val internalId: Int,
+
 	/**
 	 * The list's alphanumeric ID
 	 * @since 2.0.0
@@ -85,11 +87,11 @@ class ListDto(
 	val sourceCreatedAfter: OffsetDateTime?,
 
 	/**
-	 * Whether files by all users should be shown in list, not just by the list creator.
+	 * Whether files by all accounts should be shown in list, not just by the list creator.
 	 * Only applies to lists with type [ListType.AUTOMATICALLY_POPULATED]
 	 * @since 2.0.0
 	 */
-	val showAllUserFiles: Boolean,
+	val showAllAccountFiles: Boolean,
 
 	/**
 	 * The number of items in the list.
@@ -98,17 +100,8 @@ class ListDto(
 	 */
 	val itemCount: Int?,
 
-	/**
-	 * The list's creation timestamp
-	 * @since 2.0.0
-	 */
-	val createdTs: OffsetDateTime,
-
-	/**
-	 * The list's last modified timestamp
-	 * @since 2.0.0
-	 */
-	val modifiedTs: OffsetDateTime,
+	override val createdTs: OffsetDateTime,
+	override val modifiedTs: OffsetDateTime,
 
 	/**
 	 * Whether this list contains a file that was specified in a query.
@@ -116,7 +109,7 @@ class ListDto(
 	 * @since 2.0.0
 	 */
 	val containsFile: Boolean?
-): JsonSerializable() {
+): JsonSerializable(), StandardRow {
 	override fun toJson() = jsonObjectOf(
 		"id" to id,
 		"name" to name,
@@ -124,11 +117,11 @@ class ListDto(
 		"creator" to creator?.toJson(),
 		"type" to type.ordinal,
 		"visibility" to visibility.ordinal,
-		"sourceTag_ids" to sourceTags?.toJsonArray(),
-		"sourceExclude_tag_ids" to sourceExcludeTags?.toJsonArray(),
-		"sourceCreated_before" to sourceCreatedBefore?.toString(),
-		"sourceCreated_after" to sourceCreatedAfter?.toString(),
-		"showAllUserFiles" to showAllUserFiles,
+		"sourceTags" to sourceTags?.toJsonArray(),
+		"sourceExcludeTags" to sourceExcludeTags?.toJsonArray(),
+		"sourceCreatedBefore" to sourceCreatedBefore?.toString(),
+		"sourceCreatedAfter" to sourceCreatedAfter?.toString(),
+		"showAllUserFiles" to showAllAccountFiles,
 		"sourceMime" to sourceMime,
 		"itemCount" to itemCount,
 		"createdTs" to createdTs.toString(),
@@ -145,6 +138,7 @@ class ListDto(
 			val listCreatorId = row.getString("list_creator_id")
 
 			return ListDto(
+				internalId = row.getInteger("id"),
 				id = row.getString("list_id"),
 				name = row.getString("list_name"),
 				description = row.getString("list_description"),
@@ -161,11 +155,11 @@ class ListDto(
 				sourceMime = row.getString("list_source_mime"),
 				sourceCreatedBefore = row.getOffsetDateTime("list_source_created_before"),
 				sourceCreatedAfter = row.getOffsetDateTime("list_source_created_after"),
-				showAllUserFiles = row.getBoolean("list_show_all_user_files"),
+				showAllAccountFiles = row.getBoolean("list_show_all_account_files"),
 				itemCount = row.getInteger("list_item_count"),
-				containsFile = if(row.hasCol("list_contains_file")) row.getBoolean("list_contains_file") else null,
 				createdTs = row.getOffsetDateTime("list_created_ts"),
-				modifiedTs = row.getOffsetDateTime("list_modified_ts")
+				modifiedTs = row.getOffsetDateTime("list_modified_ts"),
+				containsFile = if(row.hasCol("list_contains_file")) row.getBoolean("list_contains_file") else null
 			)
 		}
 	}

@@ -12,12 +12,7 @@ import java.time.OffsetDateTime
  * @since 2.0.0
  */
 class ListRow(
-	/**
-	 * TODO Still needed?
-	 * The list's internal sequential ID
-	 * @since 2.0.0
-	 */
-	val internalId: Int,
+	override val internalId: Int,
 
 	/**
 	 * The list's alphanumeric ID
@@ -91,11 +86,11 @@ class ListRow(
 	val sourceCreatedAfter: OffsetDateTime?,
 
 	/**
-	 * Whether files by all users should be shown in list, not just by the list creator.
+	 * Whether files by all accounts should be shown in list, not just by the list creator.
 	 * Only applies to lists with type [ListType.AUTOMATICALLY_POPULATED]
 	 * @since 2.0.0
 	 */
-	val showAllUserFiles: Boolean,
+	val showAllAccountFiles: Boolean,
 
 	/**
 	 * The number of items in the list.
@@ -104,18 +99,9 @@ class ListRow(
 	 */
 	val itemCount: Int?,
 
-	/**
-	 * The list's creation timestamp
-	 * @since 2.0.0
-	 */
-	val createdTs: OffsetDateTime,
-
-	/**
-	 * The list's last modified timestamp
-	 * @since 2.0.0
-	 */
-	val modifiedTs: OffsetDateTime
-) {
+	override val createdTs: OffsetDateTime,
+	override val modifiedTs: OffsetDateTime
+): StandardRow {
 	companion object {
 		/**
 		 * Maps a row to a new object instance
@@ -136,7 +122,7 @@ class ListRow(
 			sourceMime = row.getString("list_source_mime"),
 			sourceCreatedBefore = row.getOffsetDateTime("list_source_created_before"),
 			sourceCreatedAfter = row.getOffsetDateTime("list_source_created_after"),
-			showAllUserFiles = row.getBoolean("list_show_all_user_files"),
+			showAllAccountFiles = row.getBoolean("list_show_all_account_files"),
 			itemCount = row.getInteger("list_item_count"),
 			createdTs = row.getOffsetDateTime("list_created_ts"),
 			modifiedTs = row.getOffsetDateTime("list_modified_ts")
