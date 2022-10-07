@@ -2,7 +2,7 @@ package net.termer.twinemedia.model.pagination
 
 import io.vertx.core.http.HttpServerRequest
 import net.termer.twinemedia.dataobject.AccountDto
-import net.termer.twinemedia.model.AccountsModel
+import net.termer.twinemedia.model.AccountsModel.*
 import net.termer.twinemedia.util.*
 import org.jooq.impl.DSL.*
 import java.time.OffsetDateTime
@@ -11,21 +11,21 @@ import java.time.OffsetDateTime
  * Abstract class for account pagination implementations
  * @since 2.0.0
  */
-interface AccountPagination<TColType>: RowPagination<AccountDto, AccountsModel.SortOrder, TColType> {
+interface AccountPagination<TColType>: RowPagination<AccountDto, SortOrder, TColType> {
 	companion object {
 		@Suppress("UNCHECKED_CAST")
-		private fun CommonPagination.TokenData<AccountsModel.SortOrder, *>.toPagination(): AccountPagination<*> {
+		private fun CommonPagination.TokenData<SortOrder, *>.toPagination(): AccountPagination<*> {
 			return when(sortEnum) {
-				AccountsModel.SortOrder.CREATED_TS ->
-					CreatedTsPagination(this as CommonPagination.TokenData<AccountsModel.SortOrder, OffsetDateTime>)
-				AccountsModel.SortOrder.MODIFIED_TS ->
-					ModifiedTsPagination(this as CommonPagination.TokenData<AccountsModel.SortOrder, OffsetDateTime>)
-				AccountsModel.SortOrder.NAME_ALPHABETICALLY ->
-					NamePagination(this as CommonPagination.TokenData<AccountsModel.SortOrder, String>)
-				AccountsModel.SortOrder.EMAIL_ALPHABETICALLY ->
-					EmailPagination(this as CommonPagination.TokenData<AccountsModel.SortOrder, String>)
-				AccountsModel.SortOrder.FILE_COUNT ->
-					FileCountPagination(this as CommonPagination.TokenData<AccountsModel.SortOrder, Int>)
+				SortOrder.CREATED_TS ->
+					CreatedTsPagination(this as CommonPagination.TokenData<SortOrder, OffsetDateTime>)
+				SortOrder.MODIFIED_TS ->
+					ModifiedTsPagination(this as CommonPagination.TokenData<SortOrder, OffsetDateTime>)
+				SortOrder.NAME_ALPHABETICALLY ->
+					NamePagination(this as CommonPagination.TokenData<SortOrder, String>)
+				SortOrder.EMAIL_ALPHABETICALLY ->
+					EmailPagination(this as CommonPagination.TokenData<SortOrder, String>)
+				SortOrder.FILE_COUNT ->
+					FileCountPagination(this as CommonPagination.TokenData<SortOrder, Int>)
 			}
 		}
 
@@ -40,19 +40,19 @@ interface AccountPagination<TColType>: RowPagination<AccountDto, AccountsModel.S
 			val bytes = Crypto.INSTANCE.aesDecrypt(token)
 
 			// Extract sort enum
-			val sortEnumVals = AccountsModel.SortOrder.values()
+			val sortEnumVals = SortOrder.values()
 			val sort = CommonPagination.decodeSortEnum(bytes, sortEnumVals)
 
 			return when(sort) {
-				AccountsModel.SortOrder.CREATED_TS ->
+				SortOrder.CREATED_TS ->
 					CommonPagination.Timestamp.decodeTokenBytes(bytes, sortEnumVals, sort).toPagination()
-				AccountsModel.SortOrder.MODIFIED_TS ->
+				SortOrder.MODIFIED_TS ->
 					CommonPagination.Timestamp.decodeTokenBytes(bytes, sortEnumVals, sort).toPagination()
-				AccountsModel.SortOrder.NAME_ALPHABETICALLY ->
+				SortOrder.NAME_ALPHABETICALLY ->
 					CommonPagination.Text.decodeTokenBytes(bytes, sortEnumVals, sort).toPagination()
-				AccountsModel.SortOrder.EMAIL_ALPHABETICALLY ->
+				SortOrder.EMAIL_ALPHABETICALLY ->
 					CommonPagination.Text.decodeTokenBytes(bytes, sortEnumVals, sort).toPagination()
-				AccountsModel.SortOrder.FILE_COUNT ->
+				SortOrder.FILE_COUNT ->
 					CommonPagination.Integer.decodeTokenBytes(bytes, sortEnumVals, sort).toPagination()
 			}
 		}
@@ -71,12 +71,12 @@ interface AccountPagination<TColType>: RowPagination<AccountDto, AccountsModel.S
 			if(pageToken == null) {
 				// Extract ordering from params
 				val order = if(params.contains("order"))
-					AccountsModel.SortOrder.values().getOr(
+					SortOrder.values().getOr(
 						params["order"].toIntOr(0),
-						AccountsModel.SortOrder.CREATED_TS
+						SortOrder.CREATED_TS
 					)
 				else
-					AccountsModel.SortOrder.CREATED_TS
+					SortOrder.CREATED_TS
 				val orderDesc = params["orderDesc"] == "true"
 
 				// Create token data without a cursor
@@ -98,8 +98,8 @@ interface AccountPagination<TColType>: RowPagination<AccountDto, AccountsModel.S
 	 * @since 2.0.0
 	 */
 	class CreatedTsPagination(
-		private val tokenData: CommonPagination.TokenData<AccountsModel.SortOrder, OffsetDateTime>
-	): AccountPagination<OffsetDateTime>, CommonPagination.Timestamp<AccountDto, AccountsModel.SortOrder>(
+		private val tokenData: CommonPagination.TokenData<SortOrder, OffsetDateTime>
+	): AccountPagination<OffsetDateTime>, CommonPagination.Timestamp<AccountDto, SortOrder>(
 		timestampField = field("accounts.account_created_ts"),
 		internalIdField = field("accounts.id"),
 		constructor = this::constructor,
@@ -114,7 +114,7 @@ interface AccountPagination<TColType>: RowPagination<AccountDto, AccountsModel.S
 			 */
 			fun create(sortDesc: Boolean) = CreatedTsPagination(
 				CommonPagination.TokenData(
-					sortEnum = AccountsModel.SortOrder.CREATED_TS,
+					sortEnum = SortOrder.CREATED_TS,
 					isSortedByDesc = sortDesc,
 					isPreviousCursor = false,
 					columnValue = null,
@@ -124,7 +124,7 @@ interface AccountPagination<TColType>: RowPagination<AccountDto, AccountsModel.S
 
 			fun constructor(isSortedByDesc: Boolean, isPreviousCursor: Boolean, internalId: Int, columnValue: OffsetDateTime) = CreatedTsPagination(
 				CommonPagination.TokenData(
-					AccountsModel.SortOrder.CREATED_TS,
+					SortOrder.CREATED_TS,
 					isSortedByDesc,
 					isPreviousCursor,
 					internalId,
@@ -133,7 +133,7 @@ interface AccountPagination<TColType>: RowPagination<AccountDto, AccountsModel.S
 			)
 		}
 
-		override val sortType: AccountsModel.SortOrder
+		override val sortType: SortOrder
 			get() = tokenData.sortEnum
 
 		override val isSortedByDesc: Boolean
@@ -154,8 +154,8 @@ interface AccountPagination<TColType>: RowPagination<AccountDto, AccountsModel.S
 	 * @since 2.0.0
 	 */
 	class ModifiedTsPagination(
-		private val tokenData: CommonPagination.TokenData<AccountsModel.SortOrder, OffsetDateTime>
-	): AccountPagination<OffsetDateTime>, CommonPagination.Timestamp<AccountDto, AccountsModel.SortOrder>(
+		private val tokenData: CommonPagination.TokenData<SortOrder, OffsetDateTime>
+	): AccountPagination<OffsetDateTime>, CommonPagination.Timestamp<AccountDto, SortOrder>(
 		timestampField = field("accounts.account_modified_ts"),
 		internalIdField = field("accounts.id"),
 		constructor = this::constructor,
@@ -170,7 +170,7 @@ interface AccountPagination<TColType>: RowPagination<AccountDto, AccountsModel.S
 			 */
 			fun create(sortDesc: Boolean) = ModifiedTsPagination(
 				CommonPagination.TokenData(
-					sortEnum = AccountsModel.SortOrder.MODIFIED_TS,
+					sortEnum = SortOrder.MODIFIED_TS,
 					isSortedByDesc = sortDesc,
 					isPreviousCursor = false,
 					columnValue = null,
@@ -180,7 +180,7 @@ interface AccountPagination<TColType>: RowPagination<AccountDto, AccountsModel.S
 
 			fun constructor(isSortedByDesc: Boolean, isPreviousCursor: Boolean, internalId: Int, columnValue: OffsetDateTime) = ModifiedTsPagination(
 				CommonPagination.TokenData(
-					AccountsModel.SortOrder.MODIFIED_TS,
+					SortOrder.MODIFIED_TS,
 					isSortedByDesc,
 					isPreviousCursor,
 					internalId,
@@ -189,7 +189,7 @@ interface AccountPagination<TColType>: RowPagination<AccountDto, AccountsModel.S
 			)
 		}
 
-		override val sortType: AccountsModel.SortOrder
+		override val sortType: SortOrder
 			get() = tokenData.sortEnum
 
 		override val isSortedByDesc: Boolean
@@ -210,8 +210,8 @@ interface AccountPagination<TColType>: RowPagination<AccountDto, AccountsModel.S
 	 * @since 2.0.0
 	 */
 	class NamePagination(
-		private val tokenData: CommonPagination.TokenData<AccountsModel.SortOrder, String>
-	): AccountPagination<String>, CommonPagination.Text<AccountDto, AccountsModel.SortOrder>(
+		private val tokenData: CommonPagination.TokenData<SortOrder, String>
+	): AccountPagination<String>, CommonPagination.Text<AccountDto, SortOrder>(
 		textField = field("accounts.account_name"),
 		internalIdField = field("accounts.id"),
 		constructor = this::constructor,
@@ -225,7 +225,7 @@ interface AccountPagination<TColType>: RowPagination<AccountDto, AccountsModel.S
 		 */
 		fun create(sortDesc: Boolean) = NamePagination(
 			CommonPagination.TokenData(
-				sortEnum = AccountsModel.SortOrder.NAME_ALPHABETICALLY,
+				sortEnum = SortOrder.NAME_ALPHABETICALLY,
 				isSortedByDesc = sortDesc,
 				isPreviousCursor = false,
 				columnValue = null,
@@ -236,7 +236,7 @@ interface AccountPagination<TColType>: RowPagination<AccountDto, AccountsModel.S
 		companion object {
 			fun constructor(isSortedByDesc: Boolean, isPreviousCursor: Boolean, internalId: Int, columnValue: String) = NamePagination(
 				CommonPagination.TokenData(
-					AccountsModel.SortOrder.NAME_ALPHABETICALLY,
+					SortOrder.NAME_ALPHABETICALLY,
 					isSortedByDesc,
 					isPreviousCursor,
 					internalId,
@@ -247,7 +247,7 @@ interface AccountPagination<TColType>: RowPagination<AccountDto, AccountsModel.S
 			fun rowAccessor(row: AccountDto) = row.name
 		}
 
-		override val sortType: AccountsModel.SortOrder
+		override val sortType: SortOrder
 			get() = tokenData.sortEnum
 
 		override val isSortedByDesc: Boolean
@@ -268,8 +268,8 @@ interface AccountPagination<TColType>: RowPagination<AccountDto, AccountsModel.S
 	 * @since 2.0.0
 	 */
 	class EmailPagination(
-		private val tokenData: CommonPagination.TokenData<AccountsModel.SortOrder, String>
-	): AccountPagination<String>, CommonPagination.Text<AccountDto, AccountsModel.SortOrder>(
+		private val tokenData: CommonPagination.TokenData<SortOrder, String>
+	): AccountPagination<String>, CommonPagination.Text<AccountDto, SortOrder>(
 		textField = field("accounts.account_email"),
 		internalIdField = field("accounts.id"),
 		constructor = this::constructor,
@@ -284,7 +284,7 @@ interface AccountPagination<TColType>: RowPagination<AccountDto, AccountsModel.S
 			 */
 			fun create(sortDesc: Boolean) = EmailPagination(
 				CommonPagination.TokenData(
-					sortEnum = AccountsModel.SortOrder.EMAIL_ALPHABETICALLY,
+					sortEnum = SortOrder.EMAIL_ALPHABETICALLY,
 					isSortedByDesc = sortDesc,
 					isPreviousCursor = false,
 					columnValue = null,
@@ -294,7 +294,7 @@ interface AccountPagination<TColType>: RowPagination<AccountDto, AccountsModel.S
 
 			fun constructor(isSortedByDesc: Boolean, isPreviousCursor: Boolean, internalId: Int, columnValue: String) = EmailPagination(
 				CommonPagination.TokenData(
-					AccountsModel.SortOrder.EMAIL_ALPHABETICALLY,
+					SortOrder.EMAIL_ALPHABETICALLY,
 					isSortedByDesc,
 					isPreviousCursor,
 					internalId,
@@ -305,7 +305,7 @@ interface AccountPagination<TColType>: RowPagination<AccountDto, AccountsModel.S
 			fun rowAccessor(row: AccountDto) = row.email
 		}
 
-		override val sortType: AccountsModel.SortOrder
+		override val sortType: SortOrder
 			get() = tokenData.sortEnum
 
 		override val isSortedByDesc: Boolean
@@ -326,8 +326,8 @@ interface AccountPagination<TColType>: RowPagination<AccountDto, AccountsModel.S
 	 * @since 2.0.0
 	 */
 	class FileCountPagination(
-		private val tokenData: CommonPagination.TokenData<AccountsModel.SortOrder, Int>
-	): AccountPagination<Int>, CommonPagination.Integer<AccountDto, AccountsModel.SortOrder>(
+		private val tokenData: CommonPagination.TokenData<SortOrder, Int>
+	): AccountPagination<Int>, CommonPagination.Integer<AccountDto, SortOrder>(
 		intField = field("accounts.account_file_count"),
 		internalIdField = field("accounts.id"),
 		constructor = this::constructor,
@@ -342,7 +342,7 @@ interface AccountPagination<TColType>: RowPagination<AccountDto, AccountsModel.S
 			 */
 			fun create(sortDesc: Boolean) = NamePagination(
 				CommonPagination.TokenData(
-					sortEnum = AccountsModel.SortOrder.FILE_COUNT,
+					sortEnum = SortOrder.FILE_COUNT,
 					isSortedByDesc = sortDesc,
 					isPreviousCursor = false,
 					columnValue = null,
@@ -352,7 +352,7 @@ interface AccountPagination<TColType>: RowPagination<AccountDto, AccountsModel.S
 
 			fun constructor(isSortedByDesc: Boolean, isPreviousCursor: Boolean, internalId: Int, columnValue: Int) = FileCountPagination(
 				CommonPagination.TokenData(
-					AccountsModel.SortOrder.FILE_COUNT,
+					SortOrder.FILE_COUNT,
 					isSortedByDesc,
 					isPreviousCursor,
 					internalId,
@@ -363,7 +363,7 @@ interface AccountPagination<TColType>: RowPagination<AccountDto, AccountsModel.S
 			fun rowAccessor(row: AccountDto) = row.fileCount
 		}
 
-		override val sortType: AccountsModel.SortOrder
+		override val sortType: SortOrder
 			get() = tokenData.sortEnum
 
 		override val isSortedByDesc: Boolean
