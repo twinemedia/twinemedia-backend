@@ -259,7 +259,7 @@ class ApiKeysModel(context: Context?, ignoreContext: Boolean): Model(context, ig
 	 * @return The newly created API key entry's ID
 	 * @since 2.0.0
 	 */
-	suspend fun createApiKeyRow(
+	suspend fun createRow(
 		name: String,
 		permissions: Array<String>,
 		jwt: String,

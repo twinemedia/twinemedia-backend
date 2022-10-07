@@ -375,7 +375,7 @@ class AccountsModel(context: Context?, ignoreContext: Boolean): Model(context, i
 	 * @return The newly created account entry's ID
 	 * @since 2.0.0
 	 */
-	suspend fun createAccountRow(
+	suspend fun createRow(
 		email: String,
 		name: String,
 		isAdmin: Boolean,
