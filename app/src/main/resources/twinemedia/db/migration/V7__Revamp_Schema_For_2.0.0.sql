@@ -350,6 +350,8 @@ alter table lists
 alter table lists
     alter column list_source_exclude_tags set default array[]::varchar(256)[];
 alter table lists
+    rename column list_show_all_user_files to list_show_all_account_files;
+alter table lists
     rename column list_created_on to list_created_ts;
 alter table lists
     rename column list_modified_on to list_modified_ts;
