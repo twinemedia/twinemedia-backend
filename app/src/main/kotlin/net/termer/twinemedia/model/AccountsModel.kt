@@ -372,7 +372,7 @@ class AccountsModel(context: Context?, ignoreContext: Boolean): Model(context, i
 	 * @param permissions An array of permissions that the new account will have
 	 * @param hash The password hash for the new account
 	 * @param defaultSourceId The new account's default media source ID, or null for none
-	 * @return The newly created account entry's ID
+	 * @return The newly created account row's ID
 	 * @since 2.0.0
 	 */
 	suspend fun createRow(

@@ -256,7 +256,7 @@ class ApiKeysModel(context: Context?, ignoreContext: Boolean): Model(context, ig
 	 * @param permissions An array of permissions that the new API key will have
 	 * @param jwt The API key's actual JWT token
 	 * @param creatorId The API key creator's internal ID
-	 * @return The newly created API key entry's ID
+	 * @return The newly created API key row's ID
 	 * @since 2.0.0
 	 */
 	suspend fun createRow(
