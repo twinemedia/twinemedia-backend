@@ -371,7 +371,7 @@ class ListsModel(context: Context?, ignoreContext: Boolean): Model(context, igno
 	 * Creates a new list row with the provided details
 	 * @param name The name of the new list
 	 * @param description The list's description (defaults to an empty string)
-	 * @param creatorId The list creator's internal ID
+	 * @param creatorInternalId The list creator's internal ID
 	 * @param type The list type
 	 * @param visibility The list visibility
 	 * @param sourceTags The tags that files must have to be in this list (value will be ignored if type is not [ListType.AUTOMATICALLY_POPULATED])
@@ -386,7 +386,7 @@ class ListsModel(context: Context?, ignoreContext: Boolean): Model(context, igno
 	suspend fun createRow(
 		name: String,
 		description: String,
-		creatorId: Int,
+		creatorInternalId: Int,
 		type: ListType,
 		visibility: ListVisibility,
 		sourceTags: Array<String>?,
@@ -421,7 +421,7 @@ class ListsModel(context: Context?, ignoreContext: Boolean): Model(context, igno
 				id,
 				name,
 				description,
-				creatorId,
+				creatorInternalId,
 				type,
 				visibility,
 				null,
@@ -436,7 +436,7 @@ class ListsModel(context: Context?, ignoreContext: Boolean): Model(context, igno
 				id,
 				name,
 				description,
-				creatorId,
+				creatorInternalId,
 				type,
 				visibility,
 				sourceTags,
