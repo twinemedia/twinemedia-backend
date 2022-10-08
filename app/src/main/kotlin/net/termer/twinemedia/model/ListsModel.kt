@@ -86,7 +86,7 @@ class ListsModel(context: Context?, ignoreContext: Boolean): Model(context, igno
 		 * API-unsafe.
 		 * @since 2.0.0
 		 */
-		var whereCreatorIdIs: Option<Int> = none(),
+		var whereCreatorInternalIdIs: Option<Int> = none(),
 
 		/**
 		 * Matches lists where the type is this.
@@ -159,8 +159,8 @@ class ListsModel(context: Context?, ignoreContext: Boolean): Model(context, igno
 				query.addConditions(field("lists.list_type").eq((whereTypeIs as Some).value.ordinal))
 			if(whereVisibilityIs is Some)
 				query.addConditions(field("lists.list_visibility").eq((whereVisibilityIs as Some).value.ordinal))
-			if(whereCreatorIdIs is Some)
-				query.addConditions(field("lists.list_creator").eq((whereCreatorIdIs as Some).value))
+			if(whereCreatorInternalIdIs is Some)
+				query.addConditions(field("lists.list_creator").eq((whereCreatorInternalIdIs as Some).value))
 			if(whereCreatedBefore is Some)
 				query.addConditions(field("lists.list_created_ts").gt((whereCreatedBefore as Some).value))
 			if(whereCreatedAfter is Some)
