@@ -295,6 +295,8 @@ alter table files
         on delete restrict;
 create unique index file_title_and_id_idx
     on files (file_title, id);
+create unique index file_name_and_id_idx
+    on files (file_name, id);
 create unique index file_size_and_id_idx
     on files (file_size, id);
 create unique index file_created_ts_and_id_idx
