@@ -13,13 +13,7 @@ import java.time.OffsetDateTime
  * @since 2.0.0
  */
 class FileDto(
-	/**
-	 * TODO Is this still needed?
-	 * The file's internal sequential ID.
-	 * Not exposed in JSON.
-	 * @since 2.0.0
-	 */
-	val internalId: Int,
+	override val internalId: Int,
 
 	/**
 	 * TODO Is this still needed?
@@ -137,18 +131,9 @@ class FileDto(
 	 */
 	val source: RecordSourceDto,
 
-	/**
-	 * The file's creation timestamp
-	 * @since 2.0.0
-	 */
-	val createdTs: OffsetDateTime,
-
-	/**
-	 * The file's last modified timestamp
-	 * @since 2.0.0
-	 */
-	val modifiedTs: OffsetDateTime,
-): JsonSerializable() {
+	override val createdTs: OffsetDateTime,
+	override val modifiedTs: OffsetDateTime,
+): JsonSerializable(), StandardRow {
 	override fun toJson(): JsonObject = jsonObjectOf(
 		"id" to id,
 		"title" to title,
@@ -181,7 +166,7 @@ class FileDto(
 			val fileCreatorId = row.getString("file_creator_id")
 
 			return FileDto(
-				internalId = row.getInteger("internal_id"), // TODO Still needed?
+				internalId = row.getInteger("internal_id"),
 				parentInternalId = row.getInteger("parent_internal_id"), // TODO Still needed?
 				id = row.getString("file_id"),
 				title = row.getString("file_title"),

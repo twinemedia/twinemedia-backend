@@ -332,4 +332,51 @@ object CommonPagination {
 			.putInt(columnValue ?: Int.MIN_VALUE)
 			.array()
 	}
+
+	/**
+	 * Abstract long integer pagination class to be extended by classes for specific tables and sorting orders
+	 * @since 2.0.0
+	 */
+	abstract class LongInteger<TRow: StandardRow, TSortEnum: Enum<TSortEnum>>(
+		longField: Field<Any>,
+		internalIdField: Field<Any>,
+		constructor: CommonPaginationConstructor<TRow, TSortEnum, Long>,
+		rowColumnAccessor: CommonRowColumnAccessor<TRow, Long>
+	): Base<TRow, TSortEnum, Long>(longField, internalIdField, constructor, rowColumnAccessor) {
+		companion object {
+			/**
+			 * Decodes a long integer pagination token's contents
+			 * @param TSortEnum The type of sorting enum contained in the token
+			 * @param bytes The token bytes to decode
+			 * @param sortEnumValues The values for the sorting enum type contained in the token
+			 * @param sortEnumVal The already-resolved sorting enum value. Skips decoding and checking enum int if not null. (defaults to null)
+			 * @return The decoded token data
+			 * @throws PaginationTokenDecodeException If decoding the token fails
+			 * @since 2.0.0
+			 */
+			fun <TSortEnum: Enum<TSortEnum>> decodeTokenBytes(bytes: ByteArray, sortEnumValues: Array<TSortEnum>, sortEnumVal: TSortEnum? = null): TokenData<TSortEnum, Long> {
+				try {
+					val commonParts = decodeTokenCommonParts(bytes, sortEnumValues, sortEnumVal)
+
+					val longVal = longFromBytes(commonParts.finalBytes)
+
+					return TokenData(
+						commonParts.sortEnum,
+						commonParts.isPreviousCursor,
+						commonParts.isSortedByDesc,
+						commonParts.internalId,
+						if(longVal == Long.MIN_VALUE) null else longVal
+					)
+				} catch(e: Throwable) {
+					// Re-throw wrapped exception
+					throw PaginationTokenDecodeException(cause = e)
+				}
+			}
+		}
+
+		override fun serializeColumnValue(): ByteArray = ByteBuffer
+			.allocate(4)
+			.putLong(columnValue ?: Long.MIN_VALUE)
+			.array()
+	}
 }
