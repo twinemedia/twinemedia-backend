@@ -226,12 +226,12 @@ interface FilePagination<TColType>: RowPagination<FileDto, SortOrder, TColType> 
 		rowColumnAccessor = this::rowAccessor
 	) {
 		/**
-		 * Creates a no-cursor [NamePagination] object
+		 * Creates a no-cursor [TitlePagination] object
 		 * @param sortDesc Whether results will be returned in descending order
-		 * @return The [NamePagination] instance
+		 * @return The [TitlePagination] instance
 		 * @since 2.0.0
 		 */
-		fun create(sortDesc: Boolean) = NamePagination(
+		fun create(sortDesc: Boolean) = TitlePagination(
 			CommonPagination.TokenData(
 				sortEnum = SortOrder.TITLE_ALPHABETICALLY,
 				isSortedByDesc = sortDesc,
@@ -242,9 +242,9 @@ interface FilePagination<TColType>: RowPagination<FileDto, SortOrder, TColType> 
 		)
 
 		companion object {
-			fun constructor(isSortedByDesc: Boolean, isPreviousCursor: Boolean, internalId: Int, columnValue: String) = NamePagination(
+			fun constructor(isSortedByDesc: Boolean, isPreviousCursor: Boolean, internalId: Int, columnValue: String) = TitlePagination(
 				CommonPagination.TokenData(
-					SortOrder.NAME_ALPHABETICALLY,
+					SortOrder.TITLE_ALPHABETICALLY,
 					isSortedByDesc,
 					isPreviousCursor,
 					internalId,
@@ -252,7 +252,7 @@ interface FilePagination<TColType>: RowPagination<FileDto, SortOrder, TColType> 
 				)
 			)
 
-			fun rowAccessor(row: FileDto) = row.name
+			fun rowAccessor(row: FileDto) = row.title
 		}
 
 		override val sortType: SortOrder
