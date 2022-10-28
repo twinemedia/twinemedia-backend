@@ -233,7 +233,7 @@ interface FilePagination<TColType>: RowPagination<FileDto, SortOrder, TColType> 
 		 */
 		fun create(sortDesc: Boolean) = NamePagination(
 			CommonPagination.TokenData(
-				sortEnum = SortOrder.NAME_ALPHABETICALLY,
+				sortEnum = SortOrder.TITLE_ALPHABETICALLY,
 				isSortedByDesc = sortDesc,
 				isPreviousCursor = false,
 				columnValue = null,
