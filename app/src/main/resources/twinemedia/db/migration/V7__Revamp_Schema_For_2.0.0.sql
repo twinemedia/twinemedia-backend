@@ -395,7 +395,7 @@ alter table process_presets
     rename column process_modified_on to preset_modified_ts;
 alter table process_presets
     add preset_name varchar(256) default '' not null;
-update process_presets set preset_name = preset_mime;
+update process_presets set preset_name = replace(preset_mime, '%', '*');
 alter table process_presets
     alter column preset_name drop default;
 create unique index process_preset_name_and_id_idx
