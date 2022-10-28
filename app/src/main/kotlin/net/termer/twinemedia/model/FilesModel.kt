@@ -304,7 +304,7 @@ class FilesModel(context: Context?, ignoreContext: Boolean): Model(context, igno
 	/**
 	 * Applies context filters on a query
 	 * @param query The query to apply the filters on
-	 * @param isListing Whether this is a listing query, as opposed to a single-file viewing query or an update/delete
+	 * @param isListing Whether this is a listing query, as opposed to a single-row viewing query or an update/delete
 	 */
 	private fun applyContextFilters(query: ConditionProvider, isListing: Boolean) {
 		if(!ignoreContext) {

@@ -327,15 +327,27 @@ class ListsModel(context: Context?, ignoreContext: Boolean): Model(context, igno
 	/**
 	 * Applies context filters on a query
 	 * @param query The query to apply the filters on
+	 * @param isListing Whether this is a listing query, as opposed to a single-row viewing query or an update/delete
 	 */
-	private fun applyContextFilters(query: ConditionProvider) {
+	private fun applyContextFilters(query: ConditionProvider, isListing: Boolean) {
 		if(!ignoreContext) {
 			if(context == null) {
 				// If there is no context, only show lists that are set to public
 				query.addConditions(field("lists.list_visibility").eq(ListVisibility.PUBLIC.ordinal))
-			} else if(!context!!.account.hasPermission("lists.list.all") || context!!.account.excludeOtherLists) {
-				// If the account does not have lists.list.all, or is excluding lists by other accounts, only show lists by the account
-				query.addConditions(field("lists.list_creator").eq(context!!.account.internalId))
+			} else {
+				val acc = context!!.account
+				val perm = if(isListing) "lists.list.all" else "lists.view.all"
+
+				if(!acc.hasPermission(perm) || context!!.account.excludeOtherLists) {
+					val cond = field("lists.list_creator").eq(acc.internalId)
+
+					// Show public lists if not a listing query
+					query.addConditions(if(isListing)
+						cond
+					else
+						cond.or(field("lists.list_visibility").eq(ListVisibility.PUBLIC.ordinal))
+					)
+				}
 			}
 		}
 	}
@@ -494,7 +506,7 @@ class ListsModel(context: Context?, ignoreContext: Boolean): Model(context, igno
 
 		handleCheckForFileId(query, checkForFileId)
 
-		applyContextFilters(query)
+		applyContextFilters(query, isListing = true)
 		filters.applyTo(query)
 		query.orderBy(order, orderDesc)
 		query.addLimit(limit)
@@ -521,7 +533,7 @@ class ListsModel(context: Context?, ignoreContext: Boolean): Model(context, igno
 
 		handleCheckForFileId(query, checkForFileId)
 
-		applyContextFilters(query)
+		applyContextFilters(query, isListing = true)
 		filters.applyTo(query)
 
 		return query.fetchPaginatedAsync(pagination, limit) { ListDto.fromRow(it) }
@@ -539,7 +551,7 @@ class ListsModel(context: Context?, ignoreContext: Boolean): Model(context, igno
 
 		handleCheckForFileId(query, checkForFileId)
 
-		applyContextFilters(query)
+		applyContextFilters(query, isListing = false)
 		filters.applyTo(query)
 		query.addLimit(1)
 
@@ -571,7 +583,7 @@ class ListsModel(context: Context?, ignoreContext: Boolean): Model(context, igno
 				.from(table("lists"))
 				.query
 
-		applyContextFilters(query)
+		applyContextFilters(query, isListing = true)
 		filters.applyTo(query)
 		query.orderBy(order, orderDesc)
 		query.addLimit(limit)
@@ -591,7 +603,7 @@ class ListsModel(context: Context?, ignoreContext: Boolean): Model(context, igno
 				.from(table("lists"))
 				.query
 
-		applyContextFilters(query)
+		applyContextFilters(query, isListing = false)
 		filters.applyTo(query)
 		query.addLimit(1)
 
@@ -614,7 +626,7 @@ class ListsModel(context: Context?, ignoreContext: Boolean): Model(context, igno
 	suspend fun updateMany(values: UpdateValues, filters: Filters, limit: Int?  = null, updateModifiedTs: Boolean = true) {
 		val query = Sql.updateQuery(table("lists"))
 
-		applyContextFilters(query)
+		applyContextFilters(query, isListing = false)
 		filters.applyTo(query)
 		if(limit != null)
 			query.addLimit(limit)
@@ -647,7 +659,7 @@ class ListsModel(context: Context?, ignoreContext: Boolean): Model(context, igno
 	suspend fun deleteMany(filters: Filters, limit: Int? = null) {
 		val query = Sql.deleteQuery(table("lists"))
 
-		applyContextFilters(query)
+		applyContextFilters(query, isListing = false)
 		filters.applyTo(query)
 		if(limit != null)
 			query.addLimit(limit)
