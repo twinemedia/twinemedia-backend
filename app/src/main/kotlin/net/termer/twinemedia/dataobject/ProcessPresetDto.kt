@@ -11,6 +11,8 @@ import java.time.OffsetDateTime
  * @since 2.0.0
  */
 class ProcessPresetDto(
+	override val internalId: Int,
+
 	/**
 	 * The preset's alphanumeric ID
 	 * @since 2.0.0
@@ -47,18 +49,9 @@ class ProcessPresetDto(
 	 */
 	val creator: RecordCreatorDto,
 
-	/**
-	 * The preset's creation timestamp
-	 * @since 2.0.0
-	 */
-	val createdTs: OffsetDateTime,
-
-	/**
-	 * The preset's last modified timestamp
-	 * @since 2.0.0
-	 */
-	val modifiedTs: OffsetDateTime
-): JsonSerializable() {
+	override val createdTs: OffsetDateTime,
+	override val modifiedTs: OffsetDateTime
+): JsonSerializable(), StandardRow {
 	override fun toJson() = jsonObjectOf(
 		"id" to id,
 		"name" to name,
@@ -75,6 +68,7 @@ class ProcessPresetDto(
 		 * @since 2.0.0
 		 */
 		fun fromRow(row: Row) = ProcessPresetDto(
+			internalId = row.getInteger("id"),
 			id = row.getString("preset_id"),
 			name = row.getString("preset_name"),
 			mime = row.getString("preset_mime"),

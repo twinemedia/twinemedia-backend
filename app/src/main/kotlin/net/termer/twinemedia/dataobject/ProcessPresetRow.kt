@@ -9,11 +9,7 @@ import java.time.OffsetDateTime
  * @since 2.0.0
  */
 class ProcessPresetRow(
-	/**
-	 * The preset's internal sequential ID
-	 * @since 2.0.0
-	 */
-	val internalId: Int,
+	override val internalId: Int,
 
 	/**
 	 * The preset's alphanumeric ID
@@ -45,18 +41,9 @@ class ProcessPresetRow(
 	 */
 	val creatorInternalId: Int,
 
-	/**
-	 * The preset's creation timestamp
-	 * @since 2.0.0
-	 */
-	val createdTs: OffsetDateTime,
-
-	/**
-	 * The preset's last modified timestamp
-	 * @since 2.0.0
-	 */
-	val modifiedTs: OffsetDateTime
-) {
+	override val createdTs: OffsetDateTime,
+	override val modifiedTs: OffsetDateTime
+): StandardRow {
 	companion object {
 		/**
 		 * Maps a row to a new object instance

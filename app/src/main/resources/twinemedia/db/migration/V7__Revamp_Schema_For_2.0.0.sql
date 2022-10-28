@@ -403,6 +403,8 @@ alter table process_presets
     alter column preset_name drop default;
 create unique index process_preset_name_and_id_idx
     on process_presets (preset_name, id);
+create unique index process_preset_mime_and_id_idx
+    on process_presets (preset_mime, id);
 create unique index process_preset_created_ts_and_id_idx
     on process_presets (preset_created_ts, id);
 create unique index process_preset_modified_ts_and_id_idx
