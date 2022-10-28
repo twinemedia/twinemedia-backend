@@ -166,7 +166,7 @@ class FileDto(
 			val fileCreatorId = row.getString("file_creator_id")
 
 			return FileDto(
-				internalId = row.getInteger("internal_id"),
+				internalId = row.getInteger("id"),
 				parentInternalId = row.getInteger("parent_internal_id"), // TODO Still needed?
 				id = row.getString("file_id"),
 				title = row.getString("file_title"),
