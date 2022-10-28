@@ -185,6 +185,8 @@ class ListsModel(context: Context?, ignoreContext: Boolean): Model(context, igno
 		override fun setWithRequest(req: HttpServerRequest) {
 			val params = req.params()
 
+			if(params.contains("whereIdIs"))
+				whereIdIs = some(params["whereIdIs"])
 			if(params.contains("whereTypeIs"))
 				whereTypeIs = intToListType(params["whereTypeIs"].toIntOrNull() ?: -1).orNone()
 			if(params.contains("whereVisibilityIs"))
