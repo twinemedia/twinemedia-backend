@@ -162,11 +162,11 @@ class ListsModel(context: Context?, ignoreContext: Boolean): Model(context, igno
 			if(whereCreatorInternalIdIs is Some)
 				query.addConditions(field("lists.list_creator").eq((whereCreatorInternalIdIs as Some).value))
 			if(whereCreatedBefore is Some)
-				query.addConditions(field("lists.list_created_ts").gt((whereCreatedBefore as Some).value))
+				query.addConditions(field("lists.list_created_ts").lt((whereCreatedBefore as Some).value))
 			if(whereCreatedAfter is Some)
 				query.addConditions(field("lists.list_created_ts").gt((whereCreatedAfter as Some).value))
 			if(whereModifiedBefore is Some)
-				query.addConditions(field("lists.list_modified_ts").gt((whereModifiedBefore as Some).value))
+				query.addConditions(field("lists.list_modified_ts").lt((whereModifiedBefore as Some).value))
 			if(whereModifiedAfter is Some)
 				query.addConditions(field("lists.list_modified_ts").gt((whereModifiedAfter as Some).value))
 			if(whereMatchesQuery is Some) {

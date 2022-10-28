@@ -129,11 +129,11 @@ class ApiKeysModel(context: Context?, ignoreContext: Boolean): Model(context, ig
 			if(whereCreatorInternalIdIs is Some)
 				query.addConditions(field("api_keys.key_creator").eq((whereCreatorInternalIdIs as Some).value))
 			if(whereCreatedBefore is Some)
-				query.addConditions(field("api_keys.key_created_ts").gt((whereCreatedBefore as Some).value))
+				query.addConditions(field("api_keys.key_created_ts").lt((whereCreatedBefore as Some).value))
 			if(whereCreatedAfter is Some)
 				query.addConditions(field("api_keys.key_created_ts").gt((whereCreatedAfter as Some).value))
 			if(whereModifiedBefore is Some)
-				query.addConditions(field("api_keys.key_modified_ts").gt((whereModifiedBefore as Some).value))
+				query.addConditions(field("api_keys.key_modified_ts").lt((whereModifiedBefore as Some).value))
 			if(whereModifiedAfter is Some)
 				query.addConditions(field("api_keys.key_modified_ts").gt((whereModifiedAfter as Some).value))
 			if(whereMatchesQuery is Some) {

@@ -169,11 +169,11 @@ class AccountsModel(context: Context?, ignoreContext: Boolean): Model(context, i
 			if(whereAdminStatusIs is Some)
 				query.addConditions(field("accounts.account_admin").eq((whereAdminStatusIs as Some).value))
 			if(whereCreatedBefore is Some)
-				query.addConditions(field("accounts.account_created_ts").gt((whereCreatedBefore as Some).value))
+				query.addConditions(field("accounts.account_created_ts").lt((whereCreatedBefore as Some).value))
 			if(whereCreatedAfter is Some)
 				query.addConditions(field("accounts.account_created_ts").gt((whereCreatedAfter as Some).value))
 			if(whereModifiedBefore is Some)
-				query.addConditions(field("accounts.account_modified_ts").gt((whereModifiedBefore as Some).value))
+				query.addConditions(field("accounts.account_modified_ts").lt((whereModifiedBefore as Some).value))
 			if(whereModifiedAfter is Some)
 				query.addConditions(field("accounts.account_modified_ts").gt((whereModifiedAfter as Some).value))
 			if(whereMatchesQuery is Some) {

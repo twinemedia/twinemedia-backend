@@ -6,7 +6,6 @@ import io.vertx.core.http.HttpServerRequest
 import io.vertx.core.json.JsonObject
 import net.termer.twinemedia.Constants.API_MAX_RESULT_LIMIT
 import net.termer.twinemedia.dataobject.*
-import net.termer.twinemedia.enumeration.ListVisibility
 import net.termer.twinemedia.model.pagination.FilePagination
 import net.termer.twinemedia.model.pagination.RowPagination
 import net.termer.twinemedia.util.*
@@ -107,6 +106,13 @@ class FilesModel(context: Context?, ignoreContext: Boolean): Model(context, igno
 		var whereCreatorInternalIdIs: Option<Int> = none(),
 
 		/**
+		 * Matches files where the MIME type matches this SQL LIKE pattern.
+		 * API-safe.
+		 * @since 2.0.0
+		 */
+		var whereMimeIsLike: Option<String> = none(),
+
+		/**
 		 * Matches files created before this time.
 		 * API-safe.
 		 * @since 2.0.0
@@ -167,12 +173,14 @@ class FilesModel(context: Context?, ignoreContext: Boolean): Model(context, igno
 				query.addConditions(field("files.file_id").eq((whereIdIs as Some).value))
 			if(whereCreatorInternalIdIs is Some)
 				query.addConditions(field("files.file_creator").eq((whereCreatorInternalIdIs as Some).value))
+			if(whereMimeIsLike is Some)
+				query.addConditions(field("files.file_mime").like((whereMimeIsLike as Some).value))
 			if(whereCreatedBefore is Some)
-				query.addConditions(field("files.file_created_ts").gt((whereCreatedBefore as Some).value))
+				query.addConditions(field("files.file_created_ts").lt((whereCreatedBefore as Some).value))
 			if(whereCreatedAfter is Some)
 				query.addConditions(field("files.file_created_ts").gt((whereCreatedAfter as Some).value))
 			if(whereModifiedBefore is Some)
-				query.addConditions(field("files.file_modified_ts").gt((whereModifiedBefore as Some).value))
+				query.addConditions(field("files.file_modified_ts").lt((whereModifiedBefore as Some).value))
 			if(whereModifiedAfter is Some)
 				query.addConditions(field("files.file_modified_ts").gt((whereModifiedAfter as Some).value))
 			if(whereMatchesQuery is Some) {
@@ -193,6 +201,8 @@ class FilesModel(context: Context?, ignoreContext: Boolean): Model(context, igno
 		override fun setWithRequest(req: HttpServerRequest) {
 			val params = req.params()
 
+			if(params.contains("whereMimeIsLike"))
+				whereMimeIsLike = some(params["whereMimeIsLike"])
 			if(params.contains("whereCreatedBefore"))
 				whereCreatedBefore = dateStringToOffsetDateTimeOrNone(params["whereCreatedBefore"])
 			if(params.contains("whereCreatedAfter"))
