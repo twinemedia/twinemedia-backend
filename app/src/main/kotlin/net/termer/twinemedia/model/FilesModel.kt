@@ -113,6 +113,34 @@ class FilesModel(context: Context?, ignoreContext: Boolean): Model(context, igno
 		var whereMimeIsLike: Option<String> = none(),
 
 		/**
+		 * Matches files that have fewer tags than this.
+		 * API-safe.
+		 * @since 2.0.0
+		 */
+		var whereTagCountLessThan: Option<Int> = none(),
+
+		/**
+		 * Matches files that have more tags than this.
+		 * API-safe.
+		 * @since 2.0.0
+		 */
+		var whereTagCountMoreThan: Option<Int> = none(),
+
+		/**
+		 * Matches files that have fewer children than this.
+		 * API-safe.
+		 * @since 2.0.0
+		 */
+		var whereChildCountLessThan: Option<Int> = none(),
+
+		/**
+		 * Matches files that have more children than this.
+		 * API-safe.
+		 * @since 2.0.0
+		 */
+		var whereChildCountMoreThan: Option<Int> = none(),
+
+		/**
 		 * Matches files created before this time.
 		 * API-safe.
 		 * @since 2.0.0
@@ -175,6 +203,14 @@ class FilesModel(context: Context?, ignoreContext: Boolean): Model(context, igno
 				query.addConditions(field("files.file_creator").eq((whereCreatorInternalIdIs as Some).value))
 			if(whereMimeIsLike is Some)
 				query.addConditions(field("files.file_mime").like((whereMimeIsLike as Some).value))
+			if(whereTagCountLessThan is Some)
+				query.addConditions(field("files.file_tag_count").lt((whereTagCountLessThan as Some).value))
+			if(whereTagCountMoreThan is Some)
+				query.addConditions(field("files.file_tag_count").gt((whereTagCountMoreThan as Some).value))
+			if(whereChildCountLessThan is Some)
+				query.addConditions(field("files.file_child_count").lt((whereChildCountLessThan as Some).value))
+			if(whereChildCountMoreThan is Some)
+				query.addConditions(field("files.file_child_count").gt((whereChildCountMoreThan as Some).value))
 			if(whereCreatedBefore is Some)
 				query.addConditions(field("files.file_created_ts").lt((whereCreatedBefore as Some).value))
 			if(whereCreatedAfter is Some)
@@ -203,6 +239,14 @@ class FilesModel(context: Context?, ignoreContext: Boolean): Model(context, igno
 
 			if(params.contains("whereMimeIsLike"))
 				whereMimeIsLike = some(params["whereMimeIsLike"])
+			if(params.contains("whereTagCountLessThan"))
+				whereTagCountLessThan = some(params["whereTagCountLessThan"].toIntOr(Int.MAX_VALUE))
+			if(params.contains("whereTagCountMoreThan"))
+				whereTagCountMoreThan = some(params["whereTagCountMoreThan"].toIntOr(0))
+			if(params.contains("whereChildCountLessThan"))
+				whereChildCountLessThan = some(params["whereChildCountLessThan"].toIntOr(Int.MAX_VALUE))
+			if(params.contains("whereChildCountMoreThan"))
+				whereChildCountMoreThan = some(params["whereChildCountMoreThan"].toIntOr(0))
 			if(params.contains("whereCreatedBefore"))
 				whereCreatedBefore = dateStringToOffsetDateTimeOrNone(params["whereCreatedBefore"])
 			if(params.contains("whereCreatedAfter"))
@@ -451,6 +495,8 @@ class FilesModel(context: Context?, ignoreContext: Boolean): Model(context, igno
 		query.orderBy(order, orderDesc)
 		query.addLimit(limit)
 
+		// TODO Fetch tags
+
 		return query.fetchManyAwait().map { FileDto.fromRow(it) }
 	}
 
@@ -476,6 +522,8 @@ class FilesModel(context: Context?, ignoreContext: Boolean): Model(context, igno
 		applyContextFilters(query, ContextFilterType.LIST)
 		filters.applyTo(query)
 
+		// TODO Fetch tags
+
 		return query.fetchPaginatedAsync(pagination, limit) { FileDto.fromRow(it) }
 	}
 
@@ -499,6 +547,8 @@ class FilesModel(context: Context?, ignoreContext: Boolean): Model(context, igno
 		query.addLimit(1)
 
 		val row = query.fetchOneAwait()
+
+		// TODO Fetch tags
 
 		return if(row == null)
 			null

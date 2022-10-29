@@ -103,6 +103,22 @@ class ListsModel(context: Context?, ignoreContext: Boolean): Model(context, igno
 		var whereVisibilityIs: Option<ListVisibility> = none(),
 
 		/**
+		 * Matches lists that have fewer files than this.
+		 * Using this filter automatically excludes lists of type [ListType.AUTOMATICALLY_POPULATED].
+		 * API-safe.
+		 * @since 2.0.0
+		 */
+		var whereFileCountLessThan: Option<Int> = none(),
+
+		/**
+		 * Matches lists that have more files than this.
+		 * Using this filter automatically excludes lists of type [ListType.AUTOMATICALLY_POPULATED].
+		 * API-safe.
+		 * @since 2.0.0
+		 */
+		var whereFileCountMoreThan: Option<Int> = none(),
+
+		/**
 		 * Matches lists created before this time.
 		 * API-safe.
 		 * @since 2.0.0
@@ -161,6 +177,10 @@ class ListsModel(context: Context?, ignoreContext: Boolean): Model(context, igno
 				query.addConditions(field("lists.list_visibility").eq((whereVisibilityIs as Some).value.ordinal))
 			if(whereCreatorInternalIdIs is Some)
 				query.addConditions(field("lists.list_creator").eq((whereCreatorInternalIdIs as Some).value))
+			if(whereFileCountLessThan is Some)
+				query.addConditions(field("lists.list_file_count").lt((whereFileCountLessThan as Some).value))
+			if(whereFileCountMoreThan is Some)
+				query.addConditions(field("lists.list_file_count").gt((whereFileCountMoreThan as Some).value))
 			if(whereCreatedBefore is Some)
 				query.addConditions(field("lists.list_created_ts").lt((whereCreatedBefore as Some).value))
 			if(whereCreatedAfter is Some)
@@ -189,6 +209,10 @@ class ListsModel(context: Context?, ignoreContext: Boolean): Model(context, igno
 				whereTypeIs = intToListType(params["whereTypeIs"].toIntOrNull() ?: -1).orNone()
 			if(params.contains("whereVisibilityIs"))
 				whereVisibilityIs = intToListVisibility(params["whereVisibilityIs"].toIntOrNull() ?: -1).orNone()
+			if(params.contains("whereFileCountLessThan"))
+				whereFileCountLessThan = some(params["whereFileCountLessThan"].toIntOr(Int.MAX_VALUE))
+			if(params.contains("whereFileCountMoreThan"))
+				whereFileCountMoreThan = some(params["whereFileCountMoreThan"].toIntOr(0))
 			if(params.contains("whereCreatedBefore"))
 				whereCreatedBefore = dateStringToOffsetDateTimeOrNone(params["whereCreatedBefore"])
 			if(params.contains("whereCreatedAfter"))

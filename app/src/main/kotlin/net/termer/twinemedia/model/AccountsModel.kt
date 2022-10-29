@@ -110,6 +110,20 @@ class AccountsModel(context: Context?, ignoreContext: Boolean): Model(context, i
 		var whereAdminStatusIs: Option<Boolean> = none(),
 
 		/**
+		 * Matches accounts that have fewer files than this.
+		 * API-safe.
+		 * @since 2.0.0
+		 */
+		var whereFileCountLessThan: Option<Int> = none(),
+
+		/**
+		 * Matches accounts that have more files than this.
+		 * API-safe.
+		 * @since 2.0.0
+		 */
+		var whereFileCountMoreThan: Option<Int> = none(),
+
+		/**
 		 * Matches accounts created before this time.
 		 * API-safe.
 		 * @since 2.0.0
@@ -168,6 +182,10 @@ class AccountsModel(context: Context?, ignoreContext: Boolean): Model(context, i
 				query.addConditions(field("api_keys.key_id").eq((whereApiKeyIdIs as Some).value))
 			if(whereAdminStatusIs is Some)
 				query.addConditions(field("accounts.account_admin").eq((whereAdminStatusIs as Some).value))
+			if(whereFileCountLessThan is Some)
+				query.addConditions(field("accounts.account_file_count").lt((whereFileCountLessThan as Some).value))
+			if(whereFileCountMoreThan is Some)
+				query.addConditions(field("accounts.account_file_count").gt((whereFileCountMoreThan as Some).value))
 			if(whereCreatedBefore is Some)
 				query.addConditions(field("accounts.account_created_ts").lt((whereCreatedBefore as Some).value))
 			if(whereCreatedAfter is Some)
@@ -196,6 +214,10 @@ class AccountsModel(context: Context?, ignoreContext: Boolean): Model(context, i
 				whereEmailIs = some(params["whereEmailIs"])
 			if(params.contains("whereAdminStatusIs"))
 				whereAdminStatusIs = some(params["whereAdminStatusIs"] == "true")
+			if(params.contains("whereFileCountLessThan"))
+				whereFileCountLessThan = some(params["whereFileCountLessThan"].toIntOr(Int.MAX_VALUE))
+			if(params.contains("whereFileCountMoreThan"))
+				whereFileCountMoreThan = some(params["whereFileCountMoreThan"].toIntOr(0))
 			if(params.contains("whereCreatedBefore"))
 				whereCreatedBefore = dateStringToOffsetDateTimeOrNone(params["whereCreatedBefore"])
 			if(params.contains("whereCreatedAfter"))
