@@ -65,117 +65,67 @@ class ProcessPresetsModel(context: Context?, ignoreContext: Boolean): Model(cont
 	 * @since 2.0.0
 	 */
 	class Filters(
-		/**
-		 * Matches presets where the sequential internal ID is this.
-		 * API-unsafe.
-		 * @since 2.0.0
-		 */
-		var whereInternalIdIs: Option<Int> = none(),
+		override var whereInternalIdIs: Option<Int> = none(),
+		override var whereIdIs: Option<String> = none(),
+		override var whereCreatedBefore: Option<OffsetDateTime> = none(),
+		override var whereCreatedAfter: Option<OffsetDateTime> = none(),
+		override var whereModifiedBefore: Option<OffsetDateTime> = none(),
+		override var whereModifiedAfter: Option<OffsetDateTime> = none(),
 
 		/**
-		 * Matches presets where the alphanumeric ID is this.
-		 * API-safe.
-		 * @since 2.0.0
-		 */
-		var whereIdIs: Option<String> = none(),
-
-		/**
-		 * Matches presets where the creator's internal ID is this.
+		 * Matches rows where the creator's internal ID is this.
 		 * API-unsafe.
 		 * @since 2.0.0
 		 */
 		var whereCreatorInternalIdIs: Option<Int> = none(),
 
 		/**
-		 * Matches presets where the MIME type matches this SQL LIKE pattern.
+		 * Matches rows where the MIME type matches this SQL LIKE pattern.
 		 * API-safe.
 		 * @since 2.0.0
 		 */
 		var whereMimeIsLike: Option<String> = none(),
 
 		/**
-		 * Matches presets created before this time.
-		 * API-safe.
-		 * @since 2.0.0
-		 */
-		var whereCreatedBefore: Option<OffsetDateTime> = none(),
-
-		/**
-		 * Matches presets created after this time.
-		 * API-safe.
-		 * @since 2.0.0
-		 */
-		var whereCreatedAfter: Option<OffsetDateTime> = none(),
-
-		/**
-		 * Matches presets modified before this time.
-		 * API-safe.
-		 * @since 2.0.0
-		 */
-		var whereModifiedBefore: Option<OffsetDateTime> = none(),
-
-		/**
-		 * Matches presets modified after this time.
-		 * API-safe.
-		 * @since 2.0.0
-		 */
-		var whereModifiedAfter: Option<OffsetDateTime> = none(),
-
-		/**
-		 * Matches presets where their values match this plaintext query.
+		 * Matches rows where their values match this plaintext query.
 		 * Search fields can be enabled by setting querySearch* properties to true.
-		 *
 		 * @since 2.0.0
 		 */
 		var whereMatchesQuery: Option<String> = none(),
 
 		/**
-		 * Whether [whereMatchesQuery] should search preset names
+		 * Whether [whereMatchesQuery] should search names
 		 * @since 2.0.0
 		 */
 		var querySearchName: Boolean = true
-	): Model.Filters {
+	): StandardFilters("process_presets", "preset") {
 		override fun applyTo(query: ConditionProvider) {
-			if(whereInternalIdIs is Some)
-				query.addConditions(field("process_presets.id").eq((whereInternalIdIs as Some).value))
-			if(whereIdIs is Some)
-				query.addConditions(field("process_presets.process_id").eq((whereIdIs as Some).value))
+			applyStandardFiltersTo(query)
+
+			val prefix = "$table.$colPrefix"
+
 			if(whereCreatorInternalIdIs is Some)
-				query.addConditions(field("process_presets.preset_creator").eq((whereCreatorInternalIdIs as Some).value))
+				query.addConditions(field("${prefix}_creator").eq((whereCreatorInternalIdIs as Some).value))
 			if(whereMimeIsLike is Some)
-				query.addConditions(field("process_presets.preset_mime").like((whereMimeIsLike as Some).value))
-			if(whereCreatedBefore is Some)
-				query.addConditions(field("process_presets.preset_created_ts").lt((whereCreatedBefore as Some).value))
-			if(whereCreatedAfter is Some)
-				query.addConditions(field("process_presets.preset_created_ts").gt((whereCreatedAfter as Some).value))
-			if(whereModifiedBefore is Some)
-				query.addConditions(field("process_presets.preset_modified_ts").lt((whereModifiedBefore as Some).value))
-			if(whereModifiedAfter is Some)
-				query.addConditions(field("process_presets.preset_modified_ts").gt((whereModifiedAfter as Some).value))
+				query.addConditions(field("${prefix}_mime").like((whereMimeIsLike as Some).value))
 			if(whereMatchesQuery is Some) {
 				query.addFulltextSearchCondition(
 					(whereMatchesQuery as Some).value,
 					ArrayList<String>().apply {
 						if(querySearchName)
-							add("process_presets.preset_name")
+							add("${prefix}_name")
 					}
 				)
 			}
 		}
 
 		override fun setWithRequest(req: HttpServerRequest) {
+			setStandardFiltersWithRequest(req)
+
 			val params = req.params()
 
 			if(params.contains("whereMimeIsLike"))
 				whereMimeIsLike = some(params["whereMimeIsLike"])
-			if(params.contains("whereCreatedBefore"))
-				whereCreatedBefore = dateStringToOffsetDateTimeOrNone(params["whereCreatedBefore"])
-			if(params.contains("whereCreatedAfter"))
-				whereCreatedAfter = dateStringToOffsetDateTimeOrNone(params["whereCreatedAfter"])
-			if(params.contains("whereModifiedBefore"))
-				whereModifiedBefore = dateStringToOffsetDateTimeOrNone(params["whereModifiedBefore"])
-			if(params.contains("whereModifiedAfter"))
-				whereModifiedAfter = dateStringToOffsetDateTimeOrNone(params["whereModifiedAfter"])
 			if(params.contains("whereMatchesQuery")) {
 				whereMatchesQuery = some(params["whereMatchesQuery"])
 				querySearchName = params["querySearchName"] == "true"

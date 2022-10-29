@@ -58,106 +58,56 @@ class ApiKeysModel(context: Context?, ignoreContext: Boolean): Model(context, ig
 	 * @since 2.0.0
 	 */
 	class Filters(
-		/**
-		 * Matches API keys where the sequential internal ID is this.
-		 * API-unsafe.
-		 * @since 2.0.0
-		 */
-		var whereInternalIdIs: Option<Int> = none(),
+		override var whereInternalIdIs: Option<Int> = none(),
+		override var whereIdIs: Option<String> = none(),
+		override var whereCreatedBefore: Option<OffsetDateTime> = none(),
+		override var whereCreatedAfter: Option<OffsetDateTime> = none(),
+		override var whereModifiedBefore: Option<OffsetDateTime> = none(),
+		override var whereModifiedAfter: Option<OffsetDateTime> = none(),
 
 		/**
-		 * Matches API keys where the alphanumeric ID is this.
-		 * API-unsafe.
-		 * @since 2.0.0
-		 */
-		var whereIdIs: Option<String> = none(),
-
-		/**
-		 * Matches API keys where the creator's internal ID is this.
+		 * Matches rows where the creator's internal ID is this.
 		 * API-unsafe.
 		 * @since 2.0.0
 		 */
 		var whereCreatorInternalIdIs: Option<Int> = none(),
 
 		/**
-		 * Matches API keys created before this time.
-		 * API-safe.
-		 * @since 2.0.0
-		 */
-		var whereCreatedBefore: Option<OffsetDateTime> = none(),
-
-		/**
-		 * Matches API keys created after this time.
-		 * API-safe.
-		 * @since 2.0.0
-		 */
-		var whereCreatedAfter: Option<OffsetDateTime> = none(),
-
-		/**
-		 * Matches API keys modified before this time.
-		 * API-safe.
-		 * @since 2.0.0
-		 */
-		var whereModifiedBefore: Option<OffsetDateTime> = none(),
-
-		/**
-		 * Matches API keys modified after this time.
-		 * API-safe.
-		 * @since 2.0.0
-		 */
-		var whereModifiedAfter: Option<OffsetDateTime> = none(),
-
-		/**
-		 * Matches API keys where their values match this plaintext query.
+		 * Matches rows where their values match this plaintext query.
 		 * Search fields can be enabled by setting querySearch* properties to true.
-		 *
 		 * @since 2.0.0
 		 */
 		var whereMatchesQuery: Option<String> = none(),
 
 		/**
-		 * Whether [whereMatchesQuery] should search API key names
+		 * Whether [whereMatchesQuery] should search names
 		 * @since 2.0.0
 		 */
 		var querySearchName: Boolean = true
-	): Model.Filters {
+	): StandardFilters("api_keys", "key") {
 		override fun applyTo(query: ConditionProvider) {
-			if(whereInternalIdIs is Some)
-				query.addConditions(field("api_keys.id").eq((whereInternalIdIs as Some).value))
-			if(whereIdIs is Some)
-				query.addConditions(field("api_keys.key_id").eq((whereIdIs as Some).value))
+			applyStandardFiltersTo(query)
+
+			val prefix = "$table.$colPrefix"
+
 			if(whereCreatorInternalIdIs is Some)
-				query.addConditions(field("api_keys.key_creator").eq((whereCreatorInternalIdIs as Some).value))
-			if(whereCreatedBefore is Some)
-				query.addConditions(field("api_keys.key_created_ts").lt((whereCreatedBefore as Some).value))
-			if(whereCreatedAfter is Some)
-				query.addConditions(field("api_keys.key_created_ts").gt((whereCreatedAfter as Some).value))
-			if(whereModifiedBefore is Some)
-				query.addConditions(field("api_keys.key_modified_ts").lt((whereModifiedBefore as Some).value))
-			if(whereModifiedAfter is Some)
-				query.addConditions(field("api_keys.key_modified_ts").gt((whereModifiedAfter as Some).value))
+				query.addConditions(field("${prefix}_creator").eq((whereCreatorInternalIdIs as Some).value))
 			if(whereMatchesQuery is Some) {
 				query.addFulltextSearchCondition(
 					(whereMatchesQuery as Some).value,
 					ArrayList<String>().apply {
 						if(querySearchName)
-							add("api_keys.key_name")
+							add("${prefix}_name")
 					}
 				)
 			}
 		}
 
 		override fun setWithRequest(req: HttpServerRequest) {
+			setStandardFiltersWithRequest(req)
+
 			val params = req.params()
 
-			if(params.contains("whereCreatedBefore"))
-				whereCreatedBefore = dateStringToOffsetDateTimeOrNone(params["whereCreatedBefore"])
-			if(params.contains("whereCreatedAfter"))
-				whereCreatedAfter = dateStringToOffsetDateTimeOrNone(params["whereCreatedAfter"])
-			if(params.contains("whereModifiedBefore"))
-				whereModifiedBefore = dateStringToOffsetDateTimeOrNone(params["whereModifiedBefore"])
-			if(params.contains("whereModifiedAfter"))
-				whereModifiedAfter = dateStringToOffsetDateTimeOrNone(params["whereModifiedAfter"])
 			if(params.contains("whereMatchesQuery")) {
 				whereMatchesQuery = some(params["whereMatchesQuery"])
 				querySearchName = params["querySearchName"] == "true"

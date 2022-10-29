@@ -73,29 +73,22 @@ class AccountsModel(context: Context?, ignoreContext: Boolean): Model(context, i
 	 * @since 2.0.0
 	 */
 	class Filters(
-		/**
-		 * Matches accounts where the sequential internal ID is this.
-		 * API-unsafe.
-		 * @since 2.0.0
-		 */
-		var whereInternalIdIs: Option<Int> = none(),
+		override var whereInternalIdIs: Option<Int> = none(),
+		override var whereIdIs: Option<String> = none(),
+		override var whereCreatedBefore: Option<OffsetDateTime> = none(),
+		override var whereCreatedAfter: Option<OffsetDateTime> = none(),
+		override var whereModifiedBefore: Option<OffsetDateTime> = none(),
+		override var whereModifiedAfter: Option<OffsetDateTime> = none(),
 
 		/**
-		 * Matches accounts where the alphanumeric ID is this.
-		 * API-unsafe.
-		 * @since 2.0.0
-		 */
-		var whereIdIs: Option<String> = none(),
-
-		/**
-		 * Matches accounts where the email is this (case-insensitive).
+		 * Matches rows where the email is this (case-insensitive).
 		 * API-safe.
 		 * @since 2.0.0
 		 */
 		var whereEmailIs: Option<String> = none(),
 
 		/**
-		 * Matches accounts where the ID of the API key associated with it is this.
+		 * Matches rows where the ID of the API key associated with it is this.
 		 * Will be set to null if used in a DTO fetch method or if API key fetching is disabled on the row fetch method.
 		 * API-unsafe.
 		 * @since 2.0.0
@@ -103,111 +96,76 @@ class AccountsModel(context: Context?, ignoreContext: Boolean): Model(context, i
 		var whereApiKeyIdIs: Option<String> = none(),
 
 		/**
-		 * Matches accounts that have this administrator status.
+		 * Matches rows that have this administrator status.
 		 * API-safe.
 		 * @since 2.0.0
 		 */
 		var whereAdminStatusIs: Option<Boolean> = none(),
 
 		/**
-		 * Matches accounts that have fewer files than this.
+		 * Matches rows that have fewer files than this.
 		 * API-safe.
 		 * @since 2.0.0
 		 */
 		var whereFileCountLessThan: Option<Int> = none(),
 
 		/**
-		 * Matches accounts that have more files than this.
+		 * Matches rows that have more files than this.
 		 * API-safe.
 		 * @since 2.0.0
 		 */
 		var whereFileCountMoreThan: Option<Int> = none(),
 
 		/**
-		 * Matches accounts created before this time.
-		 * API-safe.
-		 * @since 2.0.0
-		 */
-		var whereCreatedBefore: Option<OffsetDateTime> = none(),
-
-		/**
-		 * Matches accounts created after this time.
-		 * API-safe.
-		 * @since 2.0.0
-		 */
-		var whereCreatedAfter: Option<OffsetDateTime> = none(),
-
-		/**
-		 * Matches accounts modified before this time.
-		 * API-safe.
-		 * @since 2.0.0
-		 */
-		var whereModifiedBefore: Option<OffsetDateTime> = none(),
-
-		/**
-		 * Matches accounts modified after this time.
-		 * API-safe.
-		 * @since 2.0.0
-		 */
-		var whereModifiedAfter: Option<OffsetDateTime> = none(),
-
-		/**
-		 * Matches accounts where their values match this plaintext query.
+		 * Matches rows where their values match this plaintext query.
 		 * Search fields can be enabled by setting querySearch* properties to true.
-		 *
 		 * @since 2.0.0
 		 */
 		var whereMatchesQuery: Option<String> = none(),
 
 		/**
-		 * Whether [whereMatchesQuery] should search account names
+		 * Whether [whereMatchesQuery] should search names
 		 * @since 2.0.0
 		 */
 		var querySearchName: Boolean = true,
 
 		/**
-		 * Whether [whereMatchesQuery] should search account emails
+		 * Whether [whereMatchesQuery] should search emails
 		 * @since 2.0.0
 		 */
 		var querySearchEmail: Boolean = true
-	): Model.Filters {
+	): StandardFilters("accounts", "account") {
 		override fun applyTo(query: ConditionProvider) {
-			if(whereInternalIdIs is Some)
-				query.addConditions(field("accounts.id").eq((whereInternalIdIs as Some).value))
-			if(whereIdIs is Some)
-				query.addConditions(field("accounts.account_id").eq((whereIdIs as Some).value))
+			applyStandardFiltersTo(query)
+
+			val prefix = "$table.$colPrefix"
+
 			if(whereEmailIs is Some)
-				query.addConditions(field("accounts.account_email").equalIgnoreCase((whereEmailIs as Some).value))
+				query.addConditions(field("${prefix}_email").equalIgnoreCase((whereEmailIs as Some).value))
 			if(whereApiKeyIdIs is Some)
 				query.addConditions(field("api_keys.key_id").eq((whereApiKeyIdIs as Some).value))
 			if(whereAdminStatusIs is Some)
-				query.addConditions(field("accounts.account_admin").eq((whereAdminStatusIs as Some).value))
+				query.addConditions(field("${prefix}_admin").eq((whereAdminStatusIs as Some).value))
 			if(whereFileCountLessThan is Some)
-				query.addConditions(field("accounts.account_file_count").lt((whereFileCountLessThan as Some).value))
+				query.addConditions(field("${prefix}_file_count").lt((whereFileCountLessThan as Some).value))
 			if(whereFileCountMoreThan is Some)
-				query.addConditions(field("accounts.account_file_count").gt((whereFileCountMoreThan as Some).value))
-			if(whereCreatedBefore is Some)
-				query.addConditions(field("accounts.account_created_ts").lt((whereCreatedBefore as Some).value))
-			if(whereCreatedAfter is Some)
-				query.addConditions(field("accounts.account_created_ts").gt((whereCreatedAfter as Some).value))
-			if(whereModifiedBefore is Some)
-				query.addConditions(field("accounts.account_modified_ts").lt((whereModifiedBefore as Some).value))
-			if(whereModifiedAfter is Some)
-				query.addConditions(field("accounts.account_modified_ts").gt((whereModifiedAfter as Some).value))
+				query.addConditions(field("${prefix}_file_count").gt((whereFileCountMoreThan as Some).value))
 			if(whereMatchesQuery is Some) {
 				query.addFulltextSearchCondition(
 					(whereMatchesQuery as Some).value,
 					ArrayList<String>().apply {
 						if(querySearchName)
-							add("accounts.account_name")
+							add("${prefix}_name")
 						if(querySearchEmail)
-							add("accounts.account_email")
+							add("${prefix}_email")
 					}
 				)
 			}
 		}
 
 		override fun setWithRequest(req: HttpServerRequest) {
+			setStandardFiltersWithRequest(req)
+
 			val params = req.params()
 
 			if(params.contains("whereEmailIs"))
@@ -220,19 +178,12 @@ class AccountsModel(context: Context?, ignoreContext: Boolean): Model(context, i
 				whereFileCountMoreThan = some(params["whereFileCountMoreThan"].toIntOr(0))
 			if(params.contains("whereCreatedBefore"))
 				whereCreatedBefore = dateStringToOffsetDateTimeOrNone(params["whereCreatedBefore"])
-			if(params.contains("whereCreatedAfter"))
-				whereCreatedAfter = dateStringToOffsetDateTimeOrNone(params["whereCreatedAfter"])
-			if(params.contains("whereModifiedBefore"))
-				whereModifiedBefore = dateStringToOffsetDateTimeOrNone(params["whereModifiedBefore"])
-			if(params.contains("whereModifiedAfter"))
-				whereModifiedAfter = dateStringToOffsetDateTimeOrNone(params["whereModifiedAfter"])
 			if(params.contains("whereMatchesQuery")) {
 				whereMatchesQuery = some(params["whereMatchesQuery"])
 				querySearchName = params["querySearchName"] == "true"
 				querySearchEmail = params["querySearchEmail"] == "true"
 			}
 		}
-
 	}
 
 	/**

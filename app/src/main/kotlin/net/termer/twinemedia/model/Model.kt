@@ -4,11 +4,15 @@ package net.termer.twinemedia.model
 
 import io.vertx.core.http.HttpServerRequest
 import net.termer.twinemedia.dataobject.AccountRow
+import net.termer.twinemedia.dataobject.StandardRow
 import net.termer.twinemedia.util.Option
+import net.termer.twinemedia.util.Some
+import net.termer.twinemedia.util.dateStringToOffsetDateTimeOrNone
 import org.jooq.ConditionProvider
 import org.jooq.UpdateQuery
 import org.jooq.impl.DSL.falseCondition
 import org.jooq.impl.DSL.field
+import java.time.OffsetDateTime
 
 /**
  * Abstract class to be implemented by database models.
@@ -40,21 +44,31 @@ abstract class Model(
 	)
 
 	/**
-	 * Interface for model select, update and delete filters.
+	 * Abstract class for model select, update and delete filters.
 	 * Includes filters and related values.
 	 * Filters should have default values where applicable.
 	 * Values should generally be instances of [Option], do not use null to signify that a value should not be used for filtering.
 	 * Using [applyTo] should never modify the instance, and it should be reusable across queries.
 	 * @since 2.0.0
 	 */
-	interface Filters {
+	abstract class Filters(
+		/**
+		 * The table these filters apply to
+		 */
+		protected val table: String,
+
+		/**
+		 * The column prefix for this table (e.g. "file" if columns have names like "file_id")
+		 */
+		protected val colPrefix: String
+	) {
 		/**
 		 * Applies the filters on the provided query.
 		 * The query must implement [ConditionProvider].
 		 * @param query The query to apply filters on
 		 * @since 2.0.0
 		 */
-		fun applyTo(query: ConditionProvider)
+		abstract fun applyTo(query: ConditionProvider)
 
 		/**
 		 * Changes the instance's filters based on the provided [HttpServerRequest].
@@ -62,7 +76,93 @@ abstract class Model(
 		 * @param req The request
 		 * @since 2.0.0
 		 */
-		fun setWithRequest(req: HttpServerRequest)
+		abstract fun setWithRequest(req: HttpServerRequest)
+	}
+
+	/**
+	 * Abstract class for model select, update and delete filters on tables with rows that implement [StandardRow].
+	 * Provides filters for standard rows.
+	 * See documentation on [Filters] for more information.
+	 * @since 2.0.0
+	 */
+	abstract class StandardFilters(table: String, colPrefix: String): Filters(table, colPrefix) {
+		/**
+		 * Matches rows where the sequential internal ID is this.
+		 * API-unsafe.
+		 * @since 2.0.0
+		 */
+		abstract var whereInternalIdIs: Option<Int>
+
+		/**
+		 * Matches rows where the alphanumeric ID is this.
+		 * API-unsafe.
+		 * @since 2.0.0
+		 */
+		abstract var whereIdIs: Option<String>
+
+		/**
+		 * Matches rows created before this time.
+		 * API-safe.
+		 * @since 2.0.0
+		 */
+		abstract var whereCreatedBefore: Option<OffsetDateTime>
+
+		/**
+		 * Matches rows created after this time.
+		 * API-safe.
+		 * @since 2.0.0
+		 */
+		abstract var whereCreatedAfter: Option<OffsetDateTime>
+
+		/**
+		 * Matches rows modified before this time.
+		 * API-safe.
+		 * @since 2.0.0
+		 */
+		abstract var whereModifiedBefore: Option<OffsetDateTime>
+
+		/**
+		 * Matches rows modified after this time.
+		 * API-safe.
+		 * @since 2.0.0
+		 */
+		abstract var whereModifiedAfter: Option<OffsetDateTime>
+
+		/**
+		 * Applies standard filters on a query.
+		 * This should be called in the beginning of the [applyTo] implementation.
+		 */
+		protected fun applyStandardFiltersTo(query: ConditionProvider) {
+			val prefix = "$table.$colPrefix"
+
+			if(whereInternalIdIs is Some)
+				query.addConditions(field("$table.id").eq((whereInternalIdIs as Some).value))
+			if(whereIdIs is Some)
+				query.addConditions(field("${prefix}_id").eq((whereIdIs as Some).value))
+			if(whereCreatedBefore is Some)
+				query.addConditions(field("${prefix}_created_ts").lt((whereCreatedBefore as Some).value))
+			if(whereCreatedAfter is Some)
+				query.addConditions(field("${prefix}_created_ts").gt((whereCreatedAfter as Some).value))
+			if(whereModifiedBefore is Some)
+				query.addConditions(field("${prefix}_modified_ts").lt((whereModifiedBefore as Some).value))
+			if(whereModifiedAfter is Some)
+				query.addConditions(field("${prefix}_modified_ts").gt((whereModifiedAfter as Some).value))
+		}
+
+		/**
+		 * Changes the instance's filters based on the provided [HttpServerRequest] for API-safe standard filters.
+		 * This should be called in the beginning of the [setWithRequest] implementation.
+		 */
+		protected fun setStandardFiltersWithRequest(req: HttpServerRequest) {
+			val params = req.params()
+
+			if(params.contains("whereCreatedAfter"))
+				whereCreatedAfter = dateStringToOffsetDateTimeOrNone(params["whereCreatedAfter"])
+			if(params.contains("whereModifiedBefore"))
+				whereModifiedBefore = dateStringToOffsetDateTimeOrNone(params["whereModifiedBefore"])
+			if(params.contains("whereModifiedAfter"))
+				whereModifiedAfter = dateStringToOffsetDateTimeOrNone(params["whereModifiedAfter"])
+		}
 	}
 
 	/**

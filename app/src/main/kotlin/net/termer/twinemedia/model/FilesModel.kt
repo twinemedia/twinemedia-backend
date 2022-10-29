@@ -84,100 +84,64 @@ class FilesModel(context: Context?, ignoreContext: Boolean): Model(context, igno
 	 * @since 2.0.0
 	 */
 	class Filters(
-		/**
-		 * Matches files where the sequential internal ID is this.
-		 * API-unsafe.
-		 * @since 2.0.0
-		 */
-		var whereInternalIdIs: Option<Int> = none(),
+		override var whereInternalIdIs: Option<Int> = none(),
+		override var whereIdIs: Option<String> = none(),
+		override var whereCreatedBefore: Option<OffsetDateTime> = none(),
+		override var whereCreatedAfter: Option<OffsetDateTime> = none(),
+		override var whereModifiedBefore: Option<OffsetDateTime> = none(),
+		override var whereModifiedAfter: Option<OffsetDateTime> = none(),
 
 		/**
-		 * Matches files where the alphanumeric ID is this.
-		 * API-unsafe.
-		 * @since 2.0.0
-		 */
-		var whereIdIs: Option<String> = none(),
-
-		/**
-		 * Matches files where the creator's internal ID is this.
+		 * Matches rows where the creator's internal ID is this.
 		 * API-unsafe.
 		 * @since 2.0.0
 		 */
 		var whereCreatorInternalIdIs: Option<Int> = none(),
 
 		/**
-		 * Matches files where the MIME type matches this SQL LIKE pattern.
+		 * Matches rows where the MIME type matches this SQL LIKE pattern.
 		 * API-safe.
 		 * @since 2.0.0
 		 */
 		var whereMimeIsLike: Option<String> = none(),
 
 		/**
-		 * Matches files that have fewer tags than this.
+		 * Matches rows that have fewer tags than this.
 		 * API-safe.
 		 * @since 2.0.0
 		 */
 		var whereTagCountLessThan: Option<Int> = none(),
 
 		/**
-		 * Matches files that have more tags than this.
+		 * Matches rows that have more tags than this.
 		 * API-safe.
 		 * @since 2.0.0
 		 */
 		var whereTagCountMoreThan: Option<Int> = none(),
 
 		/**
-		 * Matches files that have fewer children than this.
+		 * Matches rows that have fewer children than this.
 		 * API-safe.
 		 * @since 2.0.0
 		 */
 		var whereChildCountLessThan: Option<Int> = none(),
 
 		/**
-		 * Matches files that have more children than this.
+		 * Matches rows that have more children than this.
 		 * API-safe.
 		 * @since 2.0.0
 		 */
 		var whereChildCountMoreThan: Option<Int> = none(),
 
 		/**
-		 * Matches files created before this time.
-		 * API-safe.
-		 * @since 2.0.0
-		 */
-		var whereCreatedBefore: Option<OffsetDateTime> = none(),
-
-		/**
-		 * Matches files created after this time.
-		 * API-safe.
-		 * @since 2.0.0
-		 */
-		var whereCreatedAfter: Option<OffsetDateTime> = none(),
-
-		/**
-		 * Matches files modified before this time.
-		 * API-safe.
-		 * @since 2.0.0
-		 */
-		var whereModifiedBefore: Option<OffsetDateTime> = none(),
-
-		/**
-		 * Matches files modified after this time.
-		 * API-safe.
-		 * @since 2.0.0
-		 */
-		var whereModifiedAfter: Option<OffsetDateTime> = none(),
-
-		/**
-		 * Matches files where their values match this plaintext query.
+		 * Matches rows where their values match this plaintext query.
 		 * Search fields can be enabled by setting querySearch* properties to true.
-		 *
 		 * @since 2.0.0
 		 */
 		var whereMatchesQuery: Option<String> = none(),
 
 		/**
-		 * Whether [whereMatchesQuery] should search file titles
+		 * Whether [whereMatchesQuery] should search titles
 		 * @since 2.0.0
 		 */
 		var querySearchTitle: Boolean = true,
@@ -193,48 +157,42 @@ class FilesModel(context: Context?, ignoreContext: Boolean): Model(context, igno
 		 * @since 2.0.0
 		 */
 		var querySearchDescription: Boolean = true
-	): Model.Filters {
+	): StandardFilters("files", "file") {
 		override fun applyTo(query: ConditionProvider) {
-			if(whereInternalIdIs is Some)
-				query.addConditions(field("files.id").eq((whereInternalIdIs as Some).value))
-			if(whereIdIs is Some)
-				query.addConditions(field("files.file_id").eq((whereIdIs as Some).value))
+			applyStandardFiltersTo(query)
+
+			val prefix = "$table.$colPrefix"
+
 			if(whereCreatorInternalIdIs is Some)
-				query.addConditions(field("files.file_creator").eq((whereCreatorInternalIdIs as Some).value))
+				query.addConditions(field("${prefix}_creator").eq((whereCreatorInternalIdIs as Some).value))
 			if(whereMimeIsLike is Some)
-				query.addConditions(field("files.file_mime").like((whereMimeIsLike as Some).value))
+				query.addConditions(field("${prefix}_mime").like((whereMimeIsLike as Some).value))
 			if(whereTagCountLessThan is Some)
-				query.addConditions(field("files.file_tag_count").lt((whereTagCountLessThan as Some).value))
+				query.addConditions(field("${prefix}_tag_count").lt((whereTagCountLessThan as Some).value))
 			if(whereTagCountMoreThan is Some)
-				query.addConditions(field("files.file_tag_count").gt((whereTagCountMoreThan as Some).value))
+				query.addConditions(field("${prefix}_tag_count").gt((whereTagCountMoreThan as Some).value))
 			if(whereChildCountLessThan is Some)
-				query.addConditions(field("files.file_child_count").lt((whereChildCountLessThan as Some).value))
+				query.addConditions(field("${prefix}_child_count").lt((whereChildCountLessThan as Some).value))
 			if(whereChildCountMoreThan is Some)
-				query.addConditions(field("files.file_child_count").gt((whereChildCountMoreThan as Some).value))
-			if(whereCreatedBefore is Some)
-				query.addConditions(field("files.file_created_ts").lt((whereCreatedBefore as Some).value))
-			if(whereCreatedAfter is Some)
-				query.addConditions(field("files.file_created_ts").gt((whereCreatedAfter as Some).value))
-			if(whereModifiedBefore is Some)
-				query.addConditions(field("files.file_modified_ts").lt((whereModifiedBefore as Some).value))
-			if(whereModifiedAfter is Some)
-				query.addConditions(field("files.file_modified_ts").gt((whereModifiedAfter as Some).value))
+				query.addConditions(field("${prefix}_child_count").gt((whereChildCountMoreThan as Some).value))
 			if(whereMatchesQuery is Some) {
 				query.addFulltextSearchCondition(
 					(whereMatchesQuery as Some).value,
 					ArrayList<String>().apply {
 						if(querySearchTitle)
-							add("files.file_title")
+							add("${prefix}_title")
 						if(querySearchName)
-							add("files.file_name")
+							add("${prefix}_name")
 						if(querySearchDescription)
-							add("files.file_description")
+							add("${prefix}_description")
 					}
 				)
 			}
 		}
 
 		override fun setWithRequest(req: HttpServerRequest) {
+			setStandardFiltersWithRequest(req)
+
 			val params = req.params()
 
 			if(params.contains("whereMimeIsLike"))
@@ -247,14 +205,6 @@ class FilesModel(context: Context?, ignoreContext: Boolean): Model(context, igno
 				whereChildCountLessThan = some(params["whereChildCountLessThan"].toIntOr(Int.MAX_VALUE))
 			if(params.contains("whereChildCountMoreThan"))
 				whereChildCountMoreThan = some(params["whereChildCountMoreThan"].toIntOr(0))
-			if(params.contains("whereCreatedBefore"))
-				whereCreatedBefore = dateStringToOffsetDateTimeOrNone(params["whereCreatedBefore"])
-			if(params.contains("whereCreatedAfter"))
-				whereCreatedAfter = dateStringToOffsetDateTimeOrNone(params["whereCreatedAfter"])
-			if(params.contains("whereModifiedBefore"))
-				whereModifiedBefore = dateStringToOffsetDateTimeOrNone(params["whereModifiedBefore"])
-			if(params.contains("whereModifiedAfter"))
-				whereModifiedAfter = dateStringToOffsetDateTimeOrNone(params["whereModifiedAfter"])
 			if(params.contains("whereMatchesQuery")) {
 				whereMatchesQuery = some(params["whereMatchesQuery"])
 				querySearchTitle = params["querySearchTitle"] == "true"

@@ -67,43 +67,36 @@ class ListsModel(context: Context?, ignoreContext: Boolean): Model(context, igno
 	 * @since 2.0.0
 	 */
 	class Filters(
-		/**
-		 * Matches lists where the sequential internal ID is this.
-		 * API-unsafe.
-		 * @since 2.0.0
-		 */
-		var whereInternalIdIs: Option<Int> = none(),
+		override var whereInternalIdIs: Option<Int> = none(),
+		override var whereIdIs: Option<String> = none(),
+		override var whereCreatedBefore: Option<OffsetDateTime> = none(),
+		override var whereCreatedAfter: Option<OffsetDateTime> = none(),
+		override var whereModifiedBefore: Option<OffsetDateTime> = none(),
+		override var whereModifiedAfter: Option<OffsetDateTime> = none(),
 
 		/**
-		 * Matches lists where the alphanumeric ID is this.
-		 * API-safe.
-		 * @since 2.0.0
-		 */
-		var whereIdIs: Option<String> = none(),
-
-		/**
-		 * Matches lists where the creator's internal ID is this.
+		 * Matches rows where the creator's internal ID is this.
 		 * API-unsafe.
 		 * @since 2.0.0
 		 */
 		var whereCreatorInternalIdIs: Option<Int> = none(),
 
 		/**
-		 * Matches lists where the type is this.
+		 * Matches rows where the type is this.
 		 * API-safe.
 		 * @since 2.0.0
 		 */
 		var whereTypeIs: Option<ListType> = none(),
 
 		/**
-		 * Matches lists where the visibility is this.
+		 * Matches rows where the visibility is this.
 		 * API-safe.
 		 * @since 2.0.0
 		 */
 		var whereVisibilityIs: Option<ListVisibility> = none(),
 
 		/**
-		 * Matches lists that have fewer files than this.
+		 * Matches rows that have fewer files than this.
 		 * Using this filter automatically excludes lists of type [ListType.AUTOMATICALLY_POPULATED].
 		 * API-safe.
 		 * @since 2.0.0
@@ -111,7 +104,7 @@ class ListsModel(context: Context?, ignoreContext: Boolean): Model(context, igno
 		var whereFileCountLessThan: Option<Int> = none(),
 
 		/**
-		 * Matches lists that have more files than this.
+		 * Matches rows that have more files than this.
 		 * Using this filter automatically excludes lists of type [ListType.AUTOMATICALLY_POPULATED].
 		 * API-safe.
 		 * @since 2.0.0
@@ -119,90 +112,55 @@ class ListsModel(context: Context?, ignoreContext: Boolean): Model(context, igno
 		var whereFileCountMoreThan: Option<Int> = none(),
 
 		/**
-		 * Matches lists created before this time.
-		 * API-safe.
-		 * @since 2.0.0
-		 */
-		var whereCreatedBefore: Option<OffsetDateTime> = none(),
-
-		/**
-		 * Matches lists created after this time.
-		 * API-safe.
-		 * @since 2.0.0
-		 */
-		var whereCreatedAfter: Option<OffsetDateTime> = none(),
-
-		/**
-		 * Matches lists modified before this time.
-		 * API-safe.
-		 * @since 2.0.0
-		 */
-		var whereModifiedBefore: Option<OffsetDateTime> = none(),
-
-		/**
-		 * Matches lists modified after this time.
-		 * API-safe.
-		 * @since 2.0.0
-		 */
-		var whereModifiedAfter: Option<OffsetDateTime> = none(),
-
-		/**
-		 * Matches lists where their values match this plaintext query.
+		 * Matches rows where their values match this plaintext query.
 		 * Search fields can be enabled by setting querySearch* properties to true.
-		 *
 		 * @since 2.0.0
 		 */
 		var whereMatchesQuery: Option<String> = none(),
 
 		/**
-		 * Whether [whereMatchesQuery] should search list names
+		 * Whether [whereMatchesQuery] should search names
 		 * @since 2.0.0
 		 */
 		var querySearchName: Boolean = true,
 
 		/**
-		 * Whether [whereMatchesQuery] should search list descriptions
+		 * Whether [whereMatchesQuery] should search descriptions
 		 * @since 2.0.0
 		 */
 		var querySearchDescription: Boolean = true
-	): Model.Filters {
+	): StandardFilters("lists", "list") {
 		override fun applyTo(query: ConditionProvider) {
-			if(whereInternalIdIs is Some)
-				query.addConditions(field("lists.id").eq((whereInternalIdIs as Some).value))
-			if(whereIdIs is Some)
-				query.addConditions(field("lists.list_id").eq((whereIdIs as Some).value))
+			applyStandardFiltersTo(query)
+
+			val prefix = "$table.$colPrefix"
+
 			if(whereTypeIs is Some)
-				query.addConditions(field("lists.list_type").eq((whereTypeIs as Some).value.ordinal))
+				query.addConditions(field("${prefix}_type").eq((whereTypeIs as Some).value.ordinal))
 			if(whereVisibilityIs is Some)
-				query.addConditions(field("lists.list_visibility").eq((whereVisibilityIs as Some).value.ordinal))
+				query.addConditions(field("${prefix}_visibility").eq((whereVisibilityIs as Some).value.ordinal))
 			if(whereCreatorInternalIdIs is Some)
-				query.addConditions(field("lists.list_creator").eq((whereCreatorInternalIdIs as Some).value))
+				query.addConditions(field("${prefix}_creator").eq((whereCreatorInternalIdIs as Some).value))
 			if(whereFileCountLessThan is Some)
-				query.addConditions(field("lists.list_file_count").lt((whereFileCountLessThan as Some).value))
+				query.addConditions(field("${prefix}_file_count").lt((whereFileCountLessThan as Some).value))
 			if(whereFileCountMoreThan is Some)
-				query.addConditions(field("lists.list_file_count").gt((whereFileCountMoreThan as Some).value))
-			if(whereCreatedBefore is Some)
-				query.addConditions(field("lists.list_created_ts").lt((whereCreatedBefore as Some).value))
-			if(whereCreatedAfter is Some)
-				query.addConditions(field("lists.list_created_ts").gt((whereCreatedAfter as Some).value))
-			if(whereModifiedBefore is Some)
-				query.addConditions(field("lists.list_modified_ts").lt((whereModifiedBefore as Some).value))
-			if(whereModifiedAfter is Some)
-				query.addConditions(field("lists.list_modified_ts").gt((whereModifiedAfter as Some).value))
+				query.addConditions(field("${prefix}_file_count").gt((whereFileCountMoreThan as Some).value))
 			if(whereMatchesQuery is Some) {
 				query.addFulltextSearchCondition(
 					(whereMatchesQuery as Some).value,
 					ArrayList<String>().apply {
 						if(querySearchName)
-							add("lists.list_name")
+							add("${prefix}_name")
 						if(querySearchDescription)
-							add("lists.list_description")
+							add("${prefix}_description")
 					}
 				)
 			}
 		}
 
 		override fun setWithRequest(req: HttpServerRequest) {
+			setStandardFiltersWithRequest(req)
+
 			val params = req.params()
 
 			if(params.contains("whereTypeIs"))
@@ -213,14 +171,6 @@ class ListsModel(context: Context?, ignoreContext: Boolean): Model(context, igno
 				whereFileCountLessThan = some(params["whereFileCountLessThan"].toIntOr(Int.MAX_VALUE))
 			if(params.contains("whereFileCountMoreThan"))
 				whereFileCountMoreThan = some(params["whereFileCountMoreThan"].toIntOr(0))
-			if(params.contains("whereCreatedBefore"))
-				whereCreatedBefore = dateStringToOffsetDateTimeOrNone(params["whereCreatedBefore"])
-			if(params.contains("whereCreatedAfter"))
-				whereCreatedAfter = dateStringToOffsetDateTimeOrNone(params["whereCreatedAfter"])
-			if(params.contains("whereModifiedBefore"))
-				whereModifiedBefore = dateStringToOffsetDateTimeOrNone(params["whereModifiedBefore"])
-			if(params.contains("whereModifiedAfter"))
-				whereModifiedAfter = dateStringToOffsetDateTimeOrNone(params["whereModifiedAfter"])
 			if(params.contains("whereMatchesQuery")) {
 				whereMatchesQuery = some(params["whereMatchesQuery"])
 				querySearchName = params["querySearchName"] == "true"
