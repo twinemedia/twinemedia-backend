@@ -140,7 +140,7 @@ class ListsModel(context: Context?, ignoreContext: Boolean): Model(context, igno
 		var whereModifiedBefore: Option<OffsetDateTime> = none(),
 
 		/**
-		 * Matches lists created after this time.
+		 * Matches lists modified after this time.
 		 * API-safe.
 		 * @since 2.0.0
 		 */

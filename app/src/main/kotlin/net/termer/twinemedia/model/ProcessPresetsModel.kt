@@ -115,7 +115,7 @@ class ProcessPresetsModel(context: Context?, ignoreContext: Boolean): Model(cont
 		var whereModifiedBefore: Option<OffsetDateTime> = none(),
 
 		/**
-		 * Matches presets created after this time.
+		 * Matches presets modified after this time.
 		 * API-safe.
 		 * @since 2.0.0
 		 */

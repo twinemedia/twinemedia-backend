@@ -101,7 +101,7 @@ class ApiKeysModel(context: Context?, ignoreContext: Boolean): Model(context, ig
 		var whereModifiedBefore: Option<OffsetDateTime> = none(),
 
 		/**
-		 * Matches API keys created after this time.
+		 * Matches API keys modified after this time.
 		 * API-safe.
 		 * @since 2.0.0
 		 */

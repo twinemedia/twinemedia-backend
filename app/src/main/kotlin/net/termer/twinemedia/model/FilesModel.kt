@@ -162,7 +162,7 @@ class FilesModel(context: Context?, ignoreContext: Boolean): Model(context, igno
 		var whereModifiedBefore: Option<OffsetDateTime> = none(),
 
 		/**
-		 * Matches files created after this time.
+		 * Matches files modified after this time.
 		 * API-safe.
 		 * @since 2.0.0
 		 */

@@ -145,7 +145,7 @@ class AccountsModel(context: Context?, ignoreContext: Boolean): Model(context, i
 		var whereModifiedBefore: Option<OffsetDateTime> = none(),
 
 		/**
-		 * Matches accounts created after this time.
+		 * Matches accounts modified after this time.
 		 * API-safe.
 		 * @since 2.0.0
 		 */
