@@ -19,7 +19,7 @@ import java.time.OffsetDateTime
 
 /**
  * Database model for process presets
- * @since 1.2.0
+ * @since 2.0.0
  */
 class ProcessPresetsModel(context: Context?, ignoreContext: Boolean): Model(context, ignoreContext) {
 	companion object {
@@ -138,6 +138,8 @@ class ProcessPresetsModel(context: Context?, ignoreContext: Boolean): Model(cont
 		override fun applyTo(query: ConditionProvider) {
 			if(whereInternalIdIs is Some)
 				query.addConditions(field("process_presets.id").eq((whereInternalIdIs as Some).value))
+			if(whereIdIs is Some)
+				query.addConditions(field("process_presets.process_id").eq((whereIdIs as Some).value))
 			if(whereCreatorInternalIdIs is Some)
 				query.addConditions(field("process_presets.preset_creator").eq((whereCreatorInternalIdIs as Some).value))
 			if(whereMimeIsLike is Some)
