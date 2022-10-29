@@ -336,9 +336,9 @@ class AccountsModel(context: Context?, ignoreContext: Boolean): Model(context, i
 	/**
 	 * Applies context filters on a query
 	 * @param query The query to apply the filters on
-	 * @param isListing Whether this is a listing query, as opposed to a single-row viewing query or an update/delete
+	 * @param type The context filter type
 	 */
-	private fun applyContextFilters(query: ConditionProvider, isListing: Boolean) {
+	private fun applyContextFilters(query: ConditionProvider, type: ContextFilterType) {
 		// No filters to apply
 		// Higher level permission checks on controllers restrict access to account data
 	}
@@ -423,7 +423,7 @@ class AccountsModel(context: Context?, ignoreContext: Boolean): Model(context, i
 
 		filters.whereApiKeyIdIs = none()
 
-		applyContextFilters(query, isListing = true)
+		applyContextFilters(query, ContextFilterType.LIST)
 		filters.applyTo(query)
 		query.orderBy(order, orderDesc)
 		query.addLimit(limit)
@@ -448,7 +448,7 @@ class AccountsModel(context: Context?, ignoreContext: Boolean): Model(context, i
 
 		filters.whereApiKeyIdIs = none()
 
-		applyContextFilters(query, isListing = true)
+		applyContextFilters(query, ContextFilterType.LIST)
 		filters.applyTo(query)
 
 		return query.fetchPaginatedAsync(pagination, limit) { AccountDto.fromRow(it) }
@@ -465,7 +465,7 @@ class AccountsModel(context: Context?, ignoreContext: Boolean): Model(context, i
 
 		filters.whereApiKeyIdIs = none()
 
-		applyContextFilters(query, isListing = false)
+		applyContextFilters(query, ContextFilterType.VIEW)
 		filters.applyTo(query)
 		query.addLimit(1)
 
@@ -513,7 +513,7 @@ class AccountsModel(context: Context?, ignoreContext: Boolean): Model(context, i
 
 		handleFetchKeyInfo(query, filters, fetchApiKeyInfo)
 
-		applyContextFilters(query, isListing = true)
+		applyContextFilters(query, ContextFilterType.LIST)
 		filters.applyTo(query)
 		query.orderBy(order, orderDesc)
 		query.addLimit(limit)
@@ -536,7 +536,7 @@ class AccountsModel(context: Context?, ignoreContext: Boolean): Model(context, i
 
 		handleFetchKeyInfo(query, filters, fetchApiKeyInfo)
 
-		applyContextFilters(query, isListing = false)
+		applyContextFilters(query, ContextFilterType.VIEW)
 		filters.applyTo(query)
 		query.addLimit(1)
 
@@ -556,10 +556,10 @@ class AccountsModel(context: Context?, ignoreContext: Boolean): Model(context, i
 	 * @param updateModifiedTs Whether to update the accounts' last modified timestamp (defaults to true)
 	 * @since 2.0.0
 	 */
-	suspend fun updateMany(values: UpdateValues, filters: Filters, limit: Int?  = null, updateModifiedTs: Boolean = true) {
+	suspend fun updateMany(values: UpdateValues, filters: Filters, limit: Int? = null, updateModifiedTs: Boolean = true) {
 		val query = Sql.updateQuery(table("accounts"))
 
-		applyContextFilters(query, isListing = false)
+		applyContextFilters(query, ContextFilterType.UPDATE)
 		filters.applyTo(query)
 		if(limit != null)
 			query.addLimit(limit)
@@ -592,7 +592,7 @@ class AccountsModel(context: Context?, ignoreContext: Boolean): Model(context, i
 	suspend fun deleteMany(filters: Filters, limit: Int? = null) {
 		val query = Sql.deleteQuery(table("accounts"))
 
-		applyContextFilters(query, isListing = false)
+		applyContextFilters(query, ContextFilterType.DELETE)
 		filters.applyTo(query)
 		if(limit != null)
 			query.addLimit(limit)

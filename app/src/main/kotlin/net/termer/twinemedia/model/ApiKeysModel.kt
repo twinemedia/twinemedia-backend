@@ -224,9 +224,9 @@ class ApiKeysModel(context: Context?, ignoreContext: Boolean): Model(context, ig
 	/**
 	 * Applies context filters on a query
 	 * @param query The query to apply the filters on
-	 * @param isListing Whether this is a listing query, as opposed to a single-row viewing query or an update/delete
+	 * @param type The context filter type
 	 */
-	private fun applyContextFilters(query: ConditionProvider, isListing: Boolean) {
+	private fun applyContextFilters(query: ConditionProvider, type: ContextFilterType) {
 		// No filters to apply
 		// Higher level permission checks on controllers restrict access to API key data
 		// Generally, API keys are only shown for the user's account
@@ -301,7 +301,7 @@ class ApiKeysModel(context: Context?, ignoreContext: Boolean): Model(context, ig
 	): List<ApiKeyDto> {
 		val query = infoQuery()
 
-		applyContextFilters(query, isListing = true)
+		applyContextFilters(query, ContextFilterType.LIST)
 		filters.applyTo(query)
 		query.orderBy(order, orderDesc)
 		query.addLimit(limit)
@@ -324,7 +324,7 @@ class ApiKeysModel(context: Context?, ignoreContext: Boolean): Model(context, ig
 	): RowPagination.Results<ApiKeyDto, SortOrder, TColType> {
 		val query = infoQuery()
 
-		applyContextFilters(query, isListing = true)
+		applyContextFilters(query, ContextFilterType.LIST)
 		filters.applyTo(query)
 
 		return query.fetchPaginatedAsync(pagination, limit) { ApiKeyDto.fromRow(it) }
@@ -339,7 +339,7 @@ class ApiKeysModel(context: Context?, ignoreContext: Boolean): Model(context, ig
 	suspend fun fetchOneDto(filters: Filters = Filters()): ApiKeyDto? {
 		val query = infoQuery()
 
-		applyContextFilters(query, isListing = false)
+		applyContextFilters(query, ContextFilterType.VIEW)
 		filters.applyTo(query)
 		query.addLimit(1)
 
@@ -371,7 +371,7 @@ class ApiKeysModel(context: Context?, ignoreContext: Boolean): Model(context, ig
 				.from(table("api_keys"))
 				.query
 
-		applyContextFilters(query, isListing = true)
+		applyContextFilters(query, ContextFilterType.LIST)
 		filters.applyTo(query)
 		query.orderBy(order, orderDesc)
 		query.addLimit(limit)
@@ -391,7 +391,7 @@ class ApiKeysModel(context: Context?, ignoreContext: Boolean): Model(context, ig
 				.from(table("api_keys"))
 				.query
 
-		applyContextFilters(query, isListing = false)
+		applyContextFilters(query, ContextFilterType.VIEW)
 		filters.applyTo(query)
 		query.addLimit(1)
 
@@ -414,7 +414,7 @@ class ApiKeysModel(context: Context?, ignoreContext: Boolean): Model(context, ig
 	suspend fun updateMany(values: UpdateValues, filters: Filters, limit: Int?  = null, updateModifiedTs: Boolean = true) {
 		val query = Sql.updateQuery(table("api_keys"))
 
-		applyContextFilters(query, isListing = false)
+		applyContextFilters(query, ContextFilterType.UPDATE)
 		filters.applyTo(query)
 		if(limit != null)
 			query.addLimit(limit)
@@ -447,7 +447,7 @@ class ApiKeysModel(context: Context?, ignoreContext: Boolean): Model(context, ig
 	suspend fun deleteMany(filters: Filters, limit: Int? = null) {
 		val query = Sql.deleteQuery(table("api_keys"))
 
-		applyContextFilters(query, isListing = false)
+		applyContextFilters(query, ContextFilterType.DELETE)
 		filters.applyTo(query)
 		if(limit != null)
 			query.addLimit(limit)

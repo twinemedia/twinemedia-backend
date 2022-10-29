@@ -254,21 +254,10 @@ class ProcessPresetsModel(context: Context?, ignoreContext: Boolean): Model(cont
 	/**
 	 * Applies context filters on a query
 	 * @param query The query to apply the filters on
-	 * @param isListing Whether this is a listing query, as opposed to a single-row viewing query or an update/delete
+	 * @param type The context filter type
 	 */
-	private fun applyContextFilters(query: ConditionProvider, isListing: Boolean) {
-		if(!ignoreContext) {
-			if(context == null) {
-				// If there is no context, do not show any presets
-				query.addConditions(falseCondition())
-			} else {
-				val acc = context!!.account
-				val perm = if(isListing) "process_presets.list.all" else "process_presets.view.all"
-
-				if(!acc.hasPermission(perm) || acc.excludeOtherProcessPresets)
-					query.addConditions(field("process_presets.preset_creator").eq(acc.internalId))
-			}
-		}
+	private fun applyContextFilters(query: ConditionProvider, type: ContextFilterType) {
+		applyGenericPermissionCreatorContextFilter(query, type, "process_presets", "process_presets.preset_creator", context?.account?.excludeOtherProcessPresets)
 	}
 
 	/**
@@ -347,7 +336,7 @@ class ProcessPresetsModel(context: Context?, ignoreContext: Boolean): Model(cont
 	): List<ProcessPresetDto> {
 		val query = infoQuery()
 
-		applyContextFilters(query, isListing = true)
+		applyContextFilters(query, ContextFilterType.LIST)
 		filters.applyTo(query)
 		query.orderBy(order, orderDesc)
 		query.addLimit(limit)
@@ -370,7 +359,7 @@ class ProcessPresetsModel(context: Context?, ignoreContext: Boolean): Model(cont
 	): RowPagination.Results<ProcessPresetDto, SortOrder, TColType> {
 		val query = infoQuery()
 
-		applyContextFilters(query, isListing = true)
+		applyContextFilters(query, ContextFilterType.LIST)
 		filters.applyTo(query)
 
 		return query.fetchPaginatedAsync(pagination, limit) { ProcessPresetDto.fromRow(it) }
@@ -385,7 +374,7 @@ class ProcessPresetsModel(context: Context?, ignoreContext: Boolean): Model(cont
 	suspend fun fetchOneDto(filters: Filters = Filters()): ProcessPresetDto? {
 		val query = infoQuery()
 
-		applyContextFilters(query, isListing = false)
+		applyContextFilters(query, ContextFilterType.VIEW)
 		filters.applyTo(query)
 		query.addLimit(1)
 
@@ -417,7 +406,7 @@ class ProcessPresetsModel(context: Context?, ignoreContext: Boolean): Model(cont
 				.from(table("process_presets"))
 				.query
 
-		applyContextFilters(query, isListing = true)
+		applyContextFilters(query, ContextFilterType.LIST)
 		filters.applyTo(query)
 		query.orderBy(order, orderDesc)
 		query.addLimit(limit)
@@ -437,7 +426,7 @@ class ProcessPresetsModel(context: Context?, ignoreContext: Boolean): Model(cont
 				.from(table("process_presets"))
 				.query
 
-		applyContextFilters(query, isListing = false)
+		applyContextFilters(query, ContextFilterType.VIEW)
 		filters.applyTo(query)
 		query.addLimit(1)
 
@@ -460,7 +449,7 @@ class ProcessPresetsModel(context: Context?, ignoreContext: Boolean): Model(cont
 	suspend fun updateMany(values: UpdateValues, filters: Filters, limit: Int?  = null, updateModifiedTs: Boolean = true) {
 		val query = Sql.updateQuery(table("process_presets"))
 
-		applyContextFilters(query, isListing = false)
+		applyContextFilters(query, ContextFilterType.UPDATE)
 		filters.applyTo(query)
 		if(limit != null)
 			query.addLimit(limit)
@@ -493,7 +482,7 @@ class ProcessPresetsModel(context: Context?, ignoreContext: Boolean): Model(cont
 	suspend fun deleteMany(filters: Filters, limit: Int? = null) {
 		val query = Sql.deleteQuery(table("process_presets"))
 
-		applyContextFilters(query, isListing = false)
+		applyContextFilters(query, ContextFilterType.DELETE)
 		filters.applyTo(query)
 		if(limit != null)
 			query.addLimit(limit)
