@@ -74,42 +74,42 @@ class SourcesModel(context: Context?, ignoreContext: Boolean): Model(context, ig
 		override var whereModifiedAfter: Option<OffsetDateTime> = none(),
 
 		/**
-		 * Matches sources where the type is this.
+		 * Matches rows where the type is this.
 		 * API-safe.
 		 * @since 2.0.0
 		 */
 		var whereTypeIs: Option<String> = none(),
 
 		/**
-		 * Matches sources where the creator's internal ID is this.
+		 * Matches rows where the creator's internal ID is this.
 		 * API-unsafe.
 		 * @since 2.0.0
 		 */
 		var whereCreatorInternalIdIs: Option<Int> = none(),
 
 		/**
-		 * Matches sources that have this global status.
+		 * Matches rows that have this global status.
 		 * API-safe.
 		 * @since 2.0.0
 		 */
 		var whereGlobalStatusIs: Option<Boolean> = none(),
 
 		/**
-		 * Matches sources that have fewer files than this.
+		 * Matches rows that have fewer files than this.
 		 * API-safe.
 		 * @since 2.0.0
 		 */
 		var whereFileCountLessThan: Option<Int> = none(),
 
 		/**
-		 * Matches sources that have more files than this.
+		 * Matches rows that have more files than this.
 		 * API-safe.
 		 * @since 2.0.0
 		 */
 		var whereFileCountMoreThan: Option<Int> = none(),
 
 		/**
-		 * Matches sources where their values match this plaintext query.
+		 * Matches rows where their values match this plaintext query.
 		 * Search fields can be enabled by setting querySearch* properties to true.
 		 *
 		 * @since 2.0.0
