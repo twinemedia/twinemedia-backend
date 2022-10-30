@@ -260,7 +260,7 @@ interface SourcePagination<TColType>: RowPagination<SourceDto, SortOrder, TColTy
 	}
 
 	/**
-	 * Process preset file count pagination
+	 * File source file count pagination
 	 * @since 2.0.0
 	 */
 	class FileCountPagination(
