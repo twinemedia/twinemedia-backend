@@ -11,12 +11,7 @@ import java.time.OffsetDateTime
  */
 class AccountDto(
 	override val internalId: Int,
-
-	/**
-	 * The account's alphanumeric ID
-	 * @since 2.0.0
-	 */
-	val id: Int,
+	override val id: String,
 
 	/**
 	 * The account's email address
@@ -79,7 +74,7 @@ class AccountDto(
 
 			return AccountDto(
 				internalId = row.getInteger("id"),
-				id = row.getInteger("account_id"),
+				id = row.getString("account_id"),
 				email = row.getString("account_email"),
 				name = row.getString("account_name"),
 				isAdmin = row.getBoolean("account_admin"),

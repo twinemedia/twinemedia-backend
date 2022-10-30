@@ -14,12 +14,7 @@ import java.time.OffsetDateTime
  */
 class AccountRow(
 	override val internalId: Int,
-
-	/**
-     * The account's alphanumeric ID
-     * @since 2.0.0
-     */
-    val id: String,
+	override val id: String,
 
 	/**
      * The account's email address

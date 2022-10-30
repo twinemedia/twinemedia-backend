@@ -8,17 +8,8 @@ import java.time.OffsetDateTime
  * @since 2.0.0
  */
 class TagRow(
-	/**
-	 * The tag's internal sequential ID
-	 * @since 2.0.0
-	 */
-	val internalId: Int,
-
-	/**
-	 * The tag's alphanumeric ID
-	 * @since 2.0.0
-	 */
-	val id: String,
+	override val internalId: Int,
+	override val id: String,
 
 	/**
 	 * The tag's name
@@ -44,18 +35,9 @@ class TagRow(
 	 */
 	val fileCount: Int,
 
-	/**
-	 * The tag's creation timestamp
-	 * @since 2.0.0
-	 */
-	val createdTs: OffsetDateTime,
-
-	/**
-	 * The tag's last modified timestamp
-	 * @since 2.0.0
-	 */
-	val modifiedTs: OffsetDateTime
-) {
+	override val createdTs: OffsetDateTime,
+	override val modifiedTs: OffsetDateTime
+): StandardRow {
 	companion object {
 		/**
 		 * Maps a row to a new object instance

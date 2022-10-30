@@ -12,11 +12,8 @@ import java.time.OffsetDateTime
  * @since 2.0.0
  */
 class TagDto(
-	/**
-	 * The tag's alphanumeric ID
-	 * @since 2.0.0
-	 */
-	val id: String,
+	override val internalId: Int,
+	override val id: String,
 
 	/**
 	 * The tag's name
@@ -42,18 +39,9 @@ class TagDto(
 	 */
 	val fileCount: Int,
 
-	/**
-	 * The tag's creation timestamp
-	 * @since 2.0.0
-	 */
-	val createdTs: OffsetDateTime,
-
-	/**
-	 * The tag's last modified timestamp
-	 * @since 2.0.0
-	 */
-	val modifiedTs: OffsetDateTime
-): JsonSerializable() {
+	override val createdTs: OffsetDateTime,
+	override val modifiedTs: OffsetDateTime
+): JsonSerializable(), StandardRow {
 	override fun toJson(): JsonObject = jsonObjectOf(
 		"id" to id,
 		"name" to name,
@@ -73,6 +61,7 @@ class TagDto(
 			val tagCreatorId = row.getString("tag_creator_id")
 
 			return TagDto(
+				internalId = row.getInteger("id"),
 				id = row.getString("tag_id"),
 				name = row.getString("tag_name"),
 				description = if(row.hasCol("tag_description")) row.getString("tag_description") else null,

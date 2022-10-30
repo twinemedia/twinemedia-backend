@@ -10,12 +10,7 @@ import java.time.OffsetDateTime
  */
 class ProcessPresetRow(
 	override val internalId: Int,
-
-	/**
-	 * The preset's alphanumeric ID
-	 * @since 2.0.0
-	 */
-	val id: String,
+	override val id: String,
 
 	/**
 	 * The preset's name

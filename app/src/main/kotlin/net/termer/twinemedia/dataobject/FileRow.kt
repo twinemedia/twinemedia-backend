@@ -9,17 +9,8 @@ import java.time.OffsetDateTime
  * @since 2.0.0
  */
 class FileRow(
-	/**
-	 * The file's internal sequential ID
-	 * @since 2.0.0
-	 */
-	val internalId: Int,
-
-	/**
-	 * The file's alphanumeric ID
-	 * @since 2.0.0
-	 */
-	val id: String,
+	override val internalId: Int,
+	override val id: String,
 
 	/**
 	 * The file's title
@@ -117,18 +108,9 @@ class FileRow(
 	 */
 	val childCount: Int,
 
-	/**
-	 * The file's creation timestamp
-	 * @since 2.0.0
-	 */
-	val createdTs: OffsetDateTime,
-
-	/**
-	 * The file's last modified timestamp
-	 * @since 2.0.0
-	 */
-	val modifiedTs: OffsetDateTime
-) {
+	override val createdTs: OffsetDateTime,
+	override val modifiedTs: OffsetDateTime
+): StandardRow {
 	companion object {
 		/**
 		 * Maps a row to a new object instance

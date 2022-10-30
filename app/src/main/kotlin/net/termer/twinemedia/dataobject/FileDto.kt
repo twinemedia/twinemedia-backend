@@ -14,20 +14,14 @@ import java.time.OffsetDateTime
  */
 class FileDto(
 	override val internalId: Int,
+	override val id: String,
 
 	/**
-	 * TODO Is this still needed?
 	 * The internal ID of the file's parent, or null if not a child.
 	 * Not exposed in JSON.
 	 * @since 2.0.0
 	 */
 	val parentInternalId: Int?,
-
-	/**
-	 * The file's alphanumeric ID
-	 * @since 2.0.0
-	 */
-	val id: String,
 
 	/**
 	 * The file's title
@@ -167,8 +161,8 @@ class FileDto(
 
 			return FileDto(
 				internalId = row.getInteger("id"),
-				parentInternalId = row.getInteger("parent_internal_id"), // TODO Still needed?
 				id = row.getString("file_id"),
+				parentInternalId = row.getInteger("parent_internal_id"),
 				title = row.getString("file_title"),
 				name = row.getString("file_name"),
 				description = if(row.hasCol("file_description")) row.getString("file_description") else null,

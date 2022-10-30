@@ -10,17 +10,8 @@ import java.time.OffsetDateTime
  * @since 2.0.0
  */
 class SourceRow(
-	/**
-	 * The file source's internal sequential ID
-	 * @since 2.0.0
-	 */
-	val internalId: Int,
-
-	/**
-	 * The file source's alphanumeric ID
-	 * @since 2.0.0
-	 */
-	val id: String,
+	override val internalId: Int,
+	override val id: String,
 
 	/**
 	 * The file source's type
@@ -58,18 +49,9 @@ class SourceRow(
 	 */
 	val fileCount: Int,
 
-	/**
-	 * The file source's creation timestamp
-	 * @since 2.0.0
-	 */
-	val createdTs: OffsetDateTime,
-
-	/**
-	 * The file source's last modified timestamp
-	 * @since 2.0.0
-	 */
-	val modifiedTs: OffsetDateTime,
-) {
+	override val createdTs: OffsetDateTime,
+	override val modifiedTs: OffsetDateTime,
+): StandardRow {
 	companion object {
 		/**
 		 * Maps a row to a new object instance

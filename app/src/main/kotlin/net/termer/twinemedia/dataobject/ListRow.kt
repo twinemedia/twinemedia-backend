@@ -13,12 +13,7 @@ import java.time.OffsetDateTime
  */
 class ListRow(
 	override val internalId: Int,
-
-	/**
-	 * The list's alphanumeric ID
-	 * @since 2.0.0
-	 */
-	val id: String,
+	override val id: String,
 
 	/**
 	 * The list's name

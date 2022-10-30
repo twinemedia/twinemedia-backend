@@ -12,11 +12,8 @@ import java.time.OffsetDateTime
  * @since 2.0.0
  */
 class SourceDto(
-	/**
-	 * The file source's alphanumeric ID
-	 * @since 2.0.0
-	 */
-	val id: String,
+	override val internalId: Int,
+	override val id: String,
 
 	/**
 	 * The file source's type
@@ -37,7 +34,7 @@ class SourceDto(
 	val creator: RecordCreatorDto?,
 
 	/**
-	 * Whether the file source is available to be used by all users
+	 * Whether the file source is available to be used by all accounts
 	 * @since 2.0.0
 	 */
 	val isGlobal: Boolean,
@@ -54,18 +51,9 @@ class SourceDto(
 	 */
 	val fileCount: Int,
 
-	/**
-	 * The file source's creation timestamp
-	 * @since 2.0.0
-	 */
-	val createdTs: OffsetDateTime,
-
-	/**
-	 * The file source's last modified timestamp
-	 * @since 2.0.0
-	 */
-	val modifiedTs: OffsetDateTime
-): JsonSerializable() {
+	override val createdTs: OffsetDateTime,
+	override val modifiedTs: OffsetDateTime
+): JsonSerializable(), StandardRow {
 	override fun toJson(): JsonObject {
 		val json = jsonObjectOf(
 			"id" to id,
@@ -91,6 +79,7 @@ class SourceDto(
 			val sourceCreatorId = row.getString("source_creator_id")
 
 			return SourceDto(
+				internalId = row.getInteger("id"),
 				id = row.getString("source_id"),
 				type = row.getString("source_type"),
 				name = row.getString("source_name"),
@@ -102,7 +91,7 @@ class SourceDto(
 				config = if(row.hasCol("source_config")) row.getJsonObject("source_config") else null,
 				fileCount = row.getInteger("source_file_count"),
 				createdTs = row.getOffsetDateTime("source_created_ts"),
-				modifiedTs = row.getOffsetDateTime("souce_modified_ts")
+				modifiedTs = row.getOffsetDateTime("source_modified_ts")
 			)
 		}
 	}

@@ -15,6 +15,12 @@ interface StandardRow {
 	val internalId: Int
 
 	/**
+	 * The row's alphanumeric ID
+	 * @since 2.0.0
+	 */
+	val id: String
+
+	/**
 	 * The row's creation timestamp
 	 * @since 2.0.0
 	 */
