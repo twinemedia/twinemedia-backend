@@ -1,384 +1,494 @@
+@file:Suppress("DEPRECATION")
+
 package net.termer.twinemedia.model
 
+import io.vertx.core.http.HttpServerRequest
 import io.vertx.core.json.JsonObject
-import io.vertx.kotlin.coroutines.await
-import io.vertx.sqlclient.RowSet
-import io.vertx.sqlclient.templates.SqlTemplate
-import net.termer.twinemedia.dataobject.AccountRow
-import net.termer.twinemedia.dataobject.SourceRow
-import net.termer.twinemedia.dataobject.SourceDto
-import net.termer.twinemedia.db.Database.client
-import net.termer.twinemedia.source.FileSourceManager
+import net.termer.twinemedia.Constants.API_MAX_RESULT_LIMIT
+import net.termer.twinemedia.dataobject.*
+import net.termer.twinemedia.model.pagination.SourcePagination
+import net.termer.twinemedia.model.pagination.RowPagination
+import net.termer.twinemedia.util.*
+import net.termer.twinemedia.util.db.*
+import org.jooq.ConditionProvider
+import org.jooq.Query
+import org.jooq.UpdateQuery
+import net.termer.twinemedia.util.db.Database.Sql
+import org.jooq.SelectQuery
+import org.jooq.impl.DSL.*
+import java.time.OffsetDateTime
 
 /**
- * Database model for sources
- * @since 1.5.0
+ * Database model for file sources
+ * @since 1.2.0
  */
-class SourcesModel {
-	private var _account: AccountRow? = null
-
-	/**
-	 * The account associated with this model instance
-	 * @since 1.5.0
-	 */
-	var account: AccountRow?
-		get() = _account
-		set(value) { _account = value }
-
-	/**
-	 * Creates a new SourcesModel with an account
-	 * @param account The account to use for this model instance
-	 * @since 1.5.0
-	 */
-	constructor(account: AccountRow) {
-		this.account = account
-	}
-	/**
-	 * Creates a new SourcesModel without an account
-	 * @since 1.5.0
-	 */
-	constructor() {
-		this.account = null
+class SourcesModel(context: Context?, ignoreContext: Boolean): Model(context, ignoreContext) {
+	companion object {
+		/**
+		 * An anonymous [SourcesModel] instance that has no context and does not apply any query filters
+		 * @since 2.0.0
+		 */
+		val INSTANCE = SourcesModel(null, true)
 	}
 
 	/**
-	 * Applies a default SQL WHERE filter for fetching single sources based on the user object associated with this model
-	 * @return a default SQL WHERE filter to insert into a query
-	 * @since 1.5.0
+	 * Sorting orders
+	 * @since 2.0.0
 	 */
-	private fun viewWhereFilter(): String {
-		return when {
-			account == null -> "TRUE"
-			account!!.excludeOtherSources -> "source_creator = ${account?.id}"
-			account!!.hasPermission("sources.view.all") -> "TRUE"
-			else -> "source_creator = ${account?.id} OR source_global = TRUE"
+	enum class SortOrder {
+		/**
+		 * Created timestamp
+		 * @since 2.0.0
+		 */
+		CREATED_TS,
+
+		/**
+		 * Modified timestamp
+		 * @since 2.0.0
+		 */
+		MODIFIED_TS,
+
+		/**
+		 * Source name alphabetically
+		 * @since 2.0.0
+		 */
+		NAME_ALPHABETICALLY,
+
+		/**
+		 * The number of files associated with the file source
+		 * @since 2.0.0
+		 */
+		FILE_COUNT
+	}
+
+	/**
+	 * Filters for fetching file sources
+	 * @since 2.0.0
+	 */
+	class Filters(
+		override var whereInternalIdIs: Option<Int> = none(),
+		override var whereIdIs: Option<String> = none(),
+		override var whereCreatedBefore: Option<OffsetDateTime> = none(),
+		override var whereCreatedAfter: Option<OffsetDateTime> = none(),
+		override var whereModifiedBefore: Option<OffsetDateTime> = none(),
+		override var whereModifiedAfter: Option<OffsetDateTime> = none(),
+
+		/**
+		 * Matches sources where the type is this.
+		 * API-safe.
+		 * @since 2.0.0
+		 */
+		var whereTypeIs: Option<String> = none(),
+
+		/**
+		 * Matches sources where the creator's internal ID is this.
+		 * API-unsafe.
+		 * @since 2.0.0
+		 */
+		var whereCreatorInternalIdIs: Option<Int> = none(),
+
+		/**
+		 * Matches sources that have this global status.
+		 * API-safe.
+		 * @since 2.0.0
+		 */
+		var whereGlobalStatusIs: Option<Boolean> = none(),
+
+		/**
+		 * Matches sources that have fewer files than this.
+		 * API-safe.
+		 * @since 2.0.0
+		 */
+		var whereFileCountLessThan: Option<Int> = none(),
+
+		/**
+		 * Matches sources that have more files than this.
+		 * API-safe.
+		 * @since 2.0.0
+		 */
+		var whereFileCountMoreThan: Option<Int> = none(),
+
+		/**
+		 * Matches sources where their values match this plaintext query.
+		 * Search fields can be enabled by setting querySearch* properties to true.
+		 *
+		 * @since 2.0.0
+		 */
+		var whereMatchesQuery: Option<String> = none(),
+
+		/**
+		 * Whether [whereMatchesQuery] should search source names
+		 * @since 2.0.0
+		 */
+		var querySearchName: Boolean = true
+	): StandardFilters("sources", "source") {
+		override fun applyTo(query: ConditionProvider) {
+			applyStandardFiltersTo(query)
+
+			val prefix = "$table.$colPrefix"
+
+			if(whereTypeIs is Some)
+				query.addConditions(field("sources.source_type").eq((whereTypeIs as Some).value))
+			if(whereCreatorInternalIdIs is Some)
+				query.addConditions(field("${prefix}_creator").eq((whereCreatorInternalIdIs as Some).value))
+			if(whereGlobalStatusIs is Some)
+				query.addConditions(field("${prefix}_global").eq((whereGlobalStatusIs as Some).value))
+			if(whereFileCountLessThan is Some)
+				query.addConditions(field("${prefix}_file_count").lt((whereFileCountLessThan as Some).value))
+			if(whereFileCountMoreThan is Some)
+				query.addConditions(field("${prefix}_file_count").gt((whereFileCountMoreThan as Some).value))
+			if(whereMatchesQuery is Some) {
+				query.addFulltextSearchCondition(
+					(whereMatchesQuery as Some).value,
+					ArrayList<String>().apply {
+						if(querySearchName)
+							add("${prefix}_name")
+					}
+				)
+			}
+		}
+
+		override fun setWithRequest(req: HttpServerRequest) {
+			setStandardFiltersWithRequest(req)
+
+			val params = req.params()
+
+			if(params.contains("whereTypeIs"))
+				whereTypeIs = some(params["whereTypeIs"])
+			if(params.contains("whereGlobalStatusIs"))
+				whereGlobalStatusIs = some(params["whereGlobalStatusIs"] == "true")
+			if(params.contains("whereFileCountLessThan"))
+				whereFileCountLessThan = some(params["whereFileCountLessThan"].toIntOr(Int.MAX_VALUE))
+			if(params.contains("whereFileCountMoreThan"))
+				whereFileCountMoreThan = some(params["whereFileCountMoreThan"].toIntOr(0))
+			if(params.contains("whereMatchesQuery")) {
+				whereMatchesQuery = some(params["whereMatchesQuery"])
+				querySearchName = params["querySearchName"] == "true"
+			}
 		}
 	}
 
 	/**
-	 * Applies a default SQL WHERE filter for listing sources based on the user object associated with this model
-	 * @return a default SQL WHERE filter to insert into a query
-	 * @since 1.5.0
+	 * Values to update on file source rows
+	 * @since 2.0.0
 	 */
-	private fun listWhereFilter(): String {
-		return when {
-			account == null -> "TRUE"
-			account!!.excludeOtherSources -> "source_creator = ${account?.id}"
-			account!!.hasPermission("sources.list.all") -> "TRUE"
-			else -> "source_creator = ${account?.id} OR source_global = TRUE"
+	class UpdateValues(
+		/**
+		 * Name
+		 * @since 2.0.0
+		 */
+		var name: Option<String> = none(),
+
+		/**
+		 * Source configuration
+		 * @since 2.0.0
+		 */
+		var config: Option<JsonObject> = none(),
+
+		/**
+		 * Whether the file source is available to be used by all accounts
+		 * @since 2.0.0
+		 */
+		var isGlobal: Option<Boolean> = none()
+	): Model.UpdateValues {
+		override fun applyTo(query: UpdateQuery<*>) {
+			fun set(name: String, fieldVal: Option<*>, prefix: String = "sources.source_") {
+				if(fieldVal is Some)
+					query.addValue(field(prefix + name), if(fieldVal.value is JsonObject) fieldVal.value.encode() else fieldVal.value)
+			}
+
+			set("name", name)
+			set("config", config)
+			set("global", isGlobal)
 		}
 	}
 
 	/**
-	 * Applies a default SQL WHERE filter for editing sources based on the user object associated with this model
-	 * @return a default SQL WHERE filter to insert into a query
-	 * @since 1.5.0
+	 * Orders the provided query using the specified sort order
+	 * @param order The sort order
+	 * @param orderDesc Whether to sort by descending order
+	 * @return This, to be used fluently
 	 */
-	private fun editWhereFilter(): String {
-		return when {
-			account == null -> "TRUE"
-			account!!.excludeOtherSources -> "source_creator = ${account?.id}"
-			account!!.hasPermission("sources.edit.all") -> "TRUE"
-			else -> "source_creator = ${account?.id}"
+	private fun Query.orderBy(order: SortOrder, orderDesc: Boolean): Query {
+		fun orderBy(name: String) {
+			orderBy(if(orderDesc) field(name).desc() else field(name))
 		}
-	}
 
-	/**
-	 * Applies a default SQL WHERE filter for deleting sources based on the user object associated with this model
-	 * @return a default SQL WHERE filter to insert into a query
-	 * @since 1.5.0
-	 */
-	private fun deleteWhereFilter(): String {
-		return when {
-			account == null -> "TRUE"
-			account!!.excludeOtherSources -> "source_creator = ${account?.id}"
-			account!!.hasPermission("sources.delete.all") -> "TRUE"
-			else -> "source_creator = ${account?.id}"
+		when(order) {
+			SortOrder.CREATED_TS -> orderBy("sources.source_created_ts")
+			SortOrder.MODIFIED_TS -> orderBy("sources.source_modified_ts")
+			SortOrder.NAME_ALPHABETICALLY -> orderBy("sources.source_name")
+			SortOrder.FILE_COUNT -> orderBy("sources.source_file_count")
 		}
+
+		return this
 	}
 
 	/**
-	 * Utility function to generate an ORDER BY statement based on an integer corresponding to a combination of criteria and order.
-	 * Order key:
-	 * 0 = Creation date, newest to oldest
-	 * 1 = Creation date, oldest to newest
-	 * 2 = Name alphabetically, ascending
-	 * 3 = Name alphabetically, descending
-	 * 4 = Type alphabetically, ascending
-	 * 5 = Type alphabetically, descending
-	 * @param order The order
-	 * @return The appropriate "ORDER BY" SQL for the selected order
-	 * @since 1.5.0
+	 * Applies context filters on a query
+	 * @param query The query to apply the filters on
+	 * @param type The context filter type
 	 */
-	private fun orderBy(order: Int): String {
-		return "ORDER BY " + when (order) {
-			1 -> "source_created_on ASC"
-			2 -> "source_name ASC"
-			3 -> "source_name DESC"
-			4 -> "source_type ASC"
-			5 -> "source_type DESC"
-			else -> "source_created_on DESC"
-		}
+	private fun applyContextFilters(query: ConditionProvider, type: ContextFilterType) {
+		applyGenericPermissionCreatorContextFilter(query, type, "sources", "sources.source_creator", context?.account?.excludeOtherSources)
 	}
 
 	/**
-	 * SELECT statement for getting info
-	 * @param extra Extra rows to select (can be null for none)
-	 * @return The SELECT statement
-	 * @since 1.5.0
+	 * Generates a query for getting DTO info
+	 * @param includeConfig Whether to include source configs
+	 * @return The query
 	 */
-	private fun infoSelect(extra: String?): String {
-		return """
-			SELECT
-				sources.id,
-				source_type AS type,
-				source_name AS name,
-				source_creator AS creator,
-				source_global AS global,
-				source_created_on AS created_on,
-				account_name AS creator_name,
-				(
-					SELECT COUNT(*) FROM media
-					WHERE media_source = sources.id
-				) AS media_count
-				${if(extra.orEmpty().isBlank()) "" else ", $extra"}
-			FROM sources
-			LEFT JOIN accounts ON accounts.id = source_creator
-		""".trimIndent()
-	}
-	/**
-	 * SELECT statement for getting info
-	 * @return The SELECT statement
-	 * @since 1.5.0
-	 */
-	private fun infoSelect() = infoSelect(null)
+	private fun infoQuery(includeConfig: Boolean): SelectQuery<*> {
+		val select = Sql.select(
+			field("sources.id"),
+			field("source_id"),
+			field("source_type"),
+			field("source_name"),
+			field("account_id").`as`("source_creator_id"),
+			field("account_name").`as`("source_creator_name"),
+			field("source_global"),
+			field("source_file_count"),
+			field("source_created_ts"),
+			field("source_modified_ts")
+		)
 
-	/**
-	 * Creates a new media source
-	 * @param type The source type (as defined in code, either by the core system or plugins, see [FileSourceManager])
-	 * @param name The source's name
-	 * @param config The source's configuration (format is dependent on the schema define by the source type)
-	 * @param creator The creator's account ID
-	 * @param isGlobal Whether the source will be available to all accounts, not just the one that created it
-	 * @return The newly created media source's ID
-	 * @since 1.5.0
-	 */
-	suspend fun createSource(type: String, name: String, config: JsonObject, creator: Int, isGlobal: Boolean): Int {
-		return SqlTemplate
-				.forQuery(client, """
-					INSERT INTO sources
-					( source_type, source_name, source_config, source_creator, source_global )
-					VALUES
-					( #{type}, #{name}, CAST( #{config} AS jsonb ), #{creator}, #{global} )
-					RETURNING id
-				""".trimIndent())
-				.execute(hashMapOf<String, Any?>(
-						"type" to type,
-						"name" to name,
-						"config" to config,
-						"creator" to creator,
-						"global" to isGlobal
-				)).await()
-				.first().getInteger("id")
+		if(includeConfig)
+			select.select(field("source_config"))
+
+		return select
+			.from(table("sources"))
+			.leftJoin(table("accounts")).on(field("accounts.id").eq("sources.source_creator"))
+			.query
 	}
 
 	/**
-	 * Fetches a source with the specified ID
-	 * @param id The source ID to search for
-	 * @return The specified source
-	 * @since 1.5.0
+	 * Creates a new file source row with the provided details
+	 * @param type The source type
+	 * @param name The name
+	 * @param config The source config
+	 * @param isGlobal Whether the file source is available to be used by all accounts
+	 * @param creatorInternalId The source creator's internal ID
+	 * @return The newly created file source row's ID
+	 * @since 2.0.0
 	 */
-	suspend fun fetchSource(id: Int): RowSet<SourceRow> {
-		return SqlTemplate
-				.forQuery(client, """
-					SELECT * FROM sources
-					WHERE ${viewWhereFilter()}
-					AND sources.id = #{id}
-				""".trimIndent())
-				.mapTo(SourceRow.MAPPER)
-				.execute(hashMapOf<String, Any>(
-						"id" to id
-				)).await()
+	suspend fun createRow(
+		type: String,
+		name: String,
+		config: JsonObject,
+		isGlobal: Boolean,
+		creatorInternalId: Int
+	): RowIdPair {
+		val id = genRowId()
+
+		val internalId = Sql.insertInto(
+			table("sources"),
+			field("source_id"),
+			field("source_type"),
+			field("source_name"),
+			field("source_config"),
+			field("source_global"),
+			field("source_creator")
+		)
+			.values(
+				id,
+				type,
+				name,
+				config,
+				isGlobal,
+				creatorInternalId
+			)
+			.returning(field("id"))
+			.fetchOneAwait()!!
+			.getInteger("id")
+
+		return RowIdPair(internalId, id)
 	}
 
 	/**
-	 * Fetches a source's info with the specified ID
-	 * @param id The source ID to search for
-	 * @return The specified source's info
-	 * @since 1.5.0
+	 * Fetches many file sources' info DTOs.
+	 * Use [fetchOneDto] to fetch only one source.
+	 * @param filters Additional filters to apply
+	 * @param order Which order to sort results with (defaults to [SortOrder.CREATED_TS])
+	 * @param orderDesc Whether to sort results in descending order (defaults to false)
+	 * @param limit The number of results to return (defaults to [API_MAX_RESULT_LIMIT])
+	 * @param includeConfig Whether to include source configs
+	 * @return The results
 	 */
-	suspend fun fetchSourceInfo(id: Int): RowSet<SourceDto> {
-		return SqlTemplate
-				.forQuery(client, """
-					${infoSelect("source_config AS config")}
-					WHERE ${viewWhereFilter()}
-					AND sources.id = #{id}
-				""".trimIndent())
-				.mapTo(SourceDto.MAPPER)
-				.execute(hashMapOf<String, Any>(
-						"id" to id
-				)).await()
+	suspend fun fetchManyDtos(
+		filters: Filters = Filters(),
+		order: SortOrder = SortOrder.CREATED_TS,
+		orderDesc: Boolean = false,
+		limit: Int = API_MAX_RESULT_LIMIT,
+		includeConfig: Boolean
+	): List<SourceDto> {
+		val query = infoQuery(includeConfig)
+
+		applyContextFilters(query, ContextFilterType.LIST)
+		filters.applyTo(query)
+		query.orderBy(order, orderDesc)
+		query.addLimit(limit)
+
+		return query.fetchManyAwait().map { SourceDto.fromRow(it) }
 	}
 
 	/**
-	 * Fetches all sources
-	 * @param offset The offset of rows to return
-	 * @param limit The amount of rows to return
-	 * @param order The order to return the sources
-	 * @return All sources
-	 * @since 1.5.0
+	 * Fetches many file sources' info DTOs using pagination.
+	 * Use [fetchOneDto] to fetch only one source.
+	 * @param pagination The pagination data to use
+	 * @param filters Additional filters to apply
+	 * @param limit The number of results to return
+	 * @param includeConfig Whether to include source configs
+	 * @return The paginated results
 	 */
-	suspend fun fetchAllSources(offset: Int, limit: Int, order: Int): RowSet<SourceRow> {
-		return SqlTemplate
-				.forQuery(client, """
-					SELECT * FROM sources
-					WHERE ${listWhereFilter()}
-					${orderBy(order)}
-					OFFSET #{offset} LIMIT #{limit}
-				""".trimIndent())
-				.mapTo(SourceRow.MAPPER)
-				.execute(hashMapOf<String, Any>(
-						"offset" to offset,
-						"limit" to limit
-				)).await()
+	suspend fun <TColType> fetchManyDtosPaginated(
+		pagination: SourcePagination<TColType>,
+		limit: Int,
+		filters: Filters = Filters(),
+		includeConfig: Boolean
+	): RowPagination.Results<SourceDto, SortOrder, TColType> {
+		val query = infoQuery(includeConfig)
+
+		applyContextFilters(query, ContextFilterType.LIST)
+		filters.applyTo(query)
+
+		return query.fetchPaginatedAsync(pagination, limit) { SourceDto.fromRow(it) }
 	}
 
 	/**
-	 * Fetches info for all sources
-	 * @param offset The offset of rows to return
-	 * @param limit The amount of rows to return
-	 * @param order The order to return the sources
-	 * @return Info for all sources
-	 * @since 1.5.0
+	 * Fetches one file source's info DTO.
+	 * Use [fetchManyDtos] to fetch multiple sources.
+	 * @param filters Additional filters to apply
+	 * @param includeConfig Whether to include source configs
+	 * @return The file source DTO, or null if there was no result
 	 */
-	suspend fun fetchSources(offset: Int, limit: Int, order: Int): RowSet<SourceDto> {
-		return SqlTemplate
-				.forQuery(client, """
-					${infoSelect()}
-					WHERE ${listWhereFilter()}
-					${orderBy(order)}
-					OFFSET #{offset} LIMIT #{limit}
-				""".trimIndent())
-				.mapTo(SourceDto.MAPPER)
-				.execute(hashMapOf<String, Any>(
-						"offset" to offset,
-						"limit" to limit
-				)).await()
+	suspend fun fetchOneDto(
+		filters: Filters = Filters(),
+		includeConfig: Boolean
+	): SourceDto? {
+		val query = infoQuery(includeConfig)
+
+		applyContextFilters(query, ContextFilterType.VIEW)
+		filters.applyTo(query)
+		query.addLimit(1)
+
+		val row = query.fetchOneAwait()
+
+		return if(row == null)
+			null
+		else
+			SourceDto.fromRow(row)
 	}
 
 	/**
-	 * Fetches info for all sources with the specified creator
-	 * @param creator The creator's ID
-	 * @param offset The offset of rows to return
-	 * @param limit The amount of rows to return
-	 * @param order The order to return the sources
-	 * @return Info for all sources with the specified creator
-	 * @since 1.5.0
+	 * Fetches many file source rows.
+	 * Use [fetchOneRow] to fetch only one source.
+	 * @param filters Additional filters to apply
+	 * @param order Which order to sort results with (defaults to [SortOrder.CREATED_TS])
+	 * @param orderDesc Whether to sort results in descending order (defaults to false)
+	 * @param limit The number of results to return (defaults to [API_MAX_RESULT_LIMIT])
+	 * @return The results
 	 */
-	suspend fun fetchSourcesByCreator(creator: Int, offset: Int, limit: Int, order: Int): RowSet<SourceDto> {
-		return SqlTemplate
-				.forQuery(client, """
-					${infoSelect()}
-					WHERE ${listWhereFilter()}
-					AND source_creator = #{creator}
-					${orderBy(order)}
-					OFFSET #{offset} LIMIT #{limit}
-				""".trimIndent())
-				.mapTo(SourceDto.MAPPER)
-				.execute(hashMapOf<String, Any>(
-						"creator" to creator,
-						"offset" to offset,
-						"limit" to limit
-				)).await()
+	suspend fun fetchManyRows(
+		filters: Filters = Filters(),
+		order: SortOrder = SortOrder.CREATED_TS,
+		orderDesc: Boolean = false,
+		limit: Int = API_MAX_RESULT_LIMIT
+	): List<SourceRow> {
+		val query =
+			Sql.select(asterisk())
+				.from(table("sources"))
+				.query
+
+		applyContextFilters(query, ContextFilterType.LIST)
+		filters.applyTo(query)
+		query.orderBy(order, orderDesc)
+		query.addLimit(limit)
+
+		return query.fetchManyAwait().map { SourceRow.fromRow(it) }
 	}
 
 	/**
-	 * Fetches info for all sources with the specified creator and/or matching the provided plaintext query
-	 * @param creator The creator's ID (or null if not searching by creator)
-	 * @param query The plaintext query (or null if not searching by query)
-	 * @param offset The offset of rows to return
-	 * @param limit The amount of rows to return
-	 * @param order The order to return the sources
-	 * @return Info for all sources with the specified creator
-	 * @since 1.5.0
+	 * Fetches one file source row.
+	 * Use [fetchManyRows] to fetch many sources.
+	 * @param filters Additional filters to apply
+	 * @return The source row, or null if there was no result
 	 */
-	suspend fun fetchSourcesByCreatorAndOrPlaintextQuery(creator: Int?, query: String?, offset: Int, limit: Int, order: Int): RowSet<SourceDto> {
-		return SqlTemplate
-				.forQuery(client, """
-					${infoSelect()}
-					WHERE ${listWhereFilter()}
-					${if(creator == null) "" else "AND source_creator = #{creator}"}
-					${if(query == null) "" else "AND (to_tsvector(source_name) @@ plainto_tsquery(#{queryRaw}) OR LOWER(source_name) LIKE LOWER(#{query}))"}
-					${orderBy(order)}
-					OFFSET #{offset} LIMIT #{limit}
-				""".trimIndent())
-				.mapTo(SourceDto.MAPPER)
-				.execute(hashMapOf<String, Any?>(
-						"creator" to creator,
-						"queryRaw" to query,
-						"query" to "%$query%",
-						"offset" to offset,
-						"limit" to limit
-				)).await()
+	suspend fun fetchOneRow(filters: Filters = Filters()): SourceRow? {
+		val query =
+			Sql.select(asterisk())
+				.from(table("sources"))
+				.query
+
+		applyContextFilters(query, ContextFilterType.VIEW)
+		filters.applyTo(query)
+		query.addLimit(1)
+
+		val row = query.fetchOneAwait()
+
+		return if(row == null)
+			null
+		else
+			SourceRow.fromRow(row)
 	}
 
 	/**
-	 * Fetches the total amount of sources (that the account can view, if there is an attached account)
-	 * @return The total amount of sources
-	 * @since 1.5.0
+	 * Updates many file source rows
+	 * @param values The values to update
+	 * @param filters Filters for which rows to update
+	 * @param limit The maximum number of rows to update, or null for no limit (defaults to null)
+	 * @param updateModifiedTs Whether to update the sources' last modified timestamp (defaults to true)
+	 * @since 2.0.0
 	 */
-	suspend fun fetchSourcesCount(): Int {
-		return SqlTemplate
-				.forQuery(client, """
-					SELECT COUNT(*) FROM sources WHERE ${listWhereFilter()}
-				""".trimIndent())
-				.execute(mapOf()).await()
-				.first().getInteger("count")
+	suspend fun updateMany(values: UpdateValues, filters: Filters, limit: Int?  = null, updateModifiedTs: Boolean = true) {
+		val query = Sql.updateQuery(table("sources"))
+
+		applyContextFilters(query, ContextFilterType.UPDATE)
+		filters.applyTo(query)
+		if(limit != null)
+			query.addLimit(limit)
+
+		values.applyTo(query)
+
+		if(updateModifiedTs)
+			query.addValue(field("sources.source_modified_ts"), now())
+
+		query.executeAwait()
 	}
 
 	/**
-	 * Updates a source's info
-	 * @param id The source's ID
-	 * @param name The source's new name
-	 * @param global Whether the source will now be available to all accounts
-	 * @param config The source's new config
-	 * @param creator The source's new creator's ID
-	 * @since 1.5.0
+	 * Updates a file source row
+	 * @param values The values to update
+	 * @param filters Filters for which row to update
+	 * @param updateModifiedTs Whether to update the source's last modified timestamp (defaults to true)
+	 * @since 2.0.0
 	 */
-	suspend fun updateSourceInfo(id: Int, name: String, global: Boolean, config: JsonObject, creator: Int) {
-		SqlTemplate
-				.forUpdate(client, """
-					UPDATE sources
-					SET
-						source_name = #{name},
-						source_global = #{global},
-						source_config = #{config},
-						source_creator = #{creator}
-					WHERE
-					${editWhereFilter()}
-					AND id = #{id}
-				""".trimIndent())
-				.execute(hashMapOf<String, Any?>(
-						"id" to id,
-						"name" to name,
-						"global" to global,
-						"config" to config,
-						"creator" to creator
-				)).await()
+	suspend fun updateOne(values: UpdateValues, filters: Filters, updateModifiedTs: Boolean = true) {
+		updateMany(values, filters, 1, updateModifiedTs)
 	}
 
 	/**
-	 * Deletes the source with the specified ID
-	 * @param id The source ID
-	 * @since 1.5.0
+	 * Deletes many file source rows
+	 * @param filters Filters for which rows to delete
+	 * @param limit The maximum number of rows to delete, or null for no limit (defaults to null)
+	 * @since 2.0.0
 	 */
-	suspend fun deleteSource(id: Int) {
-		SqlTemplate
-				.forUpdate(client, """
-					DELETE FROM sources WHERE ${deleteWhereFilter()} AND id = #{id}
-				""".trimIndent())
-				.execute(hashMapOf<String, Any>(
-						"id" to id
-				)).await()
+	suspend fun deleteMany(filters: Filters, limit: Int? = null) {
+		val query = Sql.deleteQuery(table("sources"))
+
+		applyContextFilters(query, ContextFilterType.DELETE)
+		filters.applyTo(query)
+		if(limit != null)
+			query.addLimit(limit)
+
+		query.executeAwait()
+	}
+
+	/**
+	 * Deletes one file source row
+	 * @param filters Filters for which row to delete
+	 * @since 2.0.0
+	 */
+	suspend fun deleteOne(filters: Filters) {
+		deleteMany(filters, 1)
 	}
 }

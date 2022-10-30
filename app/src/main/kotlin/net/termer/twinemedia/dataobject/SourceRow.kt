@@ -57,19 +57,17 @@ class SourceRow(
 		 * Maps a row to a new object instance
 		 * @since 2.0.0
 		 */
-		fun fromRow(row: Row) {
-			SourceRow(
-				internalId = row.getInteger("id"),
-				id = row.getString("source_id"),
-				type = row.getString("source_type"),
-				name = row.getString("source_name"),
-				config = row.getJsonObject("source_config"),
-				creatorInternalId = row.getInteger("source_creator"),
-				isGlobal = row.getBoolean("source_global"),
-				fileCount = row.getInteger("source_file_count"),
-				createdTs = row.getOffsetDateTime("source_created_ts"),
-				modifiedTs = row.getOffsetDateTime("source_modified_ts")
-			)
-		}
+		fun fromRow(row: Row) = SourceRow(
+			internalId = row.getInteger("id"),
+			id = row.getString("source_id"),
+			type = row.getString("source_type"),
+			name = row.getString("source_name"),
+			config = row.getJsonObject("source_config"),
+			creatorInternalId = row.getInteger("source_creator"),
+			isGlobal = row.getBoolean("source_global"),
+			fileCount = row.getInteger("source_file_count"),
+			createdTs = row.getOffsetDateTime("source_created_ts"),
+			modifiedTs = row.getOffsetDateTime("source_modified_ts")
+		)
 	}
 }
