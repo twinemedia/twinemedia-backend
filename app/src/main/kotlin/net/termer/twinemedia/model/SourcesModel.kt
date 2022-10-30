@@ -111,7 +111,6 @@ class SourcesModel(context: Context?, ignoreContext: Boolean): Model(context, ig
 		/**
 		 * Matches rows where their values match this plaintext query.
 		 * Search fields can be enabled by setting querySearch* properties to true.
-		 *
 		 * @since 2.0.0
 		 */
 		var whereMatchesQuery: Option<String> = none(),
