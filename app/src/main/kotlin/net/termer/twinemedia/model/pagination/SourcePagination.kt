@@ -49,7 +49,7 @@ interface SourcePagination<TColType>: RowPagination<SourceDto, SortOrder, TColTy
 				SortOrder.NAME_ALPHABETICALLY ->
 					CommonPagination.Text.decodeTokenBytes(bytes, sortEnumVals, sort).toPagination()
 				SortOrder.FILE_COUNT ->
-					CommonPagination.Text.decodeTokenBytes(bytes, sortEnumVals, sort).toPagination()
+					CommonPagination.Integer.decodeTokenBytes(bytes, sortEnumVals, sort).toPagination()
 			}
 		}
 
