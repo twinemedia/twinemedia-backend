@@ -116,7 +116,7 @@ class SourcesModel(context: Context?, ignoreContext: Boolean): Model(context, ig
 		var whereMatchesQuery: Option<String> = none(),
 
 		/**
-		 * Whether [whereMatchesQuery] should search source names
+		 * Whether [whereMatchesQuery] should search names
 		 * @since 2.0.0
 		 */
 		var querySearchName: Boolean = true
