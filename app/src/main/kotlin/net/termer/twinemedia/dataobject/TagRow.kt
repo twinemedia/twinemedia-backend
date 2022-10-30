@@ -43,17 +43,15 @@ class TagRow(
 		 * Maps a row to a new object instance
 		 * @since 2.0.0
 		 */
-		fun fromRow(row: Row) {
-			TagRow(
-				internalId = row.getInteger("id"),
-				id = row.getString("tag_id"),
-				name = row.getString("tag_name"),
-				description = row.getString("tag_description"),
-				creatorInternalId = row.getInteger("tag_creator"),
-				fileCount = row.getInteger("tag_file_count"),
-				createdTs = row.getOffsetDateTime("tag_created_ts"),
-				modifiedTs = row.getOffsetDateTime("tag_modified_ts")
-			)
-		}
+		fun fromRow(row: Row) = TagRow(
+			internalId = row.getInteger("id"),
+			id = row.getString("tag_id"),
+			name = row.getString("tag_name"),
+			description = row.getString("tag_description"),
+			creatorInternalId = row.getInteger("tag_creator"),
+			fileCount = row.getInteger("tag_file_count"),
+			createdTs = row.getOffsetDateTime("tag_created_ts"),
+			modifiedTs = row.getOffsetDateTime("tag_modified_ts")
+		)
 	}
 }
