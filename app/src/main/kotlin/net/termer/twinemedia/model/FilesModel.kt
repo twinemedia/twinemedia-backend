@@ -339,8 +339,8 @@ class FilesModel(context: Context?, ignoreContext: Boolean): Model(context, igno
 
 		return select
 			.from(table("files"))
-			.leftJoin(table("accounts")).on(field("accounts.id").eq("files.file_creator"))
-			.join(table("sources")).on(field("sources.id").eq("files.file_source"))
+			.leftJoin(table("accounts")).on(field("accounts.id").eq(field("files.file_creator")))
+			.join(table("sources")).on(field("sources.id").eq(field("files.file_source")))
 			.query
 	}
 

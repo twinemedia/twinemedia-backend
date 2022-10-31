@@ -256,7 +256,7 @@ class SourcesModel(context: Context?, ignoreContext: Boolean): Model(context, ig
 
 		return select
 			.from(table("sources"))
-			.leftJoin(table("accounts")).on(field("accounts.id").eq("sources.source_creator"))
+			.leftJoin(table("accounts")).on(field("accounts.id").eq(field("sources.source_creator")))
 			.query
 	}
 

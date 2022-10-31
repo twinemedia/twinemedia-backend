@@ -350,7 +350,7 @@ class ListsModel(context: Context?, ignoreContext: Boolean): Model(context, igno
 			field("list_modified_ts")
 		)
 			.from(table("lists"))
-			.leftJoin(table("accounts")).on(field("accounts.id").eq("list_creator"))
+			.leftJoin(table("accounts")).on(field("accounts.id").eq(field("list_creator")))
 			.query
 
 	/**
@@ -451,7 +451,7 @@ class ListsModel(context: Context?, ignoreContext: Boolean): Model(context, igno
 			field(
 				Sql.selectCount()
 					.from("list_items")
-					.join(table("files")).on(field("files.id").eq("item_file"))
+					.join(table("files")).on(field("files.id").eq(field("item_file")))
 					.where(field("item_list").eq(field("lists.id")))
 					.and(field("file_id").eq(checkForFileId))
 			).eq(1)

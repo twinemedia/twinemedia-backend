@@ -335,7 +335,7 @@ class AccountsModel(context: Context?, ignoreContext: Boolean): Model(context, i
 			field("account_modified_ts")
 		)
 			.from(table("accounts"))
-			.leftJoin(table("sources")).on(field("sources.id").eq("account_default_source"))
+			.leftJoin(table("sources")).on(field("sources.id").eq(field("account_default_source")))
 			.query
 
 	/**

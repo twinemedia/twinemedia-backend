@@ -198,7 +198,7 @@ class ApiKeysModel(context: Context?, ignoreContext: Boolean): Model(context, ig
 			field("key_modified_ts")
 		)
 			.from(table("api_keys"))
-			.leftJoin(table("accounts")).on(field("accounts.id").eq("key_creator"))
+			.leftJoin(table("accounts")).on(field("accounts.id").eq(field("key_creator")))
 			.query
 
 	/**

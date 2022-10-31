@@ -229,7 +229,7 @@ class ProcessPresetsModel(context: Context?, ignoreContext: Boolean): Model(cont
 			field("preset_modified_ts")
 		)
 			.from(table("process_presets"))
-			.leftJoin(table("accounts")).on(field("accounts.id").eq("preset_creator"))
+			.leftJoin(table("accounts")).on(field("accounts.id").eq(field("preset_creator")))
 			.query
 
 	/**

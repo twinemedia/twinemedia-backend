@@ -230,7 +230,7 @@ class TagsModel(context: Context?, ignoreContext: Boolean): Model(context, ignor
 
 		return select
 			.from(table("tags"))
-			.leftJoin(table("accounts")).on(field("accounts.id").eq("tags.tag_creator"))
+			.leftJoin(table("accounts")).on(field("accounts.id").eq(field("tags.tag_creator")))
 			.query
 	}
 
