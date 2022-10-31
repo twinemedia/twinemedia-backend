@@ -318,7 +318,7 @@ class FilesModel(context: Context?, ignoreContext: Boolean): Model(context, igno
 			field("file_size"),
 			field("file_mime"),
 			field("file_hash"),
-			field(field("file_thumbnail").isNotNull).`as`("file_has_thumbnail"),
+			field(field("file_thumbnail_key").isNotNull).`as`("file_has_thumbnail"),
 			field("file_tag_count"),
 			field("file_child_count"),
 			field("file_processing"),
