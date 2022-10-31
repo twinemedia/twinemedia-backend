@@ -2,6 +2,7 @@ import java.net.URI
 
 plugins {
     val kotlinVersion = "1.7.10"
+
     kotlin("jvm") version kotlinVersion
     kotlin("kapt") version kotlinVersion
 
@@ -14,12 +15,6 @@ repositories {
     mavenCentral()
     maven {
         url = URI("https://jitpack.io")
-    }
-}
-
-kotlin {
-    jvmToolchain {
-        languageVersion.set(JavaLanguageVersion.of("17"))
     }
 }
 
@@ -67,6 +62,13 @@ dependencies {
 
 application {
     mainClass.set("net.termer.twinemedia.App")
+}
+
+// Use Java 17 bytecode
+tasks.withType<org.jetbrains.kotlin.gradle.tasks.KotlinCompile> {
+    kotlinOptions {
+        jvmTarget = "17"
+    }
 }
 
 // Task dependencies
