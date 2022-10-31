@@ -443,6 +443,21 @@ class ListsModel(context: Context?, ignoreContext: Boolean): Model(context, igno
 		return RowIdPair(internalId, id)
 	}
 
+	/**
+	 * Creates a list item row.
+	 * The referenced list should not be of type [ListType.AUTOMATICALLY_POPULATED], or unexpected behavior will occur.
+	 * @param listInternalId The list's internal ID
+	 * @param fileInternalId The file's internal ID
+	 * @since 2.0.0
+	 */
+	suspend fun createListItemRow(listInternalId: Int, fileInternalId: Int) {
+		Sql.insertInto(
+			table("list_items"),
+			field("item_list", listInternalId),
+			field("item_file", fileInternalId)
+		).executeAwait()
+	}
+
 	private fun handleCheckForFileId(query: SelectQuery<*>, checkForFileId: String?) {
 		if(checkForFileId == null)
 			return

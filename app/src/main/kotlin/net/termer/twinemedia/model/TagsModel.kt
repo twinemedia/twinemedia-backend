@@ -270,6 +270,20 @@ class TagsModel(context: Context?, ignoreContext: Boolean): Model(context, ignor
 	}
 
 	/**
+	 * Creates a tag use row
+	 * @param tagInternalId The tag's internal ID
+	 * @param fileInternalId The file's internal ID
+	 * @since 2.0.0
+	 */
+	suspend fun createTagUseRow(tagInternalId: Int, fileInternalId: Int) {
+		Sql.insertInto(
+			table("tag_uses"),
+			field("use_tag", tagInternalId),
+			field("use_file", fileInternalId)
+		).executeAwait()
+	}
+
+	/**
 	 * Fetches many tags' info DTOs.
 	 * Use [fetchOneDto] to fetch only one tag.
 	 * @param filters Additional filters to apply
