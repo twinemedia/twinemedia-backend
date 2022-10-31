@@ -470,7 +470,7 @@ class ListsModel(context: Context?, ignoreContext: Boolean): Model(context, igno
 					.where(field("item_list").eq(field("lists.id")))
 					.and(field("file_id").eq(checkForFileId))
 			).eq(1)
-				.`as`("contains_file")
+				.`as`("list_contains_file")
 		)
 	}
 
