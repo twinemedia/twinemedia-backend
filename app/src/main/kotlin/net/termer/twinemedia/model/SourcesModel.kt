@@ -312,6 +312,7 @@ class SourcesModel(context: Context?, ignoreContext: Boolean): Model(context, ig
 	 * @param limit The number of results to return (defaults to [API_MAX_RESULT_LIMIT])
 	 * @param includeConfig Whether to include source configs
 	 * @return The results
+	 * @since 2.0.0
 	 */
 	suspend fun fetchManyDtos(
 		filters: Filters = Filters(),
@@ -338,6 +339,7 @@ class SourcesModel(context: Context?, ignoreContext: Boolean): Model(context, ig
 	 * @param limit The number of results to return
 	 * @param includeConfig Whether to include source configs
 	 * @return The paginated results
+	 * @since 2.0.0
 	 */
 	suspend fun <TColType> fetchManyDtosPaginated(
 		pagination: SourcePagination<TColType>,
@@ -359,6 +361,7 @@ class SourcesModel(context: Context?, ignoreContext: Boolean): Model(context, ig
 	 * @param filters Additional filters to apply
 	 * @param includeConfig Whether to include source configs
 	 * @return The file source DTO, or null if there was no result
+	 * @since 2.0.0
 	 */
 	suspend fun fetchOneDto(
 		filters: Filters = Filters(),
@@ -386,6 +389,7 @@ class SourcesModel(context: Context?, ignoreContext: Boolean): Model(context, ig
 	 * @param orderDesc Whether to sort results in descending order (defaults to false)
 	 * @param limit The number of results to return (defaults to [API_MAX_RESULT_LIMIT])
 	 * @return The results
+	 * @since 2.0.0
 	 */
 	suspend fun fetchManyRows(
 		filters: Filters = Filters(),
@@ -411,6 +415,7 @@ class SourcesModel(context: Context?, ignoreContext: Boolean): Model(context, ig
 	 * Use [fetchManyRows] to fetch many sources.
 	 * @param filters Additional filters to apply
 	 * @return The source row, or null if there was no result
+	 * @since 2.0.0
 	 */
 	suspend fun fetchOneRow(filters: Filters = Filters()): SourceRow? {
 		val query =
@@ -428,6 +433,24 @@ class SourcesModel(context: Context?, ignoreContext: Boolean): Model(context, ig
 			null
 		else
 			SourceRow.fromRow(row)
+	}
+
+	/**
+	 * Counts rows, taking into account any filters
+	 * @param filters Additional filters to apply
+	 * @return The row count
+	 * @since 2.0.0
+	 */
+	suspend fun count(filters: AccountsModel.Filters = AccountsModel.Filters()): Int {
+		val query =
+			Sql.selectCount()
+				.from("sources")
+				.query
+
+		applyContextFilters(query, ContextFilterType.LIST)
+		filters.applyTo(query)
+
+		return query.fetchOneAwait()!!.getInteger("count")
 	}
 
 	/**

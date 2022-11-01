@@ -279,6 +279,7 @@ class ProcessPresetsModel(context: Context?, ignoreContext: Boolean): Model(cont
 	 * @param orderDesc Whether to sort results in descending order (defaults to false)
 	 * @param limit The number of results to return (defaults to [API_MAX_RESULT_LIMIT])
 	 * @return The results
+	 * @since 2.0.0
 	 */
 	suspend fun fetchManyDtos(
 		filters: Filters = Filters(),
@@ -303,6 +304,7 @@ class ProcessPresetsModel(context: Context?, ignoreContext: Boolean): Model(cont
 	 * @param filters Additional filters to apply
 	 * @param limit The number of results to return
 	 * @return The paginated results
+	 * @since 2.0.0
 	 */
 	suspend fun <TColType> fetchManyDtosPaginated(
 		pagination: ProcessPresetPagination<TColType>,
@@ -322,6 +324,7 @@ class ProcessPresetsModel(context: Context?, ignoreContext: Boolean): Model(cont
 	 * Use [fetchManyDtos] to fetch multiple presets.
 	 * @param filters Additional filters to apply
 	 * @return The process preset DTO, or null if there was no result
+	 * @since 2.0.0
 	 */
 	suspend fun fetchOneDto(filters: Filters = Filters()): ProcessPresetDto? {
 		val query = infoQuery()
@@ -346,6 +349,7 @@ class ProcessPresetsModel(context: Context?, ignoreContext: Boolean): Model(cont
 	 * @param orderDesc Whether to sort results in descending order (defaults to false)
 	 * @param limit The number of results to return (defaults to [API_MAX_RESULT_LIMIT])
 	 * @return The results
+	 * @since 2.0.0
 	 */
 	suspend fun fetchManyRows(
 		filters: Filters = Filters(),
@@ -371,6 +375,7 @@ class ProcessPresetsModel(context: Context?, ignoreContext: Boolean): Model(cont
 	 * Use [fetchManyRows] to fetch many presets.
 	 * @param filters Additional filters to apply
 	 * @return The process preset row, or null if there was no result
+	 * @since 2.0.0
 	 */
 	suspend fun fetchOneRow(filters: Filters = Filters()): ProcessPresetRow? {
 		val query =
@@ -388,6 +393,24 @@ class ProcessPresetsModel(context: Context?, ignoreContext: Boolean): Model(cont
 			null
 		else
 			ProcessPresetRow.fromRow(row)
+	}
+
+	/**
+	 * Counts rows, taking into account any filters
+	 * @param filters Additional filters to apply
+	 * @return The row count
+	 * @since 2.0.0
+	 */
+	suspend fun count(filters: AccountsModel.Filters = AccountsModel.Filters()): Int {
+		val query =
+			Sql.selectCount()
+				.from("process_presets")
+				.query
+
+		applyContextFilters(query, ContextFilterType.LIST)
+		filters.applyTo(query)
+
+		return query.fetchOneAwait()!!.getInteger("count")
 	}
 
 	/**

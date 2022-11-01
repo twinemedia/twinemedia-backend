@@ -429,6 +429,7 @@ class FilesModel(context: Context?, ignoreContext: Boolean): Model(context, igno
 	 * @param includeDescription Whether to include file descriptions
 	 * @param includeMeta Whether to include file metadata
 	 * @return The results
+	 * @since 2.0.0
 	 */
 	suspend fun fetchManyDtos(
 		filters: Filters = Filters(),
@@ -459,6 +460,7 @@ class FilesModel(context: Context?, ignoreContext: Boolean): Model(context, igno
 	 * @param includeDescription Whether to include file descriptions
 	 * @param includeMeta Whether to include file metadata
 	 * @return The paginated results
+	 * @since 2.0.0
 	 */
 	suspend fun <TColType> fetchManyDtosPaginated(
 		pagination: FilePagination<TColType>,
@@ -484,6 +486,7 @@ class FilesModel(context: Context?, ignoreContext: Boolean): Model(context, igno
 	 * @param includeDescription Whether to include file descriptions
 	 * @param includeMeta Whether to include file metadata
 	 * @return The file DTO, or null if there was no result
+	 * @since 2.0.0
 	 */
 	suspend fun fetchOneDto(
 		filters: Filters = Filters(),
@@ -514,6 +517,7 @@ class FilesModel(context: Context?, ignoreContext: Boolean): Model(context, igno
 	 * @param orderDesc Whether to sort results in descending order (defaults to false)
 	 * @param limit The number of results to return (defaults to [API_MAX_RESULT_LIMIT])
 	 * @return The results
+	 * @since 2.0.0
 	 */
 	suspend fun fetchManyRows(
 		filters: Filters = Filters(),
@@ -539,6 +543,7 @@ class FilesModel(context: Context?, ignoreContext: Boolean): Model(context, igno
 	 * Use [fetchManyRows] to fetch many files.
 	 * @param filters Additional filters to apply
 	 * @return The file row, or null if there was no result
+	 * @since 2.0.0
 	 */
 	suspend fun fetchOneRow(filters: Filters = Filters()): FileRow? {
 		val query =
@@ -556,6 +561,24 @@ class FilesModel(context: Context?, ignoreContext: Boolean): Model(context, igno
 			null
 		else
 			FileRow.fromRow(row)
+	}
+
+	/**
+	 * Counts rows, taking into account any filters
+	 * @param filters Additional filters to apply
+	 * @return The row count
+	 * @since 2.0.0
+	 */
+	suspend fun count(filters: AccountsModel.Filters = AccountsModel.Filters()): Int {
+		val query =
+			Sql.selectCount()
+				.from("files")
+				.query
+
+		applyContextFilters(query, ContextFilterType.LIST)
+		filters.applyTo(query)
+
+		return query.fetchOneAwait()!!.getInteger("count")
 	}
 
 	/**

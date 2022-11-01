@@ -242,6 +242,7 @@ class ApiKeysModel(context: Context?, ignoreContext: Boolean): Model(context, ig
 	 * @param orderDesc Whether to sort results in descending order (defaults to false)
 	 * @param limit The number of results to return (defaults to [API_MAX_RESULT_LIMIT])
 	 * @return The results
+	 * @since 2.0.0
 	 */
 	suspend fun fetchManyDtos(
 		filters: Filters = Filters(),
@@ -266,6 +267,7 @@ class ApiKeysModel(context: Context?, ignoreContext: Boolean): Model(context, ig
 	 * @param filters Additional filters to apply
 	 * @param limit The number of results to return
 	 * @return The paginated results
+	 * @since 2.0.0
 	 */
 	suspend fun <TColType> fetchManyDtosPaginated(
 		pagination: ApiKeyPagination<TColType>,
@@ -285,6 +287,7 @@ class ApiKeysModel(context: Context?, ignoreContext: Boolean): Model(context, ig
 	 * Use [fetchManyDtos] to fetch multiple API keys.
 	 * @param filters Additional filters to apply
 	 * @return The API key DTO, or null if there was no result
+	 * @since 2.0.0
 	 */
 	suspend fun fetchOneDto(filters: Filters = Filters()): ApiKeyDto? {
 		val query = infoQuery()
@@ -309,6 +312,7 @@ class ApiKeysModel(context: Context?, ignoreContext: Boolean): Model(context, ig
 	 * @param orderDesc Whether to sort results in descending order (defaults to false)
 	 * @param limit The number of results to return (defaults to [API_MAX_RESULT_LIMIT])
 	 * @return The results
+	 * @since 2.0.0
 	 */
 	suspend fun fetchManyRows(
 		filters: Filters = Filters(),
@@ -334,6 +338,7 @@ class ApiKeysModel(context: Context?, ignoreContext: Boolean): Model(context, ig
 	 * Use [fetchManyRows] to fetch many API keys.
 	 * @param filters Additional filters to apply
 	 * @return The API key row, or null if there was no result
+	 * @since 2.0.0
 	 */
 	suspend fun fetchOneRow(filters: Filters = Filters()): ApiKeyRow? {
 		val query =
@@ -351,6 +356,24 @@ class ApiKeysModel(context: Context?, ignoreContext: Boolean): Model(context, ig
 			null
 		else
 			ApiKeyRow.fromRow(row)
+	}
+
+	/**
+	 * Counts rows, taking into account any filters
+	 * @param filters Additional filters to apply
+	 * @return The row count
+	 * @since 2.0.0
+	 */
+	suspend fun count(filters: AccountsModel.Filters = AccountsModel.Filters()): Int {
+		val query =
+			Sql.selectCount()
+				.from("api_keys")
+				.query
+
+		applyContextFilters(query, ContextFilterType.LIST)
+		filters.applyTo(query)
+
+		return query.fetchOneAwait()!!.getInteger("count")
 	}
 
 	/**

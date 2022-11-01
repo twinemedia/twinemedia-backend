@@ -385,6 +385,7 @@ class AccountsModel(context: Context?, ignoreContext: Boolean): Model(context, i
 	 * @param orderDesc Whether to sort results in descending order (defaults to false)
 	 * @param limit The number of results to return (defaults to [API_MAX_RESULT_LIMIT])
 	 * @return The results
+	 * @since 2.0.0
 	 */
 	suspend fun fetchManyDtos(
 		filters: Filters = Filters(),
@@ -411,6 +412,7 @@ class AccountsModel(context: Context?, ignoreContext: Boolean): Model(context, i
 	 * @param filters Additional filters to apply
 	 * @param limit The number of results to return
 	 * @return The paginated results
+	 * @since 2.0.0
 	 */
 	suspend fun <TColType> fetchManyDtosPaginated(
 		pagination: AccountPagination<TColType>,
@@ -432,6 +434,7 @@ class AccountsModel(context: Context?, ignoreContext: Boolean): Model(context, i
 	 * Use [fetchManyDtos] to fetch multiple accounts.
 	 * @param filters Additional filters to apply
 	 * @return The account DTO, or null if there was no result
+	 * @since 2.0.0
 	 */
 	suspend fun fetchOneDto(filters: Filters = Filters()): AccountDto? {
 		val query = infoQuery()
@@ -471,6 +474,7 @@ class AccountsModel(context: Context?, ignoreContext: Boolean): Model(context, i
 	 * @param limit The number of results to return (defaults to [API_MAX_RESULT_LIMIT])
 	 * @param fetchApiKeyInfo Whether to fetch key info associated with the account (should be used in conjunction with [Filters.whereApiKeyIdIs]) (defaults to false)
 	 * @return The results
+	 * @since 2.0.0
 	 */
 	suspend fun fetchManyRows(
 		filters: Filters = Filters(),
@@ -500,6 +504,7 @@ class AccountsModel(context: Context?, ignoreContext: Boolean): Model(context, i
 	 * @param filters Additional filters to apply
 	 * @param fetchApiKeyInfo Whether to fetch key info associated with the account (should be used in conjunction with [Filters.whereApiKeyIdIs]) (defaults to false)
 	 * @return The account row, or null if there was no result
+	 * @since 2.0.0
 	 */
 	suspend fun fetchOneRow(filters: Filters = Filters(), fetchApiKeyInfo: Boolean = false): AccountRow? {
 		val query =
@@ -519,6 +524,24 @@ class AccountsModel(context: Context?, ignoreContext: Boolean): Model(context, i
 			null
 		else
 			AccountRow.fromRow(row)
+	}
+
+	/**
+	 * Counts rows, taking into account any filters
+	 * @param filters Additional filters to apply
+	 * @return The row count
+	 * @since 2.0.0
+	 */
+	suspend fun count(filters: Filters = Filters()): Int {
+		val query =
+			Sql.selectCount()
+				.from("accounts")
+				.query
+
+		applyContextFilters(query, ContextFilterType.LIST)
+		filters.applyTo(query)
+
+		return query.fetchOneAwait()!!.getInteger("count")
 	}
 
 	/**
