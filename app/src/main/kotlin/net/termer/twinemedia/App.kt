@@ -41,6 +41,7 @@ class App {
 		 * @param createIfNotExists Whether to create a default config file at the specified path if none exists
 		 * @param exitOnCreate Whether to exit when the default config file was created
 		 * @return The app config, or null if the config file was not found
+		 * @since 2.0.0
 		 */
 		fun loadConfig(path: Path, createIfNotExists: Boolean, exitOnCreate: Boolean): AppConfig? {
 			val config: AppConfig
