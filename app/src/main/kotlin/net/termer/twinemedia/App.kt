@@ -141,15 +141,17 @@ class App {
 			val cli = DefaultParser().parse(cliOps, args)
 			val configPath = cwdPath.resolve(Path.of(cli.getOptionValue("config") ?: "config.json"))
 
+			fun getOrMkCfg() = loadConfig(configPath, createIfNotExists = true, exitOnCreate = true)!!
+
 			// Determine what to do based on CLI args
 			if (cli.hasOption("start"))
-				start(loadConfig(configPath, createIfNotExists = true, exitOnCreate = true)!!)
-		else if(cli.hasOption("install"))
-			interactiveInstall(configPath)
-//		else if(cli.hasOption("create-admin"))
-//			TODO("Implement interactiveCreateAdmin(config)")
-//		else if(cli.hasOption("reset-password"))
-//			interactiveResetPassword(loadConfig(configPath, createIfNotExists = true, exitOnCreate = true))
+				start(getOrMkCfg())
+			else if(cli.hasOption("install"))
+				interactiveInstall(configPath)
+			else if(cli.hasOption("create-admin"))
+				interactiveCreateAdmin(getOrMkCfg())
+			else if(cli.hasOption("reset-password"))
+				interactiveResetPassword(getOrMkCfg())
 			else
 				HelpFormatter().printHelp(
 					"java -jar " + File(

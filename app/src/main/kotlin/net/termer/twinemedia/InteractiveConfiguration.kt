@@ -3,12 +3,12 @@ package net.termer.twinemedia
 import io.vertx.core.Vertx
 import kotlinx.coroutines.DelicateCoroutinesApi
 import kotlinx.coroutines.runBlocking
-import net.termer.twinemedia.db.dbInit
-import net.termer.twinemedia.db.dbMigrate
-//import net.termer.twinemedia.model.AccountsModel
-//import net.termer.twinemedia.model.MediaModel
-//import net.termer.twinemedia.model.SourcesModel
+import net.termer.twinemedia.model.AccountsModel
+import net.termer.twinemedia.model.FilesModel
+import net.termer.twinemedia.model.SourcesModel
 import net.termer.twinemedia.util.*
+import net.termer.twinemedia.util.db.dbInit
+import net.termer.twinemedia.util.db.dbMigrate
 import java.io.File
 import java.nio.file.Files
 import java.nio.file.Path
@@ -19,10 +19,7 @@ import kotlin.system.exitProcess
 private val cons = System.console()
 
 // Instantiated models
-// TODO import models
-//private val accountsModel = AccountsModel()
-//private val mediaModel = MediaModel()
-//private val sourcesModel = SourcesModel()
+private val accountsModel = AccountsModel.INSTANCE
 
 // Notice about Kotlin coroutine calls:
 // Coroutine calls are NOT called inside a Vert.x context because blocking calls are done inside them, intentionally.
@@ -33,38 +30,61 @@ private val cons = System.console()
  * @since 2.0.0
  */
 @DelicateCoroutinesApi
-private fun interactiveCreateAdmin(config: AppConfig) {
-//	var email = ""
-//	while(email.isBlank()) {
-//		print("Email: ")
-//		val addr = cons.readLine()
-//
-//		if(isEmailValid(addr)) {
-//			runBlocking	{
-//				// Check if account with that email already exists
-//				val emailRes = accountsModel.fetchAccountByEmail(addr)
-//
-//				if(emailRes.count() > 0)
-//					println("!!! Account with that email already exists !!!")
-//				else
-//					email = addr
-//			}
-//		} else {
-//			println("!!! Invalid email address !!!")
-//		}
-//	}
-//
-//	print("Name: ")
-//	val name = cons.readLine()
-//
-//	print("Password (make it strong): ")
-//	val pass = cons.readPassword().joinToString("")
-//
-//	println("Creating account...")
-//	runBlocking	{
-//		createAccount(name, email, true, arrayOf(), pass, -1)
-//	}
-//	println("Created!")
+fun interactiveCreateAdmin(config: AppConfig) {
+	var email = ""
+	while(email.isBlank()) {
+		print("Email: ")
+		val addr = cons.readLine()
+
+		if(isEmailValid(addr)) {
+			runBlocking	{
+				// Check if account with that email already exists
+				val emailAccCount = accountsModel.count(AccountsModel.Filters(whereEmailIs = some(addr)))
+
+				if(emailAccCount > 0)
+					println("Account with that email already exists")
+				else
+					email = addr
+			}
+		} else {
+			println("Invalid email address")
+		}
+	}
+
+	var name = ""
+	while(name.isBlank()) {
+		print("Name: ")
+		name = cons.readLine()
+	}
+
+	var pass = ""
+	while(pass.isBlank()) {
+		print("Password: ")
+		val tmpPass = cons.readPassword().joinToString("")
+
+		print("Confirm password: ")
+		val passConfirm = cons.readPassword().joinToString("")
+
+		// Validate password
+		if(tmpPass != passConfirm) {
+			println("Passwords do not match")
+			continue
+		}
+		val valRes = validatePassword(tmpPass, config)
+		if(valRes != null) {
+			println("Password validation error: " + valRes.name)
+			continue
+		}
+
+		// Validation succeeded
+		pass = tmpPass
+	}
+
+	println("Creating account...")
+	runBlocking	{
+		createAccount(name = name, email = email, isAdmin = true, password = pass)
+	}
+	println("Created!")
 }
 
 /**
@@ -126,7 +146,7 @@ fun interactiveInstall(configPath: Path) {
 
 	// Generate new JWT secret if the default hasn't been changed
 	var jwtSecret = if(config.jwtSecret == defaultConfig.jwtSecret)
-		genStrOf(ALPHANUMERIC_CHARS, 32)
+		genStrOf(LETTERS_NUMBERS_UNDERSCORES_DASHES_CHARS, 32)
 	else
 		config.jwtSecret
 
@@ -191,21 +211,22 @@ fun interactiveInstall(configPath: Path) {
 		try {
 			dbInit(vertx, config)
 			println("Database connection successful!")
+
 			if(config.dbAutoMigrate) {
 				println("Setting up schema...")
 				dbMigrate(config)
 			}
-			// TODO Add back when accounts model is imported
-//			println("Checking for an admin account...")
-//			val admins = accountsModel.fetchAdminAccounts()
-//			if(admins.count() > 0) {
-//				println("An admin account already exists")
-//			} else {
-//				println("No admin account exists")
-//			}
-//
-//			if(cons.promptYesNo("Would you like to create one?", true))
-//				interactiveCreateAdmin(config)
+
+			println("Checking for an admin account...")
+			val adminsCount = accountsModel.count(AccountsModel.Filters(whereAdminStatusIs = some(true)))
+
+			if(adminsCount > 0)
+				println("An admin account already exists")
+			else
+				println("No admin account exists")
+
+			if(cons.promptYesNo("Would you like to create one?", true))
+				interactiveCreateAdmin(config)
 		} catch(e: Exception) {
 			System.err.println("Error occurred when attempting to access database, check your database settings. Error:")
 			e.printStackTrace()
@@ -215,110 +236,59 @@ fun interactiveInstall(configPath: Path) {
 	println("Installation and configuration complete!")
 }
 
-///**
-// * Runs an interactive account password reset wizard in the console
-// * @since 2.0.0
-// */
-//@DelicateCoroutinesApi
-//fun interactiveResetPassword(config: AppConfig) {
-//	println("You are about to reset an account's password.")
-//	println("Press enter to continue.")
-//	cons.readLine()
-//
-//	println("Attempting to connect to the database...")
-//	dbInit()
-//	println("Connected!")
-//
-//	runBlocking	{
-//		// TODO Instead of fetching accounts, have the user enter an account's email
-//		println("Fetching admin accounts...")
-//		val adminsRes = accountsModel.fetchAdminAccounts()
-//
-//		if(adminsRes.count() > 0) {
-//			println("Select the ID of the account you want to reset the password of:")
-//
-//			var idColWidth = 2
-//			var nameColWidth = 4
-//			var emailColWidth = 5
-//
-//			for(acc in adminsRes) {
-//				if(acc.id.toString().length > idColWidth)
-//					idColWidth = acc.id.toString().length
-//				if(acc.name.length > nameColWidth)
-//					nameColWidth = acc.name.length
-//				if(acc.email.length > emailColWidth)
-//					emailColWidth = acc.email.length
-//			}
-//
-//			// Print columns
-//			print("ID")
-//			repeat(idColWidth - 2) { print(' ') }
-//			print(" | Name")
-//			repeat(nameColWidth - 4) { print(' ') }
-//			print(" | Email")
-//			repeat(emailColWidth - 5) { print(' ') }
-//			println()
-//
-//			for(acc in adminsRes) {
-//				val id = acc.id.toString()
-//				val name = acc.name
-//				val email = acc.email
-//
-//				// Print row
-//				print(id)
-//				// TODO Instead of using repeat, create genStrOf(char, len) util in MiscUtils
-//				repeat(idColWidth - id.length) { print(' ') }
-//				print(" | $name")
-//				repeat(nameColWidth - name.length) { print(' ') }
-//				print(" | $email")
-//				repeat(emailColWidth - email.length) { print(' ') }
-//				println()
-//			}
-//
-//			try {
-//				print("Account ID: ")
-//				val id = cons.readLine().toInt()
-//
-//				// Check if account is in list
-//				var exists = false
-//				for(acc in adminsRes)
-//					if(acc.id == id) {
-//						exists = true
-//						break
-//					}
-//
-//				if(exists) {
-//					print("New password: ")
-//					val pass = cons.readPassword().joinToString("")
-//					print("Confirm password: ")
-//					val passConf = cons.readPassword().joinToString("")
-//
-//					// Validation
-//					when {
-//						pass.isEmpty() -> println("!!! Passwords cannot be blank !!!")
-//						pass == passConf -> {
-//							try {
-//								println("Updating password...")
-//								updateAccountPassword(id, pass)
-//								println("Updated!")
-//							} catch(e: Exception) {
-//								System.err.println("Failed to update password because of error:")
-//								e.printStackTrace()
-//							}
-//						}
-//						else -> println("!!! Passwords do not match !!!")
-//					}
-//				} else {
-//					println("!!! Invalid ID !!!")
-//				}
-//			} catch(e: Exception) {
-//				println("!!! Invalid ID !!!")
-//			}
-//		} else {
-//			println("No admin accounts exist, would you like to create one? [Y/n]: ")
-//			if(cons.readLine().lowercase().startsWith("y")) {
-//				createAdminPrompt()
-//			}
-//		}
-//	}
-//}
+/**
+ * Runs an interactive account password reset wizard in the console
+ * @since 2.0.0
+ */
+@DelicateCoroutinesApi
+fun interactiveResetPassword(config: AppConfig) {
+	val vertx = Vertx.vertx()
+
+	println("You are about to reset an account's password.")
+	println("Press enter to continue.")
+	cons.readLine()
+
+	println("Attempting to connect to the database...")
+	dbInit(vertx, config)
+	println("Connected!")
+
+	runBlocking	{
+		val email = cons.readLine("Account email: ")
+
+		println("Fetching account info...")
+		val account = accountsModel.fetchOneRow(AccountsModel.Filters(whereEmailIs = some(email)))
+
+		// Check if account exists
+		if(account == null) {
+			println("No account with that email was found")
+			return@runBlocking
+		}
+
+		// Get and confirm password
+		print("New password: ")
+		val pass = cons.readPassword().joinToString("")
+		print("Confirm password: ")
+		val passConfirm = cons.readPassword().joinToString("")
+
+		// Validate password
+		if(pass != passConfirm) {
+			println("Passwords do not match")
+			return@runBlocking
+		}
+		val valRes = validatePassword(pass, config)
+		if(valRes != null) {
+			println("Password validation error: " + valRes.name)
+			return@runBlocking
+		}
+
+		// Update password
+		try {
+			println("Updating password...")
+			updateAccountPassword(account.internalId, pass)
+			println("Updated!")
+		} catch(e: Exception) {
+			System.err.println("Failed to update password due to error:")
+			e.printStackTrace()
+		}
+	}
+}

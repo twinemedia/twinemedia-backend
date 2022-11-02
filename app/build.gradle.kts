@@ -31,6 +31,7 @@ dependencies {
     implementation("io.vertx:vertx-lang-kotlin:$vertxVersion")
     implementation("io.vertx:vertx-lang-kotlin-coroutines:$vertxVersion")
     implementation("io.vertx:vertx-auth-jwt:$vertxVersion")
+    implementation("io.vertx:vertx-web-openapi:$vertxVersion")
 
     // Logging
     implementation("org.slf4j:slf4j-api:1.7.32")
