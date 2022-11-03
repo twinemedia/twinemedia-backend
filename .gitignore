@@ -20,7 +20,6 @@
 
 # IDE/Project
 build
-.idea
 .gradle
 /build.sh
 
