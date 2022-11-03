@@ -17,9 +17,9 @@ suspend fun updateAccountPassword(
 	crypto: Crypto = Crypto.INSTANCE,
 	accountsModel: AccountsModel = AccountsModel.INSTANCE
 ) {
-	val hash = Crypto.INSTANCE.hashPassword(password)
+	val hash = crypto.hashPassword(password)
 
-	AccountsModel.INSTANCE.updateOne(
+	accountsModel.updateOne(
 		AccountsModel.UpdateValues(hash = some(hash)),
 		AccountsModel.Filters(whereInternalIdIs = some(internalId))
 	)
