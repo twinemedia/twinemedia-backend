@@ -18,6 +18,7 @@ repositories {
     }
 }
 
+val jvmVersion = 17
 val vertxVersion = "4.3.4"
 
 dependencies {
@@ -68,7 +69,12 @@ application {
 // Use Java 17 bytecode
 tasks.withType<org.jetbrains.kotlin.gradle.tasks.KotlinCompile> {
     kotlinOptions {
-        jvmTarget = "17"
+        jvmTarget = jvmVersion.toString()
+    }
+}
+java {
+    toolchain {
+        languageVersion.set(JavaLanguageVersion.of(jvmVersion))
     }
 }
 
