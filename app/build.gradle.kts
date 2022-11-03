@@ -75,6 +75,7 @@ tasks.withType<org.jetbrains.kotlin.gradle.tasks.KotlinCompile> {
 java {
     toolchain {
         languageVersion.set(JavaLanguageVersion.of(jvmVersion))
+        implementation.set(JvmImplementation.J9)
     }
 }
 

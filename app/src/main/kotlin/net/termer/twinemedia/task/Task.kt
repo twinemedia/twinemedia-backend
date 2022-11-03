@@ -79,7 +79,7 @@ class Task(
 	 * @since 1.5.0
 	 */
 	val createdTs: OffsetDateTime = OffsetDateTime.now()
-): JsonSerializable {
+): JsonSerializable() {
 	/**
 	 * The type of progress this task uses
 	 * @author termer
@@ -150,38 +150,38 @@ class Task(
 		failureHandlers.add(hdlr)
 	}
 
-	/**
-	 * The amount of finished items
-	 * @since 1.5.0
-	 */
-	var finishedItems
-		get() = _finishedItems
-		set(value) {
-			_finishedItems = value
-			manager.broadcastTaskStateChange(this)
-		}
+//	/**
+//	 * The amount of finished items
+//	 * @since 1.5.0
+//	 */
+//	var finishedItems
+//		get() = _finishedItems
+//		set(value) {
+//			_finishedItems = value
+//			manager.broadcastTaskStateChange(this)
+//		}
 
-	/**
-	 * The total amount of items (or null if unknown)
-	 * @since 1.5.0
-	 */
-	var totalItems
-		get() = _totalItems
-		set(value) {
-			_totalItems = value
-			manager.broadcastTaskStateChange(this)
-		}
+//	/**
+//	 * The total amount of items (or null if unknown)
+//	 * @since 1.5.0
+//	 */
+//	var totalItems
+//		get() = _totalItems
+//		set(value) {
+//			_totalItems = value
+//			manager.broadcastTaskStateChange(this)
+//		}
 
-	/**
-	 * The task's current subtask
-	 * @since 1.5.0
-	 */
-	var subtask
-		get() = _subtask
-		set(value) {
-			_subtask = value
-			manager.broadcastTaskStateChange(this)
-		}
+//	/**
+//	 * The task's current subtask
+//	 * @since 1.5.0
+//	 */
+//	var subtask
+//		get() = _subtask
+//		set(value) {
+//			_subtask = value
+//			manager.broadcastTaskStateChange(this)
+//		}
 
 	/**
 	 * Whether the task succeeded
@@ -190,16 +190,16 @@ class Task(
 	val succeeded
 		get() = _succeeded
 
-	/**
-	 * Whether the task is currently being cancelled
-	 * @since 1.5.0
-	 */
-	var cancelling
-		get() = _cancelling
-		set(value) {
-			_cancelling = value
-			manager.broadcastTaskStateChange(this)
-		}
+//	/**
+//	 * Whether the task is currently being cancelled
+//	 * @since 1.5.0
+//	 */
+//	var cancelling
+//		get() = _cancelling
+//		set(value) {
+//			_cancelling = value
+//			manager.broadcastTaskStateChange(this)
+//		}
 
 	/**
 	 * Whether the task has been cancelled
@@ -245,92 +245,92 @@ class Task(
 		"failed" to _failed
 	)
 
-	/**
-	 * Creates a JSON representation of the task's state (its variable values)
-	 * @return A JSON representation of the task's state (its variable values)
-	 * @since 1.5.0
-	 */
-	fun stateToJson() = jsonObjectOf(
-		"finished_items" to finishedItems,
-		"total_items" to totalItems,
-		"subtask" to _subtask,
-		"succeeded" to _succeeded,
-		"cancelling" to _cancelling,
-		"cancelled" to _cancelled,
-		"failed" to _failed
-	)
+//	/**
+//	 * Creates a JSON representation of the task's state (its variable values)
+//	 * @return A JSON representation of the task's state (its variable values)
+//	 * @since 1.5.0
+//	 */
+//	fun stateToJson() = jsonObjectOf(
+//		"finished_items" to finishedItems,
+//		"total_items" to totalItems,
+//		"subtask" to _subtask,
+//		"succeeded" to _succeeded,
+//		"cancelling" to _cancelling,
+//		"cancelled" to _cancelled,
+//		"failed" to _failed
+//	)
 
-	/**
-	 * Adds an account to the list of subjects that will receive events for the task
-	 * @param id The account ID of the new subject
-	 * @since 1.5.0
-	 */
-	fun addSubject(id: Int) {
-		// Only add subject if not already present
-		if(!_subjects.contains(id)) {
-			_subjects.add(id)
-			manager.broadcastTaskCreatedTo(this, id)
-		}
-	}
+//	/**
+//	 * Adds an account to the list of subjects that will receive events for the task
+//	 * @param id The account ID of the new subject
+//	 * @since 1.5.0
+//	 */
+//	fun addSubject(id: Int) {
+//		// Only add subject if not already present
+//		if(!_subjects.contains(id)) {
+//			_subjects.add(id)
+//			manager.broadcastTaskCreatedTo(this, id)
+//		}
+//	}
 
-	/**
-	 * Removes an account from the list of subjects that will receive events for the task
-	 * @param id The account ID of the subject to remove
-	 * @since 1.5.0
-	 */
-	fun removeSubject(id: Int) {
-		// Only remove subject if already present
-		if(_subjects.contains(id)) {
-			_subjects.remove(id)
-			manager.broadcastTaskDeletedTo(this, id)
-		}
-	}
+//	/**
+//	 * Removes an account from the list of subjects that will receive events for the task
+//	 * @param id The account ID of the subject to remove
+//	 * @since 1.5.0
+//	 */
+//	fun removeSubject(id: Int) {
+//		// Only remove subject if already present
+//		if(_subjects.contains(id)) {
+//			_subjects.remove(id)
+//			manager.broadcastTaskDeletedTo(this, id)
+//		}
+//	}
 
-	/**
-	 * Sets the task as succeeded, runs success handlers, and removes the task from the TaskManager instance's current tasks
-	 * @since 1.5.0
-	 */
-	fun succeed() {
-		_succeeded = true
-		manager.broadcastTaskStateChange(this)
-		manager.removeTask(id)
-		for(hdlr in successHandlers)
-			hdlr.handle(null)
-	}
+//	/**
+//	 * Sets the task as succeeded, runs success handlers, and removes the task from the TaskManager instance's current tasks
+//	 * @since 1.5.0
+//	 */
+//	fun succeed() {
+//		_succeeded = true
+//		manager.broadcastTaskStateChange(this)
+//		manager.removeTask(id)
+//		for(hdlr in successHandlers)
+//			hdlr.handle(null)
+//	}
 
-	/**
-	 * Cancels and deletes the task (only has an effect if isCancellable is true)
-	 * @since 1.5.0
-	 */
-	fun cancel() {
-		_cancelled = true
-		manager.broadcastTaskStateChange(this)
-		manager.removeTask(id)
-		for(hdlr in cancelHandlers)
-			hdlr.handle(null)
-	}
+//	/**
+//	 * Cancels and deletes the task (only has an effect if isCancellable is true)
+//	 * @since 1.5.0
+//	 */
+//	fun cancel() {
+//		_cancelled = true
+//		manager.broadcastTaskStateChange(this)
+//		manager.removeTask(id)
+//		for(hdlr in cancelHandlers)
+//			hdlr.handle(null)
+//	}
 
-	/**
-	 * Sets the task as failed, runs failure handlers, and removes the task from the TaskManager instance's current tasks
-	 * @param cause The cause of the failure, or null if not caused by a throwable
-	 * @since 1.5.0
-	 */
-	fun fail(cause: Throwable? = null) {
-		_failed = true
-		manager.broadcastTaskStateChange(this)
-		manager.removeTask(id)
-		for(hdlr in failureHandlers)
-			hdlr.handle(cause)
-	}
+//	/**
+//	 * Sets the task as failed, runs failure handlers, and removes the task from the TaskManager instance's current tasks
+//	 * @param cause The cause of the failure, or null if not caused by a throwable
+//	 * @since 1.5.0
+//	 */
+//	fun fail(cause: Throwable? = null) {
+//		_failed = true
+//		manager.broadcastTaskStateChange(this)
+//		manager.removeTask(id)
+//		for(hdlr in failureHandlers)
+//			hdlr.handle(cause)
+//	}
 
-	/**
-	 * Requests a cancellation by running the cancel request handler (only has an effect if isCancellable is true)
-	 * @since 1.5.0
-	 */
-	fun requestCancellation() {
-		if(isCancellable && !cancelling && cancelRequestHandler != null) {
-			cancelling = true
-			cancelRequestHandler.handle(null)
-		}
-	}
+//	/**
+//	 * Requests a cancellation by running the cancel request handler (only has an effect if isCancellable is true)
+//	 * @since 1.5.0
+//	 */
+//	fun requestCancellation() {
+//		if(isCancellable && !cancelling && cancelRequestHandler != null) {
+//			cancelling = true
+//			cancelRequestHandler.handle(null)
+//		}
+//	}
 }

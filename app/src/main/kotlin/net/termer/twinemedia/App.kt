@@ -131,6 +131,7 @@ class App {
 				.addOption("i", "install", false, "Launches an interactive CLI installer")
 				.addOption("a", "create-admin", false, "Launches an interactive CLI to create a new admin account")
 				.addOption("r", "reset-password", false, "Launches an interactive CLI to reset an account password")
+				.addOption("h", "help", false, "Shows this message")
 				.addOption(
 					"c",
 					"config",

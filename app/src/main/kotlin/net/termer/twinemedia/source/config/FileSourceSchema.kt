@@ -23,7 +23,7 @@ class FileSourceSchema(
 		 * @since 1.5.0
 		 */
 		val fields: Array<Field>
-): JsonSerializable {
+): JsonSerializable() {
 	private val datePattern = Regex("\\d{4}-[01]\\d-[0-3]\\dT[0-2]\\d:[0-5]\\d:[0-5]\\d\\.\\d+([+-][0-2]\\d:[0-5]\\d|Z)")
 
 	/**

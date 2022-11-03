@@ -34,41 +34,41 @@ class TaskManager {
 	 */
 	fun getTask(id: Int) = _tasks[id]
 
-	/**
-	 * Creates a new task, broadcasts its creation, and returns it
-	 * @param name The task's name
-	 * @param isGlobal Whether the task is viewable by everyone (minus those without appropriate permissions)
-	 * @param progressType How progress should be displayed
-	 * @param viewPermission The permission required to view the task (null if none is required, does not apply to explicitly added subjects)
-	 * @param initialSubjects The task's initial subjects (account IDs that will receive events for and can view the task)
-	 * @param cancelRequestHandler Handler to be run when a cancellation request is issued (null if event will not be cancellable)
-	 * @param cancelPermission The permission required to cancel the task (null if task is not cancellable)
-	 * @return The newly created task
-	 * @since 1.5.0
-	 */
-	fun createTask(name: String, isGlobal: Boolean, progressType: Task.ProgressType, viewPermission: String? = null, initialSubjects: Array<Int> = emptyArray(), cancelRequestHandler: Handler<Void>? = null, cancelPermission: String? = null): Task {
-		// Create new task
-		val task = Task(
-			manager = this,
-			id = newTaskId(),
-			name = name,
-			isGlobal = isGlobal,
-			progressType = progressType,
-			viewPermission = viewPermission,
-			initialSubjects = initialSubjects,
-			isCancellable = cancelRequestHandler != null,
-			cancelRequestHandler = cancelRequestHandler,
-			cancelPermission = cancelPermission
-		)
-
-		// Add it to tasks
-		_tasks[task.id] = task
-
-		// Broadcast creation
-		broadcastTaskCreated(task)
-
-		return task
-	}
+//	/**
+//	 * Creates a new task, broadcasts its creation, and returns it
+//	 * @param name The task's name
+//	 * @param isGlobal Whether the task is viewable by everyone (minus those without appropriate permissions)
+//	 * @param progressType How progress should be displayed
+//	 * @param viewPermission The permission required to view the task (null if none is required, does not apply to explicitly added subjects)
+//	 * @param initialSubjects The task's initial subjects (account IDs that will receive events for and can view the task)
+//	 * @param cancelRequestHandler Handler to be run when a cancellation request is issued (null if event will not be cancellable)
+//	 * @param cancelPermission The permission required to cancel the task (null if task is not cancellable)
+//	 * @return The newly created task
+//	 * @since 1.5.0
+//	 */
+//	fun createTask(name: String, isGlobal: Boolean, progressType: Task.ProgressType, viewPermission: String? = null, initialSubjects: Array<Int> = emptyArray(), cancelRequestHandler: Handler<Void>? = null, cancelPermission: String? = null): Task {
+//		// Create new task
+//		val task = Task(
+//			manager = this,
+//			id = newTaskId(),
+//			name = name,
+//			isGlobal = isGlobal,
+//			progressType = progressType,
+//			viewPermission = viewPermission,
+//			initialSubjects = initialSubjects,
+//			isCancellable = cancelRequestHandler != null,
+//			cancelRequestHandler = cancelRequestHandler,
+//			cancelPermission = cancelPermission
+//		)
+//
+//		// Add it to tasks
+//		_tasks[task.id] = task
+//
+//		// Broadcast creation
+//		broadcastTaskCreated(task)
+//
+//		return task
+//	}
 
 	/**
 	 * Returns whether the provided account can view the specified task
@@ -78,7 +78,7 @@ class TaskManager {
 	 * @since 1.5.0
 	 */
 	fun canAccountViewTask(account: AccountRow, task: Task): Boolean {
-		return task.subjects.contains(account.id) || (task.isGlobal && (task.viewPermission == null || account.hasPermission(task.viewPermission)))
+		return task.subjects.contains(account.internalId) || (task.isGlobal && (task.viewPermission == null || account.hasPermission(task.viewPermission)))
 	}
 
 	/**
@@ -109,100 +109,100 @@ class TaskManager {
 		return task.isCancellable && canAccountViewTask(account, task) && (task.cancelPermission == null || account.hasPermission(task.cancelPermission))
 	}
 
-	/**
-	 * Returns all SockJSClient instances that can view the provided task
-	 * @param task The task to check against
-	 * @return All SockJSClient instances that can view the provided task
-	 * @since 1.5.0
-	 */
-	fun clientsThatCanViewTask(task: Task): Array<SockJSClient> {
-		val clients = sockJSManager.getClients()
-		val res = ArrayList<SockJSClient>()
+//	/**
+//	 * Returns all SockJSClient instances that can view the provided task
+//	 * @param task The task to check against
+//	 * @return All SockJSClient instances that can view the provided task
+//	 * @since 1.5.0
+//	 */
+//	fun clientsThatCanViewTask(task: Task): Array<SockJSClient> {
+//		val clients = sockJSManager.getClients()
+//		val res = ArrayList<SockJSClient>()
+//
+//		for(client in clients) {
+//			if(canAccountViewTask(client.account, task))
+//				res.add(client)
+//		}
+//
+//		return res.toTypedArray()
+//	}
 
-		for(client in clients) {
-			if(canAccountViewTask(client.account, task))
-				res.add(client)
-		}
+//	/**
+//	 * Broadcasts a task creation to all clients that can view it
+//	 * @param task The task
+//	 * @since 1.5.0
+//	 */
+//	fun broadcastTaskCreated(task: Task) {
+//		val clients = clientsThatCanViewTask(task)
+//
+//		for(client in clients)
+//			sockJSManager.broadcastEventByAccountId(client.account.id, "task_create", task.toJson())
+//	}
 
-		return res.toTypedArray()
-	}
+//	/**
+//	 * Broadcasts a task creation to all clients with the specified account ID
+//	 * @param task The task
+//	 * @param accountId The account ID
+//	 * @since 1.5.0
+//	 */
+//	fun broadcastTaskCreatedTo(task: Task, accountId: Int) {
+//		sockJSManager.broadcastEventByAccountId(accountId, "task_create", task.toJson())
+//	}
 
-	/**
-	 * Broadcasts a task creation to all clients that can view it
-	 * @param task The task
-	 * @since 1.5.0
-	 */
-	fun broadcastTaskCreated(task: Task) {
-		val clients = clientsThatCanViewTask(task)
+//	/**
+//	 * Broadcasts a task's state to all clients that can view it
+//	 * @param task The task
+//	 * @since 1.5.0
+//	 */
+//	fun broadcastTaskStateChange(task: Task) {
+//		val clients = clientsThatCanViewTask(task)
+//
+//		for(client in clients)
+//			sockJSManager.broadcastEventByAccountId(client.account.id, "task_update", jsonObjectOf(
+//				"id" to task.id,
+//				"state" to task.stateToJson()
+//			))
+//	}
 
-		for(client in clients)
-			sockJSManager.broadcastEventByAccountId(client.account.id, "task_create", task.toJson())
-	}
+//	/**
+//	 * Broadcasts a task deletion to all clients that can view it
+//	 * @param task The task
+//	 * @since 1.5.0
+//	 */
+//	fun broadcastTaskDeleted(task: Task) {
+//		val clients = clientsThatCanViewTask(task)
+//
+//		for(client in clients)
+//			sockJSManager.broadcastEventByAccountId(client.account.id, "task_delete", jsonObjectOf(
+//				"id" to task.id
+//			))
+//	}
 
-	/**
-	 * Broadcasts a task creation to all clients with the specified account ID
-	 * @param task The task
-	 * @param accountId The account ID
-	 * @since 1.5.0
-	 */
-	fun broadcastTaskCreatedTo(task: Task, accountId: Int) {
-		sockJSManager.broadcastEventByAccountId(accountId, "task_create", task.toJson())
-	}
+//	/**
+//	 * Broadcasts a task deletion to all clients with the specified account ID
+//	 * @param task The task
+//	 * @param accountId The account ID
+//	 * @since 1.5.0
+//	 */
+//	fun broadcastTaskDeletedTo(task: Task, accountId: Int) {
+//		sockJSManager.broadcastEventByAccountId(accountId, "task_delete", jsonObjectOf(
+//			"id" to task.id
+//		))
+//	}
 
-	/**
-	 * Broadcasts a task's state to all clients that can view it
-	 * @param task The task
-	 * @since 1.5.0
-	 */
-	fun broadcastTaskStateChange(task: Task) {
-		val clients = clientsThatCanViewTask(task)
-
-		for(client in clients)
-			sockJSManager.broadcastEventByAccountId(client.account.id, "task_update", jsonObjectOf(
-				"id" to task.id,
-				"state" to task.stateToJson()
-			))
-	}
-
-	/**
-	 * Broadcasts a task deletion to all clients that can view it
-	 * @param task The task
-	 * @since 1.5.0
-	 */
-	fun broadcastTaskDeleted(task: Task) {
-		val clients = clientsThatCanViewTask(task)
-
-		for(client in clients)
-			sockJSManager.broadcastEventByAccountId(client.account.id, "task_delete", jsonObjectOf(
-				"id" to task.id
-			))
-	}
-
-	/**
-	 * Broadcasts a task deletion to all clients with the specified account ID
-	 * @param task The task
-	 * @param accountId The account ID
-	 * @since 1.5.0
-	 */
-	fun broadcastTaskDeletedTo(task: Task, accountId: Int) {
-		sockJSManager.broadcastEventByAccountId(accountId, "task_delete", jsonObjectOf(
-			"id" to task.id
-		))
-	}
-
-	/**
-	 * Removes a task from the current tasks list by its ID
-	 * @param id The task's ID
-	 * @param sendDelete Whether to send a delete event to all subjects that have permission to view the task
-	 * @since 1.5.0
-	 */
-	fun removeTask(id: Int, sendDelete: Boolean = false) {
-		val task = _tasks[id]
-
-		if(task != null) {
-			_tasks.remove(id)
-			if(sendDelete)
-				broadcastTaskDeleted(task)
-		}
-	}
+//	/**
+//	 * Removes a task from the current tasks list by its ID
+//	 * @param id The task's ID
+//	 * @param sendDelete Whether to send a delete event to all subjects that have permission to view the task
+//	 * @since 1.5.0
+//	 */
+//	fun removeTask(id: Int, sendDelete: Boolean = false) {
+//		val task = _tasks[id]
+//
+//		if(task != null) {
+//			_tasks.remove(id)
+//			if(sendDelete)
+//				broadcastTaskDeleted(task)
+//		}
+//	}
 }
