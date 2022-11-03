@@ -26,11 +26,21 @@ private val accountsModel = AccountsModel.INSTANCE
 // This would both block those threads for normal operation by other parts of the application, and additionally throw exceptions because of being blocked.
 
 /**
+ * Throws [IllegalStateException] if there is no console available
+ */
+private fun checkConsole() {
+	if(cons == null)
+		throw IllegalStateException("Interactive configuration cannot be performed if there is no console available")
+}
+
+/**
  * Runs an interactive admin creation wizard in the console
  * @since 2.0.0
  */
 @DelicateCoroutinesApi
 fun interactiveCreateAdmin(config: AppConfig) {
+	checkConsole()
+
 	var email = ""
 	while(email.isBlank()) {
 		print("Email: ")
@@ -93,6 +103,8 @@ fun interactiveCreateAdmin(config: AppConfig) {
  */
 @DelicateCoroutinesApi
 fun interactiveInstall(configPath: Path) {
+	checkConsole()
+
 	val vertx = Vertx.vertx()
 	val defaultConfig = AppConfig()
 
@@ -242,6 +254,8 @@ fun interactiveInstall(configPath: Path) {
  */
 @DelicateCoroutinesApi
 fun interactiveResetPassword(config: AppConfig) {
+	checkConsole()
+
 	val vertx = Vertx.vertx()
 
 	println("You are about to reset an account's password.")
