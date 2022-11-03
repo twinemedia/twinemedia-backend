@@ -38,7 +38,7 @@ private fun checkConsole() {
  * @since 2.0.0
  */
 @DelicateCoroutinesApi
-fun interactiveCreateAdmin(config: AppConfig) {
+fun interactiveCreateAdmin(config: AppConfig, vertx: Vertx = Vertx.vertx()) {
 	checkConsole()
 
 	var email = ""
@@ -92,7 +92,13 @@ fun interactiveCreateAdmin(config: AppConfig) {
 
 	println("Creating account...")
 	runBlocking	{
-		createAccount(name = name, email = email, isAdmin = true, password = pass)
+		createAccount(
+			name = name,
+			email = email,
+			isAdmin = true,
+			password = pass,
+			crypto = Crypto(vertx, AppContext(config))
+		)
 	}
 	println("Created!")
 }
@@ -135,23 +141,22 @@ fun interactiveInstall(configPath: Path) {
 	// Check if dir exists and ask to create it if not
 	val uploadsTmpDir = File(config.uploadsTmpPath)
 	if(!uploadsTmpDir.exists()) {
-		println("Directory \"${config.uploadsTmpPath}\" doesn't exist, create it? [Y/n]: ")
-
 		if(cons.promptYesNo("Directory \"${config.uploadsTmpPath}\" doesn't exist, create it?", true))
 			uploadsTmpDir.mkdirs()
 	}
 
+	// Media process temporary folder path
 	if(advanced) {
 		config.mediaProcessingTmpPath = cwdPath.resolve(
 			Path.of(cons.promptLine("In which directory do you want currently processing files to be temporarily stored? CHOOSE A DIRECTORY THAT CAN SAFELY HAVE ALL OF ITS CONTENTS DELETED!", config.mediaProcessingTmpPath))
 		).pathString
+	}
 
-		// Check if dir exists, if not, ask to create
-		val procTmpDir = File(config.mediaProcessingTmpPath)
-		if(!procTmpDir.exists()) {
-			if(cons.promptYesNo("Directory \"${config.mediaProcessingTmpPath}\" doesn't exist, create it?", true))
-				procTmpDir.mkdirs()
-		}
+	// Check if dir exists, if not, ask to create
+	val procTmpDir = File(config.mediaProcessingTmpPath)
+	if(!procTmpDir.exists()) {
+		if(cons.promptYesNo("Directory \"${config.mediaProcessingTmpPath}\" doesn't exist, create it?", true))
+			procTmpDir.mkdirs()
 	}
 
 	config.maxUploadSize = cons.promptNumber("What maximum upload size do you want (in MB)?", config.maxUploadSize / 1024 / 1024) * 1024 * 1024
@@ -238,7 +243,7 @@ fun interactiveInstall(configPath: Path) {
 				println("No admin account exists")
 
 			if(cons.promptYesNo("Would you like to create one?", true))
-				interactiveCreateAdmin(config)
+				interactiveCreateAdmin(config, vertx)
 		} catch(e: Exception) {
 			System.err.println("Error occurred when attempting to access database, check your database settings. Error:")
 			e.printStackTrace()
@@ -246,6 +251,9 @@ fun interactiveInstall(configPath: Path) {
 	}
 
 	println("Installation and configuration complete!")
+
+	// Shutdown
+	exitProcess(0)
 }
 
 /**
@@ -298,7 +306,7 @@ fun interactiveResetPassword(config: AppConfig) {
 		// Update password
 		try {
 			println("Updating password...")
-			updateAccountPassword(account.internalId, pass)
+			updateAccountPassword(account.internalId, pass, crypto = Crypto(vertx, AppContext(config)))
 			println("Updated!")
 		} catch(e: Exception) {
 			System.err.println("Failed to update password due to error:")

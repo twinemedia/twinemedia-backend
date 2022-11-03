@@ -27,7 +27,7 @@ fun Console.promptLine(message: String, default: String = "", trim: Boolean = tr
 
 		if(res.isEmpty())
 			res = default
-	} while(!promptUntilNonEmpty || res.isNotEmpty())
+	} while(promptUntilNonEmpty && res.isEmpty())
 
 	return res
 }
@@ -53,6 +53,8 @@ fun Console.promptYesNo(message: String, defaultYes: Boolean = false): Boolean {
 			return false
 		else if(!defaultYes && ln.startsWith('y'))
 			return true
+
+		return defaultYes
 	}
 }
 
@@ -70,14 +72,16 @@ inline fun <reified T: Number> Console.promptNumber(message: String, default: T?
 
 		// Try to parse line as number
 		if(ln.isNotEmpty()) {
-			return when(T::class.java) {
-				Double::class.java -> ln.toDoubleOrNull()
-				Float::class.java -> ln.toFloatOrNull()
-				Long::class.java -> ln.toLongOrNull()
-				Short::class.java -> ln.toShortOrNull()
-				Byte::class.java -> ln.toByteOrNull()
+			val num = when(T::class.simpleName) {
+				"Double" -> ln.toDoubleOrNull()
+				"Float" -> ln.toFloatOrNull()
+				"Long" -> ln.toLongOrNull()
+				"Short" -> ln.toShortOrNull()
+				"Byte" -> ln.toByteOrNull()
 				else -> ln.toIntOrNull()
 			} as T? ?: continue // If parsing failed, loop again
+
+			return num
 		}
 	}
 }

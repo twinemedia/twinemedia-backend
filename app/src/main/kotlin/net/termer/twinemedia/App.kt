@@ -125,6 +125,10 @@ class App {
 
 		@JvmStatic
 		fun main(args: Array<String>) {
+			// An ad should not be printed everytime the DB is used
+			System.setProperty("org.jooq.no-logo", "true")
+			System.setProperty("org.jooq.no-tips", "true")
+
 			// Create command line options
 			val cliOps = Options()
 				.addOption("s", "start", false, "Starts the server")

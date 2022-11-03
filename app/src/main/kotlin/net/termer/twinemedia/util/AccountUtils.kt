@@ -7,9 +7,16 @@ import net.termer.twinemedia.model.AccountsModel
  * Updates an account's password
  * @param internalId The account's internal ID
  * @param password The new password
+ * @param crypto The [Crypto] instance to use for hashing the password (defaults to [Crypto.INSTANCE])
+ * @param accountsModel The [AccountsModel] instance to use for updating the account in the database (defaults to [AccountsModel.INSTANCE])
  * @since 2.0.0
  */
-suspend fun updateAccountPassword(internalId: Int, password: String) {
+suspend fun updateAccountPassword(
+	internalId: Int,
+	password: String,
+	crypto: Crypto = Crypto.INSTANCE,
+	accountsModel: AccountsModel = AccountsModel.INSTANCE
+) {
 	val hash = Crypto.INSTANCE.hashPassword(password)
 
 	AccountsModel.INSTANCE.updateOne(
