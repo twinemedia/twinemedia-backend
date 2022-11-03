@@ -164,7 +164,9 @@ alter table accounts
         foreign key (account_default_source) references sources (id)
         on delete set null;
 alter table accounts
-    rename column account_exclude_other_processes to account_exclude_other_process_presets;
+    rename column account_exclude_other_media to account_exclude_other_files;
+alter table accounts
+    rename column account_exclude_other_processes to account_exclude_other_process_presets
 alter table accounts
     rename column account_creation_date to account_created_ts;
 alter table accounts
