@@ -60,7 +60,7 @@ class App {
 					)
 
 					if(exitOnCreate) {
-						logger.info("The default configuration file has been written to ${path.toAbsolutePath()}, please edit it before restarting")
+						logger.info("The default configuration file has been written to ${path.toAbsolutePath()}.\nPlease edit it or run the interactive installer (--install) before restarting.")
 						exitProcess(1)
 					}
 				} else {
