@@ -257,7 +257,7 @@ class FilesModel(context: Context?, ignoreContext: Boolean): Model(context, igno
 		var processError: Option<String?> = none()
 	): Model.UpdateValues {
 		override fun applyTo(query: UpdateQuery<*>) {
-			fun set(name: String, fieldVal: Option<*>, prefix: String = "files.file_") {
+			fun set(name: String, fieldVal: Option<*>, prefix: String = "file_") {
 				if(fieldVal is Some)
 					query.addValue(field(prefix + name), if(fieldVal.value is Array<*>) array(*fieldVal.value) else fieldVal.value)
 			}
@@ -600,7 +600,7 @@ class FilesModel(context: Context?, ignoreContext: Boolean): Model(context, igno
 		values.applyTo(query)
 
 		if(updateModifiedTs)
-			query.addValue(field("files.file_modified_ts"), now())
+			query.addValue(field("file_modified_ts"), now())
 
 		query.executeAwait()
 	}

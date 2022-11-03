@@ -140,7 +140,7 @@ class ApiKeysModel(context: Context?, ignoreContext: Boolean): Model(context, ig
 		var jwt: Option<String> = none()
 	): Model.UpdateValues {
 		override fun applyTo(query: UpdateQuery<*>) {
-			fun set(name: String, fieldVal: Option<*>, prefix: String = "api_keys.key_") {
+			fun set(name: String, fieldVal: Option<*>, prefix: String = "key_") {
 				if(fieldVal is Some)
 					query.addValue(field(prefix + name), if(fieldVal.value is Array<*>) array(*fieldVal.value) else fieldVal.value)
 			}
@@ -395,7 +395,7 @@ class ApiKeysModel(context: Context?, ignoreContext: Boolean): Model(context, ig
 		values.applyTo(query)
 
 		if(updateModifiedTs)
-			query.addValue(field("api_keys.key_modified_ts"), now())
+			query.addValue(field("key_modified_ts"), now())
 
 		query.executeAwait()
 	}

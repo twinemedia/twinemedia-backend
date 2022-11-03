@@ -16,6 +16,7 @@ import org.jooq.Query
 import org.jooq.UpdateQuery
 import net.termer.twinemedia.util.db.Database.Sql
 import org.jooq.SelectQuery
+import org.jooq.conf.ParamType
 import org.jooq.impl.DSL.*
 import java.time.OffsetDateTime
 
@@ -264,7 +265,7 @@ class AccountsModel(context: Context?, ignoreContext: Boolean): Model(context, i
 		var defaultSourceId: Option<Int> = none()
 	): Model.UpdateValues {
 		override fun applyTo(query: UpdateQuery<*>) {
-			fun set(name: String, fieldVal: Option<*>, prefix: String = "accounts.account_") {
+			fun set(name: String, fieldVal: Option<*>, prefix: String = "account_") {
 				if(fieldVal is Some)
 					query.addValue(field(prefix + name), if(fieldVal.value is Array<*>) array(*fieldVal.value) else fieldVal.value)
 			}
@@ -563,7 +564,7 @@ class AccountsModel(context: Context?, ignoreContext: Boolean): Model(context, i
 		values.applyTo(query)
 
 		if(updateModifiedTs)
-			query.addValue(field("accounts.account_modified_ts"), now())
+			query.addValue(field("account_modified_ts"), now())
 
 		query.executeAwait()
 	}

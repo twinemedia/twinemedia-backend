@@ -252,7 +252,7 @@ class ListsModel(context: Context?, ignoreContext: Boolean): Model(context, igno
 		val showAllUserFiles: Option<Boolean>
 	): Model.UpdateValues {
 		override fun applyTo(query: UpdateQuery<*>) {
-			fun set(name: String, fieldVal: Option<*>, prefix: String = "lists.list_") {
+			fun set(name: String, fieldVal: Option<*>, prefix: String = "list_") {
 				if(fieldVal is Some)
 					query.addValue(
 						field(prefix + name),
@@ -646,7 +646,7 @@ class ListsModel(context: Context?, ignoreContext: Boolean): Model(context, igno
 		values.applyTo(query)
 
 		if(updateModifiedTs)
-			query.addValue(field("lists.list_modified_ts"), now())
+			query.addValue(field("list_modified_ts"), now())
 
 		query.executeAwait()
 	}

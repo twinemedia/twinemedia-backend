@@ -191,7 +191,7 @@ class SourcesModel(context: Context?, ignoreContext: Boolean): Model(context, ig
 		var isGlobal: Option<Boolean> = none()
 	): Model.UpdateValues {
 		override fun applyTo(query: UpdateQuery<*>) {
-			fun set(name: String, fieldVal: Option<*>, prefix: String = "sources.source_") {
+			fun set(name: String, fieldVal: Option<*>, prefix: String = "source_") {
 				if(fieldVal is Some)
 					query.addValue(field(prefix + name), if(fieldVal.value is JsonObject) fieldVal.value.encode() else fieldVal.value)
 			}
@@ -472,7 +472,7 @@ class SourcesModel(context: Context?, ignoreContext: Boolean): Model(context, ig
 		values.applyTo(query)
 
 		if(updateModifiedTs)
-			query.addValue(field("sources.source_modified_ts"), now())
+			query.addValue(field("source_modified_ts"), now())
 
 		query.executeAwait()
 	}

@@ -171,7 +171,7 @@ class TagsModel(context: Context?, ignoreContext: Boolean): Model(context, ignor
 		var description: Option<String> = none()
 	): Model.UpdateValues {
 		override fun applyTo(query: UpdateQuery<*>) {
-			fun set(name: String, fieldVal: Option<*>, prefix: String = "tags.tag_") {
+			fun set(name: String, fieldVal: Option<*>, prefix: String = "tag_") {
 				if(fieldVal is Some)
 					query.addValue(field(prefix + name), if(fieldVal.value is JsonObject) fieldVal.value.encode() else fieldVal.value)
 			}
@@ -444,7 +444,7 @@ class TagsModel(context: Context?, ignoreContext: Boolean): Model(context, ignor
 		values.applyTo(query)
 
 		if(updateModifiedTs)
-			query.addValue(field("tags.tag_modified_ts"), now())
+			query.addValue(field("tag_modified_ts"), now())
 
 		query.executeAwait()
 	}

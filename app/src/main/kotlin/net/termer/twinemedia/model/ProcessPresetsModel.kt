@@ -164,7 +164,7 @@ class ProcessPresetsModel(context: Context?, ignoreContext: Boolean): Model(cont
 		val extension: Option<String>
 	): Model.UpdateValues {
 		override fun applyTo(query: UpdateQuery<*>) {
-			fun set(name: String, fieldVal: Option<*>, prefix: String = "process_presets.preset_") {
+			fun set(name: String, fieldVal: Option<*>, prefix: String = "preset_") {
 				if(fieldVal is Some)
 					query.addValue(
 						field(prefix + name),
@@ -432,7 +432,7 @@ class ProcessPresetsModel(context: Context?, ignoreContext: Boolean): Model(cont
 		values.applyTo(query)
 
 		if(updateModifiedTs)
-			query.addValue(field("process_presets.preset_modified_ts"), now())
+			query.addValue(field("preset_modified_ts"), now())
 
 		query.executeAwait()
 	}
