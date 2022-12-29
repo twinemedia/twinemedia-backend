@@ -143,7 +143,7 @@ class FileDto(
 		"tags" to tags?.toJsonArray(),
 		"parent" to parent?.toJson(),
 		"childCount" to childCount,
-		"children" to children?.map { toJson() },
+		"children" to children?.toJsonArray(),
 		"isProcessing" to isProcessing,
 		"processError" to processError,
 		"source" to source.toJson(),
