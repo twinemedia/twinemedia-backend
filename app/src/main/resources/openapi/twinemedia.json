@@ -1,0 +1,386 @@
+{
+	"openapi": "3.0.2",
+	"info": {
+		"version": "2.0.0",
+		"title": "TwineMedia",
+		"license": {
+			"name": "GPLv3"
+		}
+	},
+	"servers": [
+		{
+			"url": "http://127.0.0.1/api/v2"
+		}
+	],
+	"paths": {
+		"/auth": {
+			"post": {
+				"summary": "Authenticates with email and passwords and returns a new authorization token",
+				"operationId": "auth",
+				"tags": [
+					"auth"
+				],
+				"requestBody": {
+					"required": true,
+					"content": {
+						"application/json": {
+							"schema": {
+								"required": ["email", "password"],
+								"type": "object",
+								"properties": {
+									"email": {
+										"type": "string",
+										"description": "The user's email address"
+									},
+									"password": {
+										"type": "string",
+										"description": "The user's password"
+									}
+								}
+							}
+						}
+					}
+				},
+				"responses": {
+					"200": {
+						"description": "The new authorization token",
+						"headers": {},
+						"content": {
+							"application/json": {
+								"schema": {
+									"type": "object",
+									"required": ["token"],
+									"properties": {
+										"token": {
+											"type": "string",
+											"description": "The authorization token"
+										}
+									}
+								}
+							}
+						}
+					},
+					"default": {
+						"description": "An error occurred",
+						"content": {
+							"application/json": {
+								"schema": {
+									"$ref": "#/components/schemas/ApiErrorRes"
+								}
+							}
+						}
+					}
+				}
+			}
+		}
+	},
+	"components": {
+		"securitySchemes": {
+			"jwt": {
+				"type": "apiKey",
+				"name": "bearer",
+				"in": "header"
+			}
+		},
+		"schemas": {
+			"ApiError": {
+				"type": "object",
+				"required": [
+					"name",
+					"message",
+					"data"
+				],
+				"properties": {
+					"name": {
+						"type": "string",
+						"description": "The ID-style error name, e.g. \"internal_error\". Designed to be computer-readable for programmatic error handling."
+					},
+					"message": {
+						"type": "string",
+						"description": "The human-readable error message. May be localized or subject to change, which makes it unsuitable for programmatic handling. Use \"name\" for that purpose."
+					},
+					"data": {
+						"type": "object",
+						"nullable": true,
+						"description": "Any additional error data. If there is no additional data, this field will be null."
+					}
+				}
+			},
+			"ApiErrorRes": {
+				"type": "object",
+				"required": ["errors"],
+				"properties": {
+					"errors": {
+						"type": "array",
+						"description": "Any error that occurred",
+						"items": {
+							"$ref": "#/components/schemas/ApiError"
+						},
+						"minItems": 1
+					}
+				}
+			},
+			"StandardRecord": {
+				"type": "object",
+				"description": "Standard fields for most record types",
+				"required": ["id", "createdTs", "modifiedTs"],
+				"properties": {
+					"id": {
+						"type": "string",
+						"description": "The record ID",
+						"minLength": 10,
+						"maxLength": 10
+					},
+					"createdTs": {
+						"type": "string",
+						"format": "date-time",
+						"description": "The record's creation timestamp"
+					},
+					"modifiedTs": {
+						"type": "string",
+						"format": "date-time",
+						"description": "The record's last modified timestamp. If the record has never been modified, this field's value will match \"createdTs\"."
+					}
+				}
+			},
+			"RecordCreator": {
+				"type": "object",
+				"description": "A record's creator account",
+				"required": ["id", "name"],
+				"properties": {
+					"id": {
+						"type": "string",
+						"description": "The creator account's ID",
+						"minLength": 10,
+						"maxLength": 10
+					},
+					"name": {
+						"type": "string",
+						"description": "The creator account's name",
+						"maxLength": 64
+					}
+				}
+			},
+			"RecordWithNullableCreator": {
+				"type": "object",
+				"description": "A record with a nullable creator field",
+				"required": ["creator"],
+				"properties": {
+					"creator": {
+						"allOf": [
+							{
+								"$ref": "#/components/schemas/RecordCreator"
+							}
+						],
+						"nullable": true,
+						"description": "The record's creator. Will be null if the creator's account no longer exists."
+					}
+				}
+			},
+			"RecordWithCreator": {
+				"type": "object",
+				"description": "A record with a creator field. This should only be used for records that will never have a null creator field.",
+				"required": ["creator"],
+				"properties": {
+					"creator": {
+						"allOf": [
+							{
+								"$ref": "#/components/schemas/RecordCreator"
+							}
+						],
+						"description": "The record's creator. Will be null if the creator's account no longer exists."
+					}
+				}
+			},
+			"RecordSource": {
+				"type": "object",
+				"description": "A file record's source",
+				"required": ["id", "name", "type"],
+				"properties": {
+					"id": {
+						"type": "string",
+						"minLength": 10,
+						"maxLength": 10,
+						"description": "The file source's ID"
+					},
+					"name": {
+						"type": "string",
+						"maxLength": 256,
+						"description": "The file source's name"
+					},
+					"type": {
+						"type": "string",
+						"description": "The file source's type (e.g. \"local_directory\")"
+					}
+				}
+			},
+			"Tag": {
+				"description": "A file tag",
+				"allOf": [
+					{
+						"type": "object",
+						"required": [
+							"name",
+							"description",
+							"fileCount"
+						],
+						"properties": {
+							"name": {
+								"type": "string",
+								"description": "The tag name",
+								"maxLength": 256
+							},
+							"description": {
+								"type": "string",
+								"description": "The tag description",
+								"maxLength": 1024
+							},
+							"fileCount": {
+								"type": "integer",
+								"format": "int32",
+								"minimum": 0,
+								"description": "The number of files the tag is used by"
+							}
+						}
+					},
+					{
+						"$ref": "#/components/schemas/StandardRecord"
+					},
+					{
+						"$ref": "#/components/schemas/RecordWithNullableCreator"
+					}
+				]
+			},
+			"File": {
+				"description": "A file record",
+				"allOf": [
+					{
+						"type": "object",
+						"required": [
+							"title",
+							"name",
+							"description",
+							"size",
+							"mime",
+							"meta",
+							"hash",
+							"hasThumbnail",
+							"tagCount",
+							"tags",
+							"parent",
+							"childCount",
+							"children",
+							"isProcessing",
+							"processError",
+							"source"
+						],
+						"properties": {
+							"title": {
+								"type": "string",
+								"maxLength": 256,
+								"description": "The file's title. \"title\" is normal plain text, as opposed to \"name\", which is a filesystem name."
+							},
+							"name": {
+								"type": "string",
+								"maxLength": 256,
+								"description": "The file's name. \"name\" is a filesystem name, as opposed to \"title\" which is normal plain text."
+							},
+							"description": {
+								"type": "string",
+								"maxLength": 1024,
+								"description": "The file's description. May be empty."
+							},
+							"size": {
+								"type": "integer",
+								"format": "int64",
+								"description": "The file's size in bytes"
+							},
+							"mime": {
+								"type": "string",
+								"format": "mime",
+								"maxLength": 129,
+								"description": "The file's MIME type"
+							},
+							"meta": {
+								"type": "object",
+								"nullable": true,
+								"description": "Any additional metadata available for the file (such as video/audio bitrate, resolution, etc.) in JSON format. Will be null if it was not included in the response."
+							},
+							"hash": {
+								"type": "string",
+								"format": "hex",
+								"description": "The file hash in hexadecimal format. The hashing algorithm used may vary."
+							},
+							"hasThumbnail": {
+								"type": "boolean",
+								"description": "Whether the file has a thumbnail"
+							},
+							"tagCount": {
+								"type": "integer",
+								"format": "int32",
+								"minimum": 0,
+								"description": "The number of tags the file has"
+							},
+							"tags": {
+								"type": "array",
+								"items": {
+									"$ref": "#/components/schemas/Tag"
+								},
+								"nullable": true,
+								"description": "The file's tags. Will be null if they were not included in the response."
+							},
+							"parent": {
+								"type": "object",
+								"allOf": [
+									{
+										"$ref": "#/components/schemas/File"
+									}
+								],
+								"nullable": false,
+								"description": "The file's parent file. Will be null if this file has no parent, or it was not included in the response."
+							},
+							"childCount": {
+								"type": "integer",
+								"format": "int32",
+								"minimum": 0,
+								"description": "The number of children the file has"
+							},
+							"children": {
+								"type": "array",
+								"items": {
+									"$ref": "#/components/schemas/File"
+								},
+								"nullable": true,
+								"description": "The file's children. Will be null if they were not included in the response."
+							},
+							"isProcessing": {
+								"type": "boolean",
+								"description": "Whether the file is currently processing"
+							},
+							"processError": {
+								"type": "string",
+								"nullable": true,
+								"description": "The error that caused the file's processing to fail. Will be null if no error has occurred."
+							},
+							"source": {
+								"type": "object",
+								"allOf": [
+									{
+										"$ref": "#/components/schemas/RecordSource"
+									}
+								],
+								"description": "The file's source"
+							}
+						}
+					},
+					{
+						"$ref": "#/components/schemas/StandardRecord"
+					},
+					{
+						"$ref": "#/components/schemas/RecordWithNullableCreator"
+					}
+				]
+			}
+		}
+	}
+}
