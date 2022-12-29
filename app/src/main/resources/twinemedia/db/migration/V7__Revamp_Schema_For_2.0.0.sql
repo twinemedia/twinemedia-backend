@@ -331,6 +331,8 @@ alter table list_items
     rename column item_created_on to item_created_ts;
 
 -- Alter lists table to reflect new schema changes
+alter table lists
+    alter column list_id type char(10);
 create unique index list_id_idx
     on lists (list_id);
 alter table lists
