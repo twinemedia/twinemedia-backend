@@ -68,7 +68,7 @@ class Crypto(
         // Hash password using configured performance settings
         it.complete(argon2.hash(
                 appCtx.config.passwordHashThreadCount,
-                appCtx.config.passwordHashMemoryKb,
+                appCtx.config.passwordHashMemoryKib,
                 appCtx.config.passwordHashThreadCount,
                 password.toCharArray()
         ))

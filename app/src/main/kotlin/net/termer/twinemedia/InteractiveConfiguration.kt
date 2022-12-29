@@ -230,9 +230,9 @@ fun interactiveInstall(configPath: Path, shutDown: Boolean = true) {
 
 			config.passwordHashThreadCount =
 				cons.promptNumber("How many threads should be used to hash passwords?", config.passwordHashThreadCount)
-			config.passwordHashMemoryKb = cons.promptNumber(
-				"How many kilobytes of memory should be used to hash passwords?",
-				config.passwordHashMemoryKb
+			config.passwordHashMemoryKib = cons.promptNumber(
+				"How many kibibytes (1024 bytes) of memory should be used to hash passwords?",
+				config.passwordHashMemoryKib
 			)
 
 			config.httpServerThreads = cons.promptNumber(

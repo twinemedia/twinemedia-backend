@@ -117,10 +117,10 @@ data class AppConfig(
     var passwordHashThreadCount: Int = 1,
 
     /**
-     * The amount of memory to use for password hashing, in kilobytes
+     * The amount of memory to use for password hashing, in kibibytes
      * @since 2.0.0
      */
-    var passwordHashMemoryKb: Int = 2048,
+    var passwordHashMemoryKib: Int = 2048,
 
     /**
      * The HTTP origin to allow requests from, or "*" to accept from any origin
