@@ -272,6 +272,40 @@
 					}
 				]
 			},
+			"ApiKey": {
+				"description": "An API key record",
+				"allOf": [
+					{
+						"type": "object",
+						"required": ["name", "permissions", "jwt"],
+						"properties": {
+							"name": {
+								"type": "string",
+								"maxLength": 256,
+								"description": "The key's name"
+							},
+							"permissions": {
+								"type": "array",
+								"items": {
+									"type": "string",
+									"maxLength": 256
+								},
+								"description": "The permissions granted to the caller using the key. The permissions in this field are a subset of the creator's permissions. If this field contains permissions that the creator does not have, they are invalid and will not be granted."
+							},
+							"jwt": {
+								"type": "string",
+								"description": "The actual key JWT"
+							}
+						}
+					},
+					{
+						"$ref": "#/components/schemas/StandardRecord"
+					},
+					{
+						"$ref": "#/components/schemas/RecordWithCreator"
+					}
+				]
+			},
 			"Tag": {
 				"description": "A file tag",
 				"allOf": [
