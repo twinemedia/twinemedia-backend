@@ -214,6 +214,64 @@
 					}
 				}
 			},
+			"AccountDto": {
+				"description": "An account",
+				"allOf": [
+					{
+						"type": "object",
+						"required": [
+							"email",
+							"name",
+							"permissions",
+							"isAdmin",
+							"defaultSource",
+							"fileCount"
+						],
+						"properties": {
+							"email": {
+								"type": "string",
+								"maxLength": 64,
+								"description": "The account's email address"
+							},
+							"name": {
+								"type": "string",
+								"maxLength": 64,
+								"description": "The account's name"
+							},
+							"permissions": {
+								"type": "array",
+								"items": {
+									"type": "string",
+									"maxLength": 256
+								},
+								"description": "The account's permissions. If the \"isAdmin\" field is true, it overrides all permissions in this field."
+							},
+							"isAdmin": {
+								"type": "boolean",
+								"description": "Whether the account is an administrator. Administrators have all permissions. If this field is true, the \"permissions\" field is overridden."
+							},
+							"defaultSource": {
+								"type": "object",
+								"allOf": [
+									{
+										"$ref": "#/components/schemas/RecordSource"
+									}
+								],
+								"nullable": true,
+								"description": "The account's default source. Will be null if the account has no default source."
+							},
+							"fileCount": {
+								"type": "number",
+								"minimum": 0,
+								"description": "The number of files the account is marked as the creator of."
+							}
+						}
+					},
+					{
+						"$ref": "#/components/schemas/StandardRecord"
+					}
+				]
+			},
 			"Tag": {
 				"description": "A file tag",
 				"allOf": [
