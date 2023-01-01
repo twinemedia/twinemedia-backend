@@ -427,16 +427,16 @@
 							"name": {
 								"type": "string",
 								"maxLength": 256,
-								"description": "The preset name name"
+								"description": "The process preset name"
 							},
 							"mime": {
 								"type": "string",
 								"maxLength": 129,
-								"description": "The MIME type (supports asterisk wildcards) that the preset applies to"
+								"description": "The MIME type (supports asterisk wildcards) that the process preset applies to"
 							},
 							"settings": {
 								"type": "object",
-								"description": "The preset's settings"
+								"description": "The process preset's settings"
 							}
 						}
 					},
@@ -449,7 +449,51 @@
 				]
 			},
 			"Source": {
-				"description": "A file source"
+				"description": "A file source",
+				"allOf": [
+					{
+						"type": "object",
+						"required": [
+							"type",
+							"name",
+							"isGlobal",
+							"config",
+							"fileCount"
+						],
+						"properties": {
+							"type": {
+								"type": "string",
+								"maxLength": 256,
+								"description": "The file source's creator. Will be null if the account no longer exists."
+							},
+							"name": {
+								"type": "string",
+								"maxLength": 256,
+								"description": "The file source's name"
+							},
+							"isGlobal": {
+								"type": "boolean",
+								"description": "Whether the file source is available to be used by all accounts"
+							},
+							"config": {
+								"type": "object",
+								"nullable": true,
+								"description": "The file source's config. Will be null if it was not included in the response."
+							},
+							"fileCount": {
+								"type": "integer",
+								"format": "int32",
+								"description": "The number of files associated with the file source"
+							}
+						}
+					},
+					{
+						"$ref": "#/components/schemas/StandardRecord"
+					},
+					{
+						"$ref": "#/components/schemas/RecordWithNullableCreator"
+					}
+				]
 			},
 			"Tag": {
 				"description": "A file tag",
