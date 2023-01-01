@@ -54,21 +54,17 @@ class SourceDto(
 	override val createdTs: OffsetDateTime,
 	override val modifiedTs: OffsetDateTime
 ): JsonSerializable(), StandardRow {
-	override fun toJson(): JsonObject {
-		val json = jsonObjectOf(
-			"id" to id,
-			"type" to type,
-			"name" to name,
-			"creator" to creator?.toJson(),
-			"isGlobal" to isGlobal,
-			"config" to config,
-			"fileCount" to fileCount,
-			"createdTs" to createdTs.toString(),
-			"modifiedTs" to modifiedTs.toString(),
-		)
-
-		return json
-	}
+	override fun toJson() = jsonObjectOf(
+		"id" to id,
+		"type" to type,
+		"name" to name,
+		"creator" to creator?.toJson(),
+		"isGlobal" to isGlobal,
+		"config" to config,
+		"fileCount" to fileCount,
+		"createdTs" to createdTs.toString(),
+		"modifiedTs" to modifiedTs.toString(),
+	)
 
 	companion object {
 		/**
