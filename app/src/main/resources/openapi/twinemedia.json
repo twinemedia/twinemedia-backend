@@ -3,6 +3,7 @@
 	"info": {
 		"version": "2.0.0",
 		"title": "TwineMedia",
+		"description": "The full REST API definition for TwineMedia. Functionality relating to websocket is not included here.",
 		"license": {
 			"name": "GPLv3"
 		}
