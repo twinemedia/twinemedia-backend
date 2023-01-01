@@ -6,13 +6,13 @@ package net.termer.twinemedia.enumeration
  */
 enum class ListType {
 	/**
-	 * A standard list that's manually populated
+	 * A standard list that is manually populated
 	 * @since 1.4.0
 	 */
 	STANDARD,
 
 	/**
-	 * A list that's automatically populated based on criteria such as media tags, upload time, etc
+	 * A list that is automatically populated based on criteria such as file tags, upload time, etc
 	 * @since 1.4.0
 	 */
 	AUTOMATICALLY_POPULATED
