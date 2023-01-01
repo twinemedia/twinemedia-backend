@@ -11,7 +11,8 @@ sealed interface Option<T>
  * Implementation of [Option] that contains a value
  * @since 2.0.0
  */
-data class Some<T>(
+@JvmInline
+value class Some<T>(
 	/**
 	 * The value
 	 * @since 2.0.0
@@ -31,11 +32,11 @@ class None<T>: Option<T>
  * @return The [Some] instance
  * @since 2.0.0
  */
-fun <T> some(value: T) = Some(value)
+inline fun <T> some(value: T) = Some(value)
 
 /**
  * Creates a [None] instance
  * @return The [None] instance
  * @since 2.0.0
  */
-fun <T> none() = None<T>()
+inline fun <T> none() = None<T>()
