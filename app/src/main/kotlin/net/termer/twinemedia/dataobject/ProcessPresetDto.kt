@@ -33,12 +33,6 @@ class ProcessPresetDto(
 	val settings: JsonObject,
 
 	/**
-	 * The preset's output file extension
-	 * @since 2.0.0
-	 */
-	val extension: String,
-
-	/**
 	 * The preset's creator
 	 * @since 2.0.0
 	 */
@@ -68,7 +62,6 @@ class ProcessPresetDto(
 			name = row.getString("preset_name"),
 			mime = row.getString("preset_mime"),
 			settings = row.getJsonObject("preset_settings"),
-			extension = row.getString("preset_extension"),
 			creator = RecordCreatorDto(
 				id = row.getString("preset_creator_id"),
 				name = row.getString("preset_creator_name")
