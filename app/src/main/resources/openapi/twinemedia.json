@@ -425,6 +425,41 @@
 					}
 				]
 			},
+			"ProcessPreset": {
+				"description": "A file process preset",
+				"allOf": [
+					{
+						"type": "object",
+						"required": [
+							"name",
+							"mime",
+							"settings"
+						],
+						"properties": {
+							"name": {
+								"type": "string",
+								"maxLength": 256,
+								"description": "The preset name name"
+							},
+							"mime": {
+								"type": "string",
+								"maxLength": 129,
+								"description": "The MIME type (supports asterisk wildcards) that the preset applies to"
+							},
+							"settings": {
+								"type": "object",
+								"description": "The preset's settings"
+							}
+						}
+					},
+					{
+						"$ref": "#/components/schemas/StandardRecord"
+					},
+					{
+						"$ref": "#/components/schemas/RecordWithCreator"
+					}
+				]
+			},
 			"Tag": {
 				"description": "A file tag",
 				"allOf": [
