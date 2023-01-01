@@ -607,4 +607,3 @@ class AccountsModel(context: Context?, ignoreContext: Boolean): Model(context, i
 		deleteMany(filters, 1)
 	}
 }
-
