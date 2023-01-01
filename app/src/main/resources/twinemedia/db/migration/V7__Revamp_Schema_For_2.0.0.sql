@@ -391,6 +391,8 @@ alter table process_presets
 alter table process_presets
     rename column process_mime to preset_mime;
 alter table process_presets
+    alter column preset_mime type varchar(129) using preset_mime::varchar(129);
+alter table process_presets
     rename column process_settings to preset_settings;
 alter table process_presets
     rename column process_creator to preset_creator;
