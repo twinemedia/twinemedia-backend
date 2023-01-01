@@ -261,7 +261,8 @@
 								"description": "The account's default source. Will be null if the account has no default source."
 							},
 							"fileCount": {
-								"type": "number",
+								"type": "integer",
+								"format": "int32",
 								"minimum": 0,
 								"description": "The number of files the account is marked as the creator of."
 							}
@@ -303,6 +304,124 @@
 					},
 					{
 						"$ref": "#/components/schemas/RecordWithCreator"
+					}
+				]
+			},
+			"List": {
+				"description": "A file list",
+				"allOf": [
+					{
+						"type": "object",
+						"required": [
+							"name",
+							"description",
+							"type",
+							"visibility",
+							"sourceTags",
+							"sourceExcludeTags",
+							"sourceCreatedBefore",
+							"sourceCreatedAfter",
+							"showAllUserFiles",
+							"sourceMime",
+							"itemCount",
+							"containsFile"
+						],
+						"properties": {
+							"name": {
+								"type": "string",
+								"maxLength": 256,
+								"description": "The list name"
+							},
+							"description": {
+								"type": "string",
+								"maxLength": 1024,
+								"description": "The list description"
+							},
+							"type": {
+								"type": "string",
+								"enum": [
+									{
+										"value": "STANDARD",
+										"description": "A standard list that is manually populated"
+									},
+									{
+										"value": "AUTOMATICALLY_POPULATED",
+										"description": "A list that is automatically populated based on criteria such as file tags, upload time, etc"
+									}
+								],
+								"description": "The list type"
+							},
+							"visibility": {
+								"type": "string",
+								"enum": [
+									{
+										"value": "PRIVATE",
+										"description": "A private list that can only be viewed by users who created the list and have lists.view OR have lists.view.all permissions"
+									},
+									{
+										"value": "PUBLIC",
+										"description": "A public list that can be viewed by all users AND non-users alike"
+									}
+								],
+								"description": "The list visibility"
+							},
+							"sourceTags": {
+								"type": "array",
+								"items": {
+									"type": "string"
+								},
+								"nullable": true,
+								"description": "The tags that files must have to be in this list. Only applies to lists with type AUTOMATICALLY_POPULATED, will be null for other types."
+							},
+							"sourceExcludeTags": {
+								"type": "array",
+								"items": {
+									"type": "string"
+								},
+								"nullable": true,
+								"description": "The tags that files must NOT have to be in this list. Only applies to lists with type AUTOMATICALLY_POPULATED, will be null for other types."
+							},
+							"sourceMime": {
+								"type": "string",
+								"maxLength": 129,
+								"nullable": true,
+								"description": "The MIME type files must have to be in this list. Only applies to lists with type AUTOMATICALLY_POPULATED, will be null for other types."
+							},
+							"sourceCreatedBefore": {
+								"type": "string",
+								"format": "date-time",
+								"nullable": true,
+								"description": "The time files must have been uploaded before to be in this list. Only applies to lists with type AUTOMATICALLY_POPULATED, will be null for other types."
+							},
+							"sourceCreatedAfter": {
+								"type": "string",
+								"format": "date-time",
+								"nullable": true,
+								"description": "The time files must have been uploaded after to be in this list. Only applies to lists with type AUTOMATICALLY_POPULATED, will be null for other types."
+							},
+							"showAllAccountFiles": {
+								"type": "boolean",
+								"nullable": true,
+								"description": "Whether files by all accounts should be shown in list, not just by the list creator. Only applies to lists with type AUTOMATICALLY_POPULATED, will be null for other types."
+							},
+							"itemCount": {
+								"type": "integer",
+								"format": "int32",
+								"nullable": true,
+								"description": "The number of items in the list. Only applies to lists with type STANDARD, otherwise it will be null."
+							},
+							"containsFile": {
+								"type": "boolean",
+								"nullable": true,
+								"description": "Whether this list contains the file that was specified in the request. Will be null if none was specified."
+							}
+						}
+					},
+					{
+						"$ref": "#/components/schemas/StandardRecord"
+					},
+					{
+						"$ref": "#/components/schemas/RecordWithNullableCreator"
 					}
 				]
 			},
