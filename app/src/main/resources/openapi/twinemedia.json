@@ -17,10 +17,8 @@
 		"/auth": {
 			"post": {
 				"summary": "Authenticates with email and passwords and returns a new authorization token",
-				"operationId": "auth",
-				"tags": [
-					"auth"
-				],
+				"operationId": "postAuth",
+				"tags": ["auth"],
 				"requestBody": {
 					"required": true,
 					"content": {
@@ -146,52 +144,52 @@
 					}
 				}
 			},
-			"RecordCreator": {
+			"RecordOwner": {
 				"type": "object",
-				"description": "A record's creator account",
+				"description": "A record's owner account",
 				"required": ["id", "name"],
 				"properties": {
 					"id": {
 						"type": "string",
-						"description": "The creator account's ID",
+						"description": "The owner account's ID",
 						"minLength": 10,
 						"maxLength": 10
 					},
 					"name": {
 						"type": "string",
-						"description": "The creator account's name",
+						"description": "The owner account's name",
 						"maxLength": 64
 					}
 				}
 			},
-			"RecordWithNullableCreator": {
+			"RecordWithNullableOwner": {
 				"type": "object",
-				"description": "A record with a nullable creator field",
-				"required": ["creator"],
+				"description": "A record with a nullable owner field",
+				"required": ["owner"],
 				"properties": {
-					"creator": {
+					"owner": {
 						"allOf": [
 							{
-								"$ref": "#/components/schemas/RecordCreator"
+								"$ref": "#/components/schemas/RecordOwner"
 							}
 						],
 						"nullable": true,
-						"description": "The record's creator. Will be null if the creator's account no longer exists."
+						"description": "The record's owner. Will be null if the owner's account no longer exists."
 					}
 				}
 			},
-			"RecordWithCreator": {
+			"RecordWithOwner": {
 				"type": "object",
-				"description": "A record with a creator field. This should only be used for records that will never have a null creator field.",
-				"required": ["creator"],
+				"description": "A record with a owner field. This should only be used for records that will never have a null owner field.",
+				"required": ["owner"],
 				"properties": {
-					"creator": {
+					"owner": {
 						"allOf": [
 							{
-								"$ref": "#/components/schemas/RecordCreator"
+								"$ref": "#/components/schemas/RecordOwner"
 							}
 						],
-						"description": "The record's creator. Will be null if the creator's account no longer exists."
+						"description": "The record's owner. Will be null if the owner's account no longer exists."
 					}
 				}
 			},
@@ -267,7 +265,7 @@
 								"type": "integer",
 								"format": "int32",
 								"minimum": 0,
-								"description": "The number of files the account is marked as the creator of."
+								"description": "The number of files the account is marked as the owner of."
 							}
 						}
 					},
@@ -294,7 +292,7 @@
 									"type": "string",
 									"maxLength": 256
 								},
-								"description": "The permissions granted to the caller using the key. The permissions in this field are a subset of the creator's permissions. If this field contains permissions that the creator does not have, they are invalid and will not be granted."
+								"description": "The permissions granted to the caller using the key. The permissions in this field are a subset of the owner's permissions. If this field contains permissions that the owner does not have, they are invalid and will not be granted."
 							},
 							"jwt": {
 								"type": "string",
@@ -306,7 +304,7 @@
 						"$ref": "#/components/schemas/StandardRecord"
 					},
 					{
-						"$ref": "#/components/schemas/RecordWithCreator"
+						"$ref": "#/components/schemas/RecordWithOwner"
 					}
 				]
 			},
@@ -393,7 +391,7 @@
 							"showAllAccountFiles": {
 								"type": "boolean",
 								"nullable": true,
-								"description": "Whether files by all accounts should be shown in list, not just by the list creator. Only applies to lists with type AUTOMATICALLY_POPULATED, will be null for other types."
+								"description": "Whether files by all accounts should be shown in list, not just by the list owner. Only applies to lists with type AUTOMATICALLY_POPULATED, will be null for other types."
 							},
 							"itemCount": {
 								"type": "integer",
@@ -412,7 +410,7 @@
 						"$ref": "#/components/schemas/StandardRecord"
 					},
 					{
-						"$ref": "#/components/schemas/RecordWithNullableCreator"
+						"$ref": "#/components/schemas/RecordWithNullableOwner"
 					}
 				]
 			},
@@ -447,7 +445,7 @@
 						"$ref": "#/components/schemas/StandardRecord"
 					},
 					{
-						"$ref": "#/components/schemas/RecordWithCreator"
+						"$ref": "#/components/schemas/RecordWithOwner"
 					}
 				]
 			},
@@ -467,7 +465,7 @@
 							"type": {
 								"type": "string",
 								"maxLength": 256,
-								"description": "The file source's creator. Will be null if the account no longer exists."
+								"description": "The file source's owner. Will be null if the account no longer exists."
 							},
 							"name": {
 								"type": "string",
@@ -494,7 +492,7 @@
 						"$ref": "#/components/schemas/StandardRecord"
 					},
 					{
-						"$ref": "#/components/schemas/RecordWithNullableCreator"
+						"$ref": "#/components/schemas/RecordWithNullableOwner"
 					}
 				]
 			},
@@ -531,7 +529,7 @@
 						"$ref": "#/components/schemas/StandardRecord"
 					},
 					{
-						"$ref": "#/components/schemas/RecordWithNullableCreator"
+						"$ref": "#/components/schemas/RecordWithNullableOwner"
 					}
 				]
 			},
@@ -661,7 +659,7 @@
 						"$ref": "#/components/schemas/StandardRecord"
 					},
 					{
-						"$ref": "#/components/schemas/RecordWithNullableCreator"
+						"$ref": "#/components/schemas/RecordWithNullableOwner"
 					}
 				]
 			}
