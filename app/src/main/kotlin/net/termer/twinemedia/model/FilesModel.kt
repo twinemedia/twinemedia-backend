@@ -1,5 +1,3 @@
-@file:Suppress("DEPRECATION")
-
 package net.termer.twinemedia.model
 
 import io.vertx.core.http.HttpServerRequest
@@ -10,10 +8,10 @@ import net.termer.twinemedia.model.pagination.FilePagination
 import net.termer.twinemedia.model.pagination.RowPagination
 import net.termer.twinemedia.util.*
 import net.termer.twinemedia.util.db.*
-import org.jooq.ConditionProvider
 import org.jooq.Query
 import org.jooq.UpdateQuery
 import net.termer.twinemedia.util.db.Database.Sql
+import org.jooq.Condition
 import org.jooq.SelectQuery
 import org.jooq.impl.DSL.*
 import java.time.OffsetDateTime
@@ -158,25 +156,25 @@ class FilesModel(context: Context?, ignoreContext: Boolean): Model(context, igno
 		 */
 		var querySearchDescription: Boolean = true
 	): StandardFilters("files", "file") {
-		override fun applyTo(query: ConditionProvider) {
-			applyStandardFiltersTo(query)
+		override fun genConditions(): MutableList<Condition> {
+			val res = genStandardConditions()
 
 			val prefix = "$table.$colPrefix"
 
 			if(whereCreatorInternalIdIs is Some)
-				query.addConditions(field("${prefix}_creator").eq((whereCreatorInternalIdIs as Some).value))
+				res.add(field("${prefix}_creator").eq((whereCreatorInternalIdIs as Some).value))
 			if(whereMimeIsLike is Some)
-				query.addConditions(field("${prefix}_mime").like((whereMimeIsLike as Some).value))
+				res.add(field("${prefix}_mime").like((whereMimeIsLike as Some).value))
 			if(whereTagCountLessThan is Some)
-				query.addConditions(field("${prefix}_tag_count").lt((whereTagCountLessThan as Some).value))
+				res.add(field("${prefix}_tag_count").lt((whereTagCountLessThan as Some).value))
 			if(whereTagCountMoreThan is Some)
-				query.addConditions(field("${prefix}_tag_count").gt((whereTagCountMoreThan as Some).value))
+				res.add(field("${prefix}_tag_count").gt((whereTagCountMoreThan as Some).value))
 			if(whereChildCountLessThan is Some)
-				query.addConditions(field("${prefix}_child_count").lt((whereChildCountLessThan as Some).value))
+				res.add(field("${prefix}_child_count").lt((whereChildCountLessThan as Some).value))
 			if(whereChildCountMoreThan is Some)
-				query.addConditions(field("${prefix}_child_count").gt((whereChildCountMoreThan as Some).value))
+				res.add(field("${prefix}_child_count").gt((whereChildCountMoreThan as Some).value))
 			if(whereMatchesQuery is Some) {
-				query.addFulltextSearchCondition(
+				res.addAll(genFulltextSearchConditions(
 					(whereMatchesQuery as Some).value,
 					ArrayList<String>().apply {
 						if(querySearchTitle)
@@ -186,8 +184,10 @@ class FilesModel(context: Context?, ignoreContext: Boolean): Model(context, igno
 						if(querySearchDescription)
 							add("${prefix}_description")
 					}
-				)
+				))
 			}
+
+			return res
 		}
 
 		override fun setWithRequest(req: HttpServerRequest) {
@@ -296,12 +296,12 @@ class FilesModel(context: Context?, ignoreContext: Boolean): Model(context, igno
 	}
 
 	/**
-	 * Applies context filters on a query
-	 * @param query The query to apply the filters on
+	 * Generates context filter conditions
 	 * @param type The context filter type
+	 * @return The conditions
 	 */
-	private fun applyContextFilters(query: ConditionProvider, type: ContextFilterType) {
-		applyGenericPermissionCreatorContextFilter(query, type, "files", "files.file_creator", context?.account?.excludeOtherLists)
+	private fun genContextFilterConditions(type: ContextFilterType): MutableList<Condition> {
+		return genGenericPermissionCreatorContextConditions(type, "files", "files.file_creator", context?.account?.excludeOtherLists)
 	}
 
 	/**
@@ -441,8 +441,8 @@ class FilesModel(context: Context?, ignoreContext: Boolean): Model(context, igno
 	): List<FileDto> {
 		val query = infoQuery(includeDescription, includeMeta)
 
-		applyContextFilters(query, ContextFilterType.LIST)
-		filters.applyTo(query)
+		query.addConditions(genContextFilterConditions(ContextFilterType.LIST))
+		query.addConditions(filters.genConditions())
 		query.orderBy(order, orderDesc)
 		query.addLimit(limit)
 
@@ -471,8 +471,8 @@ class FilesModel(context: Context?, ignoreContext: Boolean): Model(context, igno
 	): RowPagination.Results<FileDto, SortOrder, TColType> {
 		val query = infoQuery(includeDescription, includeMeta)
 
-		applyContextFilters(query, ContextFilterType.LIST)
-		filters.applyTo(query)
+		query.addConditions(genContextFilterConditions(ContextFilterType.LIST))
+		query.addConditions(filters.genConditions())
 
 		// TODO Fetch tags
 
@@ -495,8 +495,8 @@ class FilesModel(context: Context?, ignoreContext: Boolean): Model(context, igno
 	): FileDto? {
 		val query = infoQuery(includeDescription, includeMeta)
 
-		applyContextFilters(query, ContextFilterType.VIEW)
-		filters.applyTo(query)
+		query.addConditions(genContextFilterConditions(ContextFilterType.VIEW))
+		query.addConditions(filters.genConditions())
 		query.addLimit(1)
 
 		val row = query.fetchOneAwait()
@@ -530,8 +530,8 @@ class FilesModel(context: Context?, ignoreContext: Boolean): Model(context, igno
 				.from(table("files"))
 				.query
 
-		applyContextFilters(query, ContextFilterType.LIST)
-		filters.applyTo(query)
+		query.addConditions(genContextFilterConditions(ContextFilterType.LIST))
+		query.addConditions(filters.genConditions())
 		query.orderBy(order, orderDesc)
 		query.addLimit(limit)
 
@@ -551,8 +551,8 @@ class FilesModel(context: Context?, ignoreContext: Boolean): Model(context, igno
 				.from(table("files"))
 				.query
 
-		applyContextFilters(query, ContextFilterType.VIEW)
-		filters.applyTo(query)
+		query.addConditions(genContextFilterConditions(ContextFilterType.VIEW))
+		query.addConditions(filters.genConditions())
 		query.addLimit(1)
 
 		val row = query.fetchOneAwait()
@@ -575,8 +575,8 @@ class FilesModel(context: Context?, ignoreContext: Boolean): Model(context, igno
 				.from("files")
 				.query
 
-		applyContextFilters(query, ContextFilterType.LIST)
-		filters.applyTo(query)
+		query.addConditions(genContextFilterConditions(ContextFilterType.LIST))
+		query.addConditions(filters.genConditions())
 
 		return query.fetchOneAwait()!!.getInteger("count")
 	}
@@ -592,8 +592,8 @@ class FilesModel(context: Context?, ignoreContext: Boolean): Model(context, igno
 	suspend fun updateMany(values: UpdateValues, filters: Filters, limit: Int?  = null, updateModifiedTs: Boolean = true) {
 		val query = Sql.updateQuery(table("files"))
 
-		applyContextFilters(query, ContextFilterType.UPDATE)
-		filters.applyTo(query)
+		query.addConditions(genContextFilterConditions(ContextFilterType.UPDATE))
+		query.addConditions(filters.genConditions())
 		if(limit != null)
 			query.addLimit(limit)
 
@@ -625,8 +625,8 @@ class FilesModel(context: Context?, ignoreContext: Boolean): Model(context, igno
 	suspend fun deleteMany(filters: Filters, limit: Int? = null) {
 		val query = Sql.deleteQuery(table("files"))
 
-		applyContextFilters(query, ContextFilterType.DELETE)
-		filters.applyTo(query)
+		query.addConditions(genContextFilterConditions(ContextFilterType.DELETE))
+		query.addConditions(filters.genConditions())
 		if(limit != null)
 			query.addLimit(limit)
 

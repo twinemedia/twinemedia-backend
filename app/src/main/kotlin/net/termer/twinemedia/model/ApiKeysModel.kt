@@ -1,5 +1,3 @@
-@file:Suppress("DEPRECATION")
-
 package net.termer.twinemedia.model
 
 import io.vertx.core.http.HttpServerRequest
@@ -9,10 +7,10 @@ import net.termer.twinemedia.model.pagination.ApiKeyPagination
 import net.termer.twinemedia.model.pagination.RowPagination
 import net.termer.twinemedia.util.*
 import net.termer.twinemedia.util.db.*
-import org.jooq.ConditionProvider
 import org.jooq.Query
 import org.jooq.UpdateQuery
 import net.termer.twinemedia.util.db.Database.Sql
+import org.jooq.Condition
 import org.jooq.impl.DSL.*
 import java.time.OffsetDateTime
 
@@ -85,22 +83,24 @@ class ApiKeysModel(context: Context?, ignoreContext: Boolean): Model(context, ig
 		 */
 		var querySearchName: Boolean = true
 	): StandardFilters("api_keys", "key") {
-		override fun applyTo(query: ConditionProvider) {
-			applyStandardFiltersTo(query)
+		override fun genConditions(): MutableList<Condition> {
+			val res = genStandardConditions()
 
 			val prefix = "$table.$colPrefix"
 
 			if(whereCreatorInternalIdIs is Some)
-				query.addConditions(field("${prefix}_creator").eq((whereCreatorInternalIdIs as Some).value))
+				res.add(field("${prefix}_creator").eq((whereCreatorInternalIdIs as Some).value))
 			if(whereMatchesQuery is Some) {
-				query.addFulltextSearchCondition(
+				res.addAll(genFulltextSearchConditions(
 					(whereMatchesQuery as Some).value,
 					ArrayList<String>().apply {
 						if(querySearchName)
 							add("${prefix}_name")
 					}
-				)
+				))
 			}
+
+			return res
 		}
 
 		override fun setWithRequest(req: HttpServerRequest) {
@@ -172,14 +172,16 @@ class ApiKeysModel(context: Context?, ignoreContext: Boolean): Model(context, ig
 	}
 
 	/**
-	 * Applies context filters on a query
-	 * @param query The query to apply the filters on
+	 * Generates context filter conditions
 	 * @param type The context filter type
+	 * @return The conditions
 	 */
-	private fun applyContextFilters(query: ConditionProvider, type: ContextFilterType) {
+	private fun genContextFilterConditions(type: ContextFilterType): MutableList<Condition> {
 		// No filters to apply
 		// Higher level permission checks on controllers restrict access to API key data
 		// Generally, API keys are only shown for the user's account
+
+		return ArrayList(0)
 	}
 
 	/**
@@ -252,8 +254,8 @@ class ApiKeysModel(context: Context?, ignoreContext: Boolean): Model(context, ig
 	): List<ApiKeyDto> {
 		val query = infoQuery()
 
-		applyContextFilters(query, ContextFilterType.LIST)
-		filters.applyTo(query)
+		query.addConditions(genContextFilterConditions(ContextFilterType.LIST))
+		query.addConditions(filters.genConditions())
 		query.orderBy(order, orderDesc)
 		query.addLimit(limit)
 
@@ -276,8 +278,8 @@ class ApiKeysModel(context: Context?, ignoreContext: Boolean): Model(context, ig
 	): RowPagination.Results<ApiKeyDto, SortOrder, TColType> {
 		val query = infoQuery()
 
-		applyContextFilters(query, ContextFilterType.LIST)
-		filters.applyTo(query)
+		query.addConditions(genContextFilterConditions(ContextFilterType.LIST))
+		query.addConditions(filters.genConditions())
 
 		return query.fetchPaginatedAsync(pagination, limit) { ApiKeyDto.fromRow(it) }
 	}
@@ -292,8 +294,8 @@ class ApiKeysModel(context: Context?, ignoreContext: Boolean): Model(context, ig
 	suspend fun fetchOneDto(filters: Filters = Filters()): ApiKeyDto? {
 		val query = infoQuery()
 
-		applyContextFilters(query, ContextFilterType.VIEW)
-		filters.applyTo(query)
+		query.addConditions(genContextFilterConditions(ContextFilterType.VIEW))
+		query.addConditions(filters.genConditions())
 		query.addLimit(1)
 
 		val row = query.fetchOneAwait()
@@ -325,8 +327,8 @@ class ApiKeysModel(context: Context?, ignoreContext: Boolean): Model(context, ig
 				.from(table("api_keys"))
 				.query
 
-		applyContextFilters(query, ContextFilterType.LIST)
-		filters.applyTo(query)
+		query.addConditions(genContextFilterConditions(ContextFilterType.LIST))
+		query.addConditions(filters.genConditions())
 		query.orderBy(order, orderDesc)
 		query.addLimit(limit)
 
@@ -346,8 +348,8 @@ class ApiKeysModel(context: Context?, ignoreContext: Boolean): Model(context, ig
 				.from(table("api_keys"))
 				.query
 
-		applyContextFilters(query, ContextFilterType.VIEW)
-		filters.applyTo(query)
+		query.addConditions(genContextFilterConditions(ContextFilterType.VIEW))
+		query.addConditions(filters.genConditions())
 		query.addLimit(1)
 
 		val row = query.fetchOneAwait()
@@ -370,8 +372,8 @@ class ApiKeysModel(context: Context?, ignoreContext: Boolean): Model(context, ig
 				.from("api_keys")
 				.query
 
-		applyContextFilters(query, ContextFilterType.LIST)
-		filters.applyTo(query)
+		query.addConditions(genContextFilterConditions(ContextFilterType.LIST))
+		query.addConditions(filters.genConditions())
 
 		return query.fetchOneAwait()!!.getInteger("count")
 	}
@@ -387,8 +389,8 @@ class ApiKeysModel(context: Context?, ignoreContext: Boolean): Model(context, ig
 	suspend fun updateMany(values: UpdateValues, filters: Filters, limit: Int?  = null, updateModifiedTs: Boolean = true) {
 		val query = Sql.updateQuery(table("api_keys"))
 
-		applyContextFilters(query, ContextFilterType.UPDATE)
-		filters.applyTo(query)
+		query.addConditions(genContextFilterConditions(ContextFilterType.UPDATE))
+		query.addConditions(filters.genConditions())
 		if(limit != null)
 			query.addLimit(limit)
 
@@ -420,8 +422,8 @@ class ApiKeysModel(context: Context?, ignoreContext: Boolean): Model(context, ig
 	suspend fun deleteMany(filters: Filters, limit: Int? = null) {
 		val query = Sql.deleteQuery(table("api_keys"))
 
-		applyContextFilters(query, ContextFilterType.DELETE)
-		filters.applyTo(query)
+		query.addConditions(genContextFilterConditions(ContextFilterType.DELETE))
+		query.addConditions(filters.genConditions())
 		if(limit != null)
 			query.addLimit(limit)
 

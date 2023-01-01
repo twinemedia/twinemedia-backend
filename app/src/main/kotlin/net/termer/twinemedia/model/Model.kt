@@ -1,5 +1,3 @@
-@file:Suppress("DEPRECATION")
-
 package net.termer.twinemedia.model
 
 import io.vertx.core.http.HttpServerRequest
@@ -8,7 +6,7 @@ import net.termer.twinemedia.dataobject.StandardRow
 import net.termer.twinemedia.util.Option
 import net.termer.twinemedia.util.Some
 import net.termer.twinemedia.util.dateStringToOffsetDateTimeOrNone
-import org.jooq.ConditionProvider
+import org.jooq.Condition
 import org.jooq.UpdateQuery
 import org.jooq.impl.DSL.falseCondition
 import org.jooq.impl.DSL.field
@@ -48,7 +46,7 @@ abstract class Model(
 	 * Includes filters and related values.
 	 * Filters should have default values where applicable.
 	 * Values should generally be instances of [Option], do not use null to signify that a value should not be used for filtering.
-	 * Using [applyTo] should never modify the instance, and it should be reusable across queries.
+	 * Using [genConditions] should never modify the instance, and it should be reusable across queries.
 	 * @since 2.0.0
 	 */
 	abstract class Filters(
@@ -63,12 +61,11 @@ abstract class Model(
 		protected val colPrefix: String
 	) {
 		/**
-		 * Applies the filters on the provided query.
-		 * The query must implement [ConditionProvider].
-		 * @param query The query to apply filters on
+		 * Generates jOOQ conditions for this model's filters
+		 * @return The conditions
 		 * @since 2.0.0
 		 */
-		abstract fun applyTo(query: ConditionProvider)
+		abstract fun genConditions(): MutableList<Condition>
 
 		/**
 		 * Changes the instance's filters based on the provided [HttpServerRequest].
@@ -129,24 +126,28 @@ abstract class Model(
 		abstract var whereModifiedAfter: Option<OffsetDateTime>
 
 		/**
-		 * Applies standard filters on a query.
-		 * This should be called in the beginning of the [applyTo] implementation.
+		 * Generates standard filter conditions for a query.
+		 * This should be used in the beginning of the [genConditions] implementation.
 		 */
-		protected fun applyStandardFiltersTo(query: ConditionProvider) {
+		protected fun genStandardConditions(): MutableList<Condition> {
 			val prefix = "$table.$colPrefix"
 
+			val res = ArrayList<Condition>()
+
 			if(whereInternalIdIs is Some)
-				query.addConditions(field("$table.id").eq((whereInternalIdIs as Some).value))
+				res.add(field("$table.id").eq((whereInternalIdIs as Some).value))
 			if(whereIdIs is Some)
-				query.addConditions(field("${prefix}_id").eq((whereIdIs as Some).value))
+				res.add(field("${prefix}_id").eq((whereIdIs as Some).value))
 			if(whereCreatedBefore is Some)
-				query.addConditions(field("${prefix}_created_ts").lt((whereCreatedBefore as Some).value))
+				res.add(field("${prefix}_created_ts").lt((whereCreatedBefore as Some).value))
 			if(whereCreatedAfter is Some)
-				query.addConditions(field("${prefix}_created_ts").gt((whereCreatedAfter as Some).value))
+				res.add(field("${prefix}_created_ts").gt((whereCreatedAfter as Some).value))
 			if(whereModifiedBefore is Some)
-				query.addConditions(field("${prefix}_modified_ts").lt((whereModifiedBefore as Some).value))
+				res.add(field("${prefix}_modified_ts").lt((whereModifiedBefore as Some).value))
 			if(whereModifiedAfter is Some)
-				query.addConditions(field("${prefix}_modified_ts").gt((whereModifiedAfter as Some).value))
+				res.add(field("${prefix}_modified_ts").gt((whereModifiedAfter as Some).value))
+
+			return res
 		}
 
 		/**
@@ -224,39 +225,39 @@ abstract class Model(
 	}
 
 	/**
-	 * Applies a generic permission and row creator-based context filter on a query.
+	 * Generates generic permission and row creator-based context filter conditions.
 	 * Evaluates whether a user can access rows based on whether the context account is the creator of the row, or the context account has the "all" variant of the specified permission.
 	 * Permissions use the standard <data>.<verb>(.all) format.
 	 * The verb is selected based on [type] according to standard permission verbs ("view", "list", "edit" and "delete").
 	 * If [context] is null, a false condition is applied to the query.
 	 * If [ignoreContext] is true, no conditions are added, and the query is left unmodified.
-	 * @param query The query to apply the filter to
 	 * @param type The context filter type
 	 * @param permissionPrefix The prefix of the permission to check, usually the resource that is being filtered (e.g. "files")
 	 * @param creatorField The row field that contains the row creator
 	 * @param ignoreAllPermission Whether to ignore that the context account has the "all" variant of a permission, and only show the account's files (typically you would use an account's exclude preference to fill this value)
 	 * @since 2.0.0
 	 */
-	protected fun applyGenericPermissionCreatorContextFilter(
-		query: ConditionProvider,
+	protected fun genGenericPermissionCreatorContextConditions(
 		type: ContextFilterType,
 		permissionPrefix: String,
 		creatorField: String,
 		ignoreAllPermission: Boolean?
-	) {
+	): MutableList<Condition> {
 		if(ignoreContext)
-			return
+			return ArrayList(0)
 
 		if(context == null) {
 			// If there is no context, do not show any rows
-			query.addConditions(falseCondition())
-			return
+			return arrayListOf(falseCondition())
 		}
 
 		val acc = context!!.account
 
 		// Add filter condition
 		if(ignoreAllPermission == true || !acc.hasPermission("$permissionPrefix.${type.toPermissionVerb()}.all"))
-			query.addConditions(field(creatorField).eq(acc.internalId))
+			return arrayListOf(field(creatorField).eq(acc.internalId))
+
+		// No conditions to return
+		return ArrayList(0)
 	}
 }

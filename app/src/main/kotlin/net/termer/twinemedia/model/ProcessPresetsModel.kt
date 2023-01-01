@@ -1,5 +1,3 @@
-@file:Suppress("DEPRECATION")
-
 package net.termer.twinemedia.model
 
 import io.vertx.core.http.HttpServerRequest
@@ -10,10 +8,10 @@ import net.termer.twinemedia.model.pagination.ProcessPresetPagination
 import net.termer.twinemedia.model.pagination.RowPagination
 import net.termer.twinemedia.util.*
 import net.termer.twinemedia.util.db.*
-import org.jooq.ConditionProvider
 import org.jooq.Query
 import org.jooq.UpdateQuery
 import net.termer.twinemedia.util.db.Database.Sql
+import org.jooq.Condition
 import org.jooq.impl.DSL.*
 import java.time.OffsetDateTime
 
@@ -99,24 +97,26 @@ class ProcessPresetsModel(context: Context?, ignoreContext: Boolean): Model(cont
 		 */
 		var querySearchName: Boolean = true
 	): StandardFilters("process_presets", "preset") {
-		override fun applyTo(query: ConditionProvider) {
-			applyStandardFiltersTo(query)
+		override fun genConditions(): MutableList<Condition> {
+			val res = genStandardConditions()
 
 			val prefix = "$table.$colPrefix"
 
 			if(whereCreatorInternalIdIs is Some)
-				query.addConditions(field("${prefix}_creator").eq((whereCreatorInternalIdIs as Some).value))
+				res.add(field("${prefix}_creator").eq((whereCreatorInternalIdIs as Some).value))
 			if(whereMimeIsLike is Some)
-				query.addConditions(field("${prefix}_mime").like((whereMimeIsLike as Some).value))
+				res.add(field("${prefix}_mime").like((whereMimeIsLike as Some).value))
 			if(whereMatchesQuery is Some) {
-				query.addFulltextSearchCondition(
+				res.addAll(genFulltextSearchConditions(
 					(whereMatchesQuery as Some).value,
 					ArrayList<String>().apply {
 						if(querySearchName)
 							add("${prefix}_name")
 					}
-				)
+				))
 			}
+
+			return res
 		}
 
 		override fun setWithRequest(req: HttpServerRequest) {
@@ -204,12 +204,12 @@ class ProcessPresetsModel(context: Context?, ignoreContext: Boolean): Model(cont
 	}
 
 	/**
-	 * Applies context filters on a query
-	 * @param query The query to apply the filters on
+	 * Generates context filter conditions
 	 * @param type The context filter type
+	 * @return The conditions
 	 */
-	private fun applyContextFilters(query: ConditionProvider, type: ContextFilterType) {
-		applyGenericPermissionCreatorContextFilter(query, type, "process_presets", "process_presets.preset_creator", context?.account?.excludeOtherProcessPresets)
+	private fun genContextFilterConditions(type: ContextFilterType): MutableList<Condition> {
+		return genGenericPermissionCreatorContextConditions(type, "process_presets", "process_presets.preset_creator", context?.account?.excludeOtherProcessPresets)
 	}
 
 	/**
@@ -289,8 +289,8 @@ class ProcessPresetsModel(context: Context?, ignoreContext: Boolean): Model(cont
 	): List<ProcessPresetDto> {
 		val query = infoQuery()
 
-		applyContextFilters(query, ContextFilterType.LIST)
-		filters.applyTo(query)
+		query.addConditions(genContextFilterConditions(ContextFilterType.LIST))
+		query.addConditions(filters.genConditions())
 		query.orderBy(order, orderDesc)
 		query.addLimit(limit)
 
@@ -313,8 +313,8 @@ class ProcessPresetsModel(context: Context?, ignoreContext: Boolean): Model(cont
 	): RowPagination.Results<ProcessPresetDto, SortOrder, TColType> {
 		val query = infoQuery()
 
-		applyContextFilters(query, ContextFilterType.LIST)
-		filters.applyTo(query)
+		query.addConditions(genContextFilterConditions(ContextFilterType.LIST))
+		query.addConditions(filters.genConditions())
 
 		return query.fetchPaginatedAsync(pagination, limit) { ProcessPresetDto.fromRow(it) }
 	}
@@ -329,8 +329,8 @@ class ProcessPresetsModel(context: Context?, ignoreContext: Boolean): Model(cont
 	suspend fun fetchOneDto(filters: Filters = Filters()): ProcessPresetDto? {
 		val query = infoQuery()
 
-		applyContextFilters(query, ContextFilterType.VIEW)
-		filters.applyTo(query)
+		query.addConditions(genContextFilterConditions(ContextFilterType.VIEW))
+		query.addConditions(filters.genConditions())
 		query.addLimit(1)
 
 		val row = query.fetchOneAwait()
@@ -362,8 +362,8 @@ class ProcessPresetsModel(context: Context?, ignoreContext: Boolean): Model(cont
 				.from(table("process_presets"))
 				.query
 
-		applyContextFilters(query, ContextFilterType.LIST)
-		filters.applyTo(query)
+		query.addConditions(genContextFilterConditions(ContextFilterType.LIST))
+		query.addConditions(filters.genConditions())
 		query.orderBy(order, orderDesc)
 		query.addLimit(limit)
 
@@ -383,8 +383,8 @@ class ProcessPresetsModel(context: Context?, ignoreContext: Boolean): Model(cont
 				.from(table("process_presets"))
 				.query
 
-		applyContextFilters(query, ContextFilterType.VIEW)
-		filters.applyTo(query)
+		query.addConditions(genContextFilterConditions(ContextFilterType.VIEW))
+		query.addConditions(filters.genConditions())
 		query.addLimit(1)
 
 		val row = query.fetchOneAwait()
@@ -407,8 +407,8 @@ class ProcessPresetsModel(context: Context?, ignoreContext: Boolean): Model(cont
 				.from("process_presets")
 				.query
 
-		applyContextFilters(query, ContextFilterType.LIST)
-		filters.applyTo(query)
+		query.addConditions(genContextFilterConditions(ContextFilterType.LIST))
+		query.addConditions(filters.genConditions())
 
 		return query.fetchOneAwait()!!.getInteger("count")
 	}
@@ -424,8 +424,8 @@ class ProcessPresetsModel(context: Context?, ignoreContext: Boolean): Model(cont
 	suspend fun updateMany(values: UpdateValues, filters: Filters, limit: Int?  = null, updateModifiedTs: Boolean = true) {
 		val query = Sql.updateQuery(table("process_presets"))
 
-		applyContextFilters(query, ContextFilterType.UPDATE)
-		filters.applyTo(query)
+		query.addConditions(genContextFilterConditions(ContextFilterType.UPDATE))
+		query.addConditions(filters.genConditions())
 		if(limit != null)
 			query.addLimit(limit)
 
@@ -457,8 +457,8 @@ class ProcessPresetsModel(context: Context?, ignoreContext: Boolean): Model(cont
 	suspend fun deleteMany(filters: Filters, limit: Int? = null) {
 		val query = Sql.deleteQuery(table("process_presets"))
 
-		applyContextFilters(query, ContextFilterType.DELETE)
-		filters.applyTo(query)
+		query.addConditions(genContextFilterConditions(ContextFilterType.DELETE))
+		query.addConditions(filters.genConditions())
 		if(limit != null)
 			query.addLimit(limit)
 

@@ -16,6 +16,8 @@ class ApiVerticle: CoroutineVerticle() {
 
 	override suspend fun start() {
 		context = AppContext.fromJson(config.getJsonObject("context"))
+
+		// TODO Create webserver
 	}
 
 	override suspend fun stop() {

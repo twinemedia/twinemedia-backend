@@ -2,14 +2,13 @@ package net.termer.twinemedia.util.db
 
 import io.vertx.kotlin.coroutines.await
 import io.vertx.sqlclient.Row
+import io.vertx.sqlclient.Tuple
 import net.termer.twinemedia.dataobject.StandardRow
 import net.termer.twinemedia.model.pagination.CommonRowMapper
 import net.termer.twinemedia.model.pagination.RowPagination
 import net.termer.twinemedia.util.ROW_ID_CHARS
-import net.termer.twinemedia.util.Some
 import net.termer.twinemedia.util.genSecureStrOf
 import org.jooq.Condition
-import org.jooq.ConditionProvider
 import org.jooq.Query
 import org.jooq.SelectQuery
 import org.jooq.conf.ParamType
@@ -80,28 +79,27 @@ suspend fun <TRow: StandardRow, TSortEnum: Enum<TSortEnum>, TColType> SelectQuer
  */
 suspend fun Query.executeAwait() {
 	Database.client
-		.query(getSQL(ParamType.INLINED))
-		.execute().await()
+		.preparedQuery(sql)
+		.execute(Tuple.wrap(params.entries.toMutableList())).await()
+	// TODO Make sure the params are bound properly. If they are not, then we have a problem.
 }
 
 /**
- * Adds a fulltext search query condition.
- * Has no effect if [searchColumns] is empty.
- * @param query The search query
+ * Generates fulltext search query conditions.
+ * Returns no conditions if [searchColumns] is empty.
  * @param searchColumns The columns to search (DO NOT allow user-supplied values here; they are not escaped)
- * @return The resulting [Condition]
+ * @return The resulting [Condition] values
  * @since 2.0.0
  */
-@Suppress("DEPRECATION")
-fun ConditionProvider.addFulltextSearchCondition(query: String, searchColumns: List<String>) {
-	if(searchColumns.isNotEmpty()) {
-		addConditions(
-			condition(
-				"(to_tsvector(${searchColumns.joinToString(" || ' ' || ")}) @@ plainto_tsquery({0})" +
-						"OR LOWER(${searchColumns.joinToString(" || ' ' || ")}) LIKE LOWER({1}))",
-				`val`(query),
-				`val`("%$query%")
-			)
-		)
+fun genFulltextSearchConditions(query: String, searchColumns: MutableList<String>): MutableList<Condition> {
+	return if(searchColumns.isNotEmpty()) {
+		arrayListOf(condition(
+			"(to_tsvector(${searchColumns.joinToString(" || ' ' || ")}) @@ plainto_tsquery({0})" +
+					"OR LOWER(${searchColumns.joinToString(" || ' ' || ")}) LIKE LOWER({1}))",
+			`val`(query),
+			`val`("%$query%")
+		))
+	} else {
+		ArrayList(0)
 	}
 }

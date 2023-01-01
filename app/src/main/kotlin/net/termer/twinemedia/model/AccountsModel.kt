@@ -1,5 +1,3 @@
-@file:Suppress("DEPRECATION")
-
 package net.termer.twinemedia.model
 
 import io.vertx.core.http.HttpServerRequest
@@ -11,12 +9,11 @@ import net.termer.twinemedia.model.pagination.AccountPagination
 import net.termer.twinemedia.model.pagination.RowPagination
 import net.termer.twinemedia.util.*
 import net.termer.twinemedia.util.db.*
-import org.jooq.ConditionProvider
 import org.jooq.Query
 import org.jooq.UpdateQuery
 import net.termer.twinemedia.util.db.Database.Sql
+import org.jooq.Condition
 import org.jooq.SelectQuery
-import org.jooq.conf.ParamType
 import org.jooq.impl.DSL.*
 import java.time.OffsetDateTime
 
@@ -136,23 +133,23 @@ class AccountsModel(context: Context?, ignoreContext: Boolean): Model(context, i
 		 */
 		var querySearchEmail: Boolean = true
 	): StandardFilters("accounts", "account") {
-		override fun applyTo(query: ConditionProvider) {
-			applyStandardFiltersTo(query)
+		override fun genConditions(): MutableList<Condition> {
+			val res = genStandardConditions()
 
 			val prefix = "$table.$colPrefix"
 
 			if(whereEmailIs is Some)
-				query.addConditions(field("${prefix}_email").equalIgnoreCase((whereEmailIs as Some).value))
+				res.add(field("${prefix}_email").equalIgnoreCase((whereEmailIs as Some).value))
 			if(whereApiKeyIdIs is Some)
-				query.addConditions(field("api_keys.key_id").eq((whereApiKeyIdIs as Some).value))
+				res.add(field("api_keys.key_id").eq((whereApiKeyIdIs as Some).value))
 			if(whereAdminStatusIs is Some)
-				query.addConditions(field("${prefix}_admin").eq((whereAdminStatusIs as Some).value))
+				res.add(field("${prefix}_admin").eq((whereAdminStatusIs as Some).value))
 			if(whereFileCountLessThan is Some)
-				query.addConditions(field("${prefix}_file_count").lt((whereFileCountLessThan as Some).value))
+				res.add(field("${prefix}_file_count").lt((whereFileCountLessThan as Some).value))
 			if(whereFileCountMoreThan is Some)
-				query.addConditions(field("${prefix}_file_count").gt((whereFileCountMoreThan as Some).value))
+				res.add(field("${prefix}_file_count").gt((whereFileCountMoreThan as Some).value))
 			if(whereMatchesQuery is Some) {
-				query.addFulltextSearchCondition(
+				res.addAll(genFulltextSearchConditions(
 					(whereMatchesQuery as Some).value,
 					ArrayList<String>().apply {
 						if(querySearchName)
@@ -160,8 +157,10 @@ class AccountsModel(context: Context?, ignoreContext: Boolean): Model(context, i
 						if(querySearchEmail)
 							add("${prefix}_email")
 					}
-				)
+				))
 			}
+
+			return res
 		}
 
 		override fun setWithRequest(req: HttpServerRequest) {
@@ -308,13 +307,15 @@ class AccountsModel(context: Context?, ignoreContext: Boolean): Model(context, i
 	}
 
 	/**
-	 * Applies context filters on a query
-	 * @param query The query to apply the filters on
+	 * Generates context filter conditions
 	 * @param type The context filter type
+	 * @return The conditions
 	 */
-	private fun applyContextFilters(query: ConditionProvider, type: ContextFilterType) {
+	private fun genContextFilterConditions(type: ContextFilterType): MutableList<Condition> {
 		// No filters to apply
 		// Higher level permission checks on controllers restrict access to account data
+
+		return ArrayList(0)
 	}
 
 	/**
@@ -398,8 +399,8 @@ class AccountsModel(context: Context?, ignoreContext: Boolean): Model(context, i
 
 		filters.whereApiKeyIdIs = none()
 
-		applyContextFilters(query, ContextFilterType.LIST)
-		filters.applyTo(query)
+		query.addConditions(genContextFilterConditions(ContextFilterType.LIST))
+		query.addConditions(filters.genConditions())
 		query.orderBy(order, orderDesc)
 		query.addLimit(limit)
 
@@ -424,8 +425,8 @@ class AccountsModel(context: Context?, ignoreContext: Boolean): Model(context, i
 
 		filters.whereApiKeyIdIs = none()
 
-		applyContextFilters(query, ContextFilterType.LIST)
-		filters.applyTo(query)
+		query.addConditions(genContextFilterConditions(ContextFilterType.LIST))
+		query.addConditions(filters.genConditions())
 
 		return query.fetchPaginatedAsync(pagination, limit) { AccountDto.fromRow(it) }
 	}
@@ -442,8 +443,8 @@ class AccountsModel(context: Context?, ignoreContext: Boolean): Model(context, i
 
 		filters.whereApiKeyIdIs = none()
 
-		applyContextFilters(query, ContextFilterType.VIEW)
-		filters.applyTo(query)
+		query.addConditions(genContextFilterConditions(ContextFilterType.VIEW))
+		query.addConditions(filters.genConditions())
 		query.addLimit(1)
 
 		val row = query.fetchOneAwait()
@@ -491,8 +492,8 @@ class AccountsModel(context: Context?, ignoreContext: Boolean): Model(context, i
 
 		handleFetchKeyInfo(query, filters, fetchApiKeyInfo)
 
-		applyContextFilters(query, ContextFilterType.LIST)
-		filters.applyTo(query)
+		query.addConditions(genContextFilterConditions(ContextFilterType.LIST))
+		query.addConditions(filters.genConditions())
 		query.orderBy(order, orderDesc)
 		query.addLimit(limit)
 
@@ -515,8 +516,8 @@ class AccountsModel(context: Context?, ignoreContext: Boolean): Model(context, i
 
 		handleFetchKeyInfo(query, filters, fetchApiKeyInfo)
 
-		applyContextFilters(query, ContextFilterType.VIEW)
-		filters.applyTo(query)
+		query.addConditions(genContextFilterConditions(ContextFilterType.VIEW))
+		query.addConditions(filters.genConditions())
 		query.addLimit(1)
 
 		val row = query.fetchOneAwait()
@@ -539,8 +540,8 @@ class AccountsModel(context: Context?, ignoreContext: Boolean): Model(context, i
 				.from("accounts")
 				.query
 
-		applyContextFilters(query, ContextFilterType.LIST)
-		filters.applyTo(query)
+		query.addConditions(genContextFilterConditions(ContextFilterType.LIST))
+		query.addConditions(filters.genConditions())
 
 		return query.fetchOneAwait()!!.getInteger("count")
 	}
@@ -556,8 +557,8 @@ class AccountsModel(context: Context?, ignoreContext: Boolean): Model(context, i
 	suspend fun updateMany(values: UpdateValues, filters: Filters, limit: Int? = null, updateModifiedTs: Boolean = true) {
 		val query = Sql.updateQuery(table("accounts"))
 
-		applyContextFilters(query, ContextFilterType.UPDATE)
-		filters.applyTo(query)
+		query.addConditions(genContextFilterConditions(ContextFilterType.UPDATE))
+		query.addConditions(filters.genConditions())
 		if(limit != null)
 			query.addLimit(limit)
 
@@ -589,8 +590,8 @@ class AccountsModel(context: Context?, ignoreContext: Boolean): Model(context, i
 	suspend fun deleteMany(filters: Filters, limit: Int? = null) {
 		val query = Sql.deleteQuery(table("accounts"))
 
-		applyContextFilters(query, ContextFilterType.DELETE)
-		filters.applyTo(query)
+		query.addConditions(genContextFilterConditions(ContextFilterType.DELETE))
+		query.addConditions(filters.genConditions())
 		if(limit != null)
 			query.addLimit(limit)
 

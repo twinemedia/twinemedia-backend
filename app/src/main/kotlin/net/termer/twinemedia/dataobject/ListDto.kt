@@ -110,7 +110,7 @@ class ListDto(
 		"name" to name,
 		"description" to description,
 		"creator" to creator?.toJson(),
-		"type" to type.ordinal,
+		"type" to type.name, // TODO Always use name for enum values, and use PG enum for them. Check how jOOQ handles enums without codegen
 		"visibility" to visibility.ordinal,
 		"sourceTags" to sourceTags?.toJsonArray(),
 		"sourceExcludeTags" to sourceExcludeTags?.toJsonArray(),

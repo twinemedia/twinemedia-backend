@@ -1,5 +1,3 @@
-@file:Suppress("DEPRECATION")
-
 package net.termer.twinemedia.model
 
 import io.vertx.core.http.HttpServerRequest
@@ -11,10 +9,10 @@ import net.termer.twinemedia.model.pagination.ListPagination
 import net.termer.twinemedia.model.pagination.RowPagination
 import net.termer.twinemedia.util.*
 import net.termer.twinemedia.util.db.*
-import org.jooq.ConditionProvider
 import org.jooq.Query
 import org.jooq.UpdateQuery
 import net.termer.twinemedia.util.db.Database.Sql
+import org.jooq.Condition
 import org.jooq.SelectQuery
 import org.jooq.impl.DSL.*
 import java.time.OffsetDateTime
@@ -130,23 +128,23 @@ class ListsModel(context: Context?, ignoreContext: Boolean): Model(context, igno
 		 */
 		var querySearchDescription: Boolean = true
 	): StandardFilters("lists", "list") {
-		override fun applyTo(query: ConditionProvider) {
-			applyStandardFiltersTo(query)
+		override fun genConditions(): MutableList<Condition> {
+			val res = genStandardConditions()
 
 			val prefix = "$table.$colPrefix"
 
 			if(whereTypeIs is Some)
-				query.addConditions(field("${prefix}_type").eq((whereTypeIs as Some).value.ordinal))
+				res.add(field("${prefix}_type").eq((whereTypeIs as Some).value.ordinal))
 			if(whereVisibilityIs is Some)
-				query.addConditions(field("${prefix}_visibility").eq((whereVisibilityIs as Some).value.ordinal))
+				res.add(field("${prefix}_visibility").eq((whereVisibilityIs as Some).value.ordinal))
 			if(whereCreatorInternalIdIs is Some)
-				query.addConditions(field("${prefix}_creator").eq((whereCreatorInternalIdIs as Some).value))
+				res.add(field("${prefix}_creator").eq((whereCreatorInternalIdIs as Some).value))
 			if(whereFileCountLessThan is Some)
-				query.addConditions(field("${prefix}_file_count").lt((whereFileCountLessThan as Some).value))
+				res.add(field("${prefix}_file_count").lt((whereFileCountLessThan as Some).value))
 			if(whereFileCountMoreThan is Some)
-				query.addConditions(field("${prefix}_file_count").gt((whereFileCountMoreThan as Some).value))
+				res.add(field("${prefix}_file_count").gt((whereFileCountMoreThan as Some).value))
 			if(whereMatchesQuery is Some) {
-				query.addFulltextSearchCondition(
+				res.addAll(genFulltextSearchConditions(
 					(whereMatchesQuery as Some).value,
 					ArrayList<String>().apply {
 						if(querySearchName)
@@ -154,8 +152,10 @@ class ListsModel(context: Context?, ignoreContext: Boolean): Model(context, igno
 						if(querySearchDescription)
 							add("${prefix}_description")
 					}
-				)
+				))
 			}
+
+			return res
 		}
 
 		override fun setWithRequest(req: HttpServerRequest) {
@@ -299,30 +299,34 @@ class ListsModel(context: Context?, ignoreContext: Boolean): Model(context, igno
 	}
 
 	/**
-	 * Applies context filters on a query
-	 * @param query The query to apply the filters on
+	 * Generates context filter conditions
 	 * @param type The context filter type
+	 * @return The conditions
 	 */
-	private fun applyContextFilters(query: ConditionProvider, type: ContextFilterType) {
+	private fun genContextFilterConditions(type: ContextFilterType): MutableList<Condition> {
 		if(!ignoreContext) {
 			if(context == null) {
 				// If there is no context, only show lists that are set to public
-				query.addConditions(field("lists.list_visibility").eq(ListVisibility.PUBLIC.ordinal))
+				return arrayListOf(field("lists.list_visibility").eq(ListVisibility.PUBLIC.ordinal))
 			} else {
 				val acc = context!!.account
 				val perm = "lists.${type.toPermissionVerb()}.all"
 
-				if(!acc.hasPermission(perm) || context!!.account.excludeOtherLists) {
+				return if(!acc.hasPermission(perm) || context!!.account.excludeOtherLists) {
 					val cond = field("lists.list_creator").eq(acc.internalId)
 
 					// Show public lists if not a listing query
-					query.addConditions(if(type == ContextFilterType.VIEW)
+					arrayListOf(if(type == ContextFilterType.VIEW)
 						cond.or(field("lists.list_visibility").eq(ListVisibility.PUBLIC.ordinal))
 					else
 						cond
 					)
+				} else {
+					ArrayList(0)
 				}
 			}
+		} else {
+			return ArrayList(0)
 		}
 	}
 
@@ -496,8 +500,8 @@ class ListsModel(context: Context?, ignoreContext: Boolean): Model(context, igno
 
 		handleCheckForFileId(query, checkForFileId)
 
-		applyContextFilters(query, ContextFilterType.LIST)
-		filters.applyTo(query)
+		query.addConditions(genContextFilterConditions(ContextFilterType.LIST))
+		query.addConditions(filters.genConditions())
 		query.orderBy(order, orderDesc)
 		query.addLimit(limit)
 
@@ -524,8 +528,8 @@ class ListsModel(context: Context?, ignoreContext: Boolean): Model(context, igno
 
 		handleCheckForFileId(query, checkForFileId)
 
-		applyContextFilters(query, ContextFilterType.LIST)
-		filters.applyTo(query)
+		query.addConditions(genContextFilterConditions(ContextFilterType.LIST))
+		query.addConditions(filters.genConditions())
 
 		return query.fetchPaginatedAsync(pagination, limit) { ListDto.fromRow(it) }
 	}
@@ -543,8 +547,8 @@ class ListsModel(context: Context?, ignoreContext: Boolean): Model(context, igno
 
 		handleCheckForFileId(query, checkForFileId)
 
-		applyContextFilters(query, ContextFilterType.VIEW)
-		filters.applyTo(query)
+		query.addConditions(genContextFilterConditions(ContextFilterType.VIEW))
+		query.addConditions(filters.genConditions())
 		query.addLimit(1)
 
 		val row = query.fetchOneAwait()
@@ -576,8 +580,8 @@ class ListsModel(context: Context?, ignoreContext: Boolean): Model(context, igno
 				.from(table("lists"))
 				.query
 
-		applyContextFilters(query, ContextFilterType.LIST)
-		filters.applyTo(query)
+		query.addConditions(genContextFilterConditions(ContextFilterType.LIST))
+		query.addConditions(filters.genConditions())
 		query.orderBy(order, orderDesc)
 		query.addLimit(limit)
 
@@ -597,8 +601,8 @@ class ListsModel(context: Context?, ignoreContext: Boolean): Model(context, igno
 				.from(table("lists"))
 				.query
 
-		applyContextFilters(query, ContextFilterType.VIEW)
-		filters.applyTo(query)
+		query.addConditions(genContextFilterConditions(ContextFilterType.VIEW))
+		query.addConditions(filters.genConditions())
 		query.addLimit(1)
 
 		val row = query.fetchOneAwait()
@@ -621,8 +625,8 @@ class ListsModel(context: Context?, ignoreContext: Boolean): Model(context, igno
 				.from("lists")
 				.query
 
-		applyContextFilters(query, ContextFilterType.LIST)
-		filters.applyTo(query)
+		query.addConditions(genContextFilterConditions(ContextFilterType.LIST))
+		query.addConditions(filters.genConditions())
 
 		return query.fetchOneAwait()!!.getInteger("count")
 	}
@@ -638,8 +642,8 @@ class ListsModel(context: Context?, ignoreContext: Boolean): Model(context, igno
 	suspend fun updateMany(values: UpdateValues, filters: Filters, limit: Int?  = null, updateModifiedTs: Boolean = true) {
 		val query = Sql.updateQuery(table("lists"))
 
-		applyContextFilters(query, ContextFilterType.UPDATE)
-		filters.applyTo(query)
+		query.addConditions(genContextFilterConditions(ContextFilterType.UPDATE))
+		query.addConditions(filters.genConditions())
 		if(limit != null)
 			query.addLimit(limit)
 
@@ -671,8 +675,8 @@ class ListsModel(context: Context?, ignoreContext: Boolean): Model(context, igno
 	suspend fun deleteMany(filters: Filters, limit: Int? = null) {
 		val query = Sql.deleteQuery(table("lists"))
 
-		applyContextFilters(query, ContextFilterType.DELETE)
-		filters.applyTo(query)
+		query.addConditions(genContextFilterConditions(ContextFilterType.DELETE))
+		query.addConditions(filters.genConditions())
 		if(limit != null)
 			query.addLimit(limit)
 

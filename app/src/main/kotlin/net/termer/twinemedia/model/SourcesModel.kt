@@ -1,5 +1,3 @@
-@file:Suppress("DEPRECATION")
-
 package net.termer.twinemedia.model
 
 import io.vertx.core.http.HttpServerRequest
@@ -10,10 +8,10 @@ import net.termer.twinemedia.model.pagination.SourcePagination
 import net.termer.twinemedia.model.pagination.RowPagination
 import net.termer.twinemedia.util.*
 import net.termer.twinemedia.util.db.*
-import org.jooq.ConditionProvider
 import org.jooq.Query
 import org.jooq.UpdateQuery
 import net.termer.twinemedia.util.db.Database.Sql
+import org.jooq.Condition
 import org.jooq.SelectQuery
 import org.jooq.impl.DSL.*
 import java.time.OffsetDateTime
@@ -121,30 +119,32 @@ class SourcesModel(context: Context?, ignoreContext: Boolean): Model(context, ig
 		 */
 		var querySearchName: Boolean = true
 	): StandardFilters("sources", "source") {
-		override fun applyTo(query: ConditionProvider) {
-			applyStandardFiltersTo(query)
+		override fun genConditions(): MutableList<Condition> {
+			val res = genStandardConditions()
 
 			val prefix = "$table.$colPrefix"
 
 			if(whereTypeIs is Some)
-				query.addConditions(field("sources.source_type").eq((whereTypeIs as Some).value))
+				res.add(field("sources.source_type").eq((whereTypeIs as Some).value))
 			if(whereCreatorInternalIdIs is Some)
-				query.addConditions(field("${prefix}_creator").eq((whereCreatorInternalIdIs as Some).value))
+				res.add(field("${prefix}_creator").eq((whereCreatorInternalIdIs as Some).value))
 			if(whereGlobalStatusIs is Some)
-				query.addConditions(field("${prefix}_global").eq((whereGlobalStatusIs as Some).value))
+				res.add(field("${prefix}_global").eq((whereGlobalStatusIs as Some).value))
 			if(whereFileCountLessThan is Some)
-				query.addConditions(field("${prefix}_file_count").lt((whereFileCountLessThan as Some).value))
+				res.add(field("${prefix}_file_count").lt((whereFileCountLessThan as Some).value))
 			if(whereFileCountMoreThan is Some)
-				query.addConditions(field("${prefix}_file_count").gt((whereFileCountMoreThan as Some).value))
+				res.add(field("${prefix}_file_count").gt((whereFileCountMoreThan as Some).value))
 			if(whereMatchesQuery is Some) {
-				query.addFulltextSearchCondition(
+				res.addAll(genFulltextSearchConditions(
 					(whereMatchesQuery as Some).value,
 					ArrayList<String>().apply {
 						if(querySearchName)
 							add("${prefix}_name")
 					}
-				)
+				))
 			}
+
+			return res
 		}
 
 		override fun setWithRequest(req: HttpServerRequest) {
@@ -224,12 +224,12 @@ class SourcesModel(context: Context?, ignoreContext: Boolean): Model(context, ig
 	}
 
 	/**
-	 * Applies context filters on a query
-	 * @param query The query to apply the filters on
+	 * Generates context filter conditions
 	 * @param type The context filter type
+	 * @return The conditions
 	 */
-	private fun applyContextFilters(query: ConditionProvider, type: ContextFilterType) {
-		applyGenericPermissionCreatorContextFilter(query, type, "sources", "sources.source_creator", context?.account?.excludeOtherSources)
+	private fun genContextFilterConditions(type: ContextFilterType): MutableList<Condition> {
+		return genGenericPermissionCreatorContextConditions(type, "sources", "sources.source_creator", context?.account?.excludeOtherSources)
 	}
 
 	/**
@@ -323,8 +323,8 @@ class SourcesModel(context: Context?, ignoreContext: Boolean): Model(context, ig
 	): List<SourceDto> {
 		val query = infoQuery(includeConfig)
 
-		applyContextFilters(query, ContextFilterType.LIST)
-		filters.applyTo(query)
+		query.addConditions(genContextFilterConditions(ContextFilterType.LIST))
+		query.addConditions(filters.genConditions())
 		query.orderBy(order, orderDesc)
 		query.addLimit(limit)
 
@@ -349,8 +349,8 @@ class SourcesModel(context: Context?, ignoreContext: Boolean): Model(context, ig
 	): RowPagination.Results<SourceDto, SortOrder, TColType> {
 		val query = infoQuery(includeConfig)
 
-		applyContextFilters(query, ContextFilterType.LIST)
-		filters.applyTo(query)
+		query.addConditions(genContextFilterConditions(ContextFilterType.LIST))
+		query.addConditions(filters.genConditions())
 
 		return query.fetchPaginatedAsync(pagination, limit) { SourceDto.fromRow(it) }
 	}
@@ -369,8 +369,8 @@ class SourcesModel(context: Context?, ignoreContext: Boolean): Model(context, ig
 	): SourceDto? {
 		val query = infoQuery(includeConfig)
 
-		applyContextFilters(query, ContextFilterType.VIEW)
-		filters.applyTo(query)
+		query.addConditions(genContextFilterConditions(ContextFilterType.VIEW))
+		query.addConditions(filters.genConditions())
 		query.addLimit(1)
 
 		val row = query.fetchOneAwait()
@@ -402,8 +402,8 @@ class SourcesModel(context: Context?, ignoreContext: Boolean): Model(context, ig
 				.from(table("sources"))
 				.query
 
-		applyContextFilters(query, ContextFilterType.LIST)
-		filters.applyTo(query)
+		query.addConditions(genContextFilterConditions(ContextFilterType.LIST))
+		query.addConditions(filters.genConditions())
 		query.orderBy(order, orderDesc)
 		query.addLimit(limit)
 
@@ -423,8 +423,8 @@ class SourcesModel(context: Context?, ignoreContext: Boolean): Model(context, ig
 				.from(table("sources"))
 				.query
 
-		applyContextFilters(query, ContextFilterType.VIEW)
-		filters.applyTo(query)
+		query.addConditions(genContextFilterConditions(ContextFilterType.VIEW))
+		query.addConditions(filters.genConditions())
 		query.addLimit(1)
 
 		val row = query.fetchOneAwait()
@@ -447,8 +447,8 @@ class SourcesModel(context: Context?, ignoreContext: Boolean): Model(context, ig
 				.from("sources")
 				.query
 
-		applyContextFilters(query, ContextFilterType.LIST)
-		filters.applyTo(query)
+		query.addConditions(genContextFilterConditions(ContextFilterType.LIST))
+		query.addConditions(filters.genConditions())
 
 		return query.fetchOneAwait()!!.getInteger("count")
 	}
@@ -464,8 +464,8 @@ class SourcesModel(context: Context?, ignoreContext: Boolean): Model(context, ig
 	suspend fun updateMany(values: UpdateValues, filters: Filters, limit: Int?  = null, updateModifiedTs: Boolean = true) {
 		val query = Sql.updateQuery(table("sources"))
 
-		applyContextFilters(query, ContextFilterType.UPDATE)
-		filters.applyTo(query)
+		query.addConditions(genContextFilterConditions(ContextFilterType.UPDATE))
+		query.addConditions(filters.genConditions())
 		if(limit != null)
 			query.addLimit(limit)
 
@@ -497,8 +497,8 @@ class SourcesModel(context: Context?, ignoreContext: Boolean): Model(context, ig
 	suspend fun deleteMany(filters: Filters, limit: Int? = null) {
 		val query = Sql.deleteQuery(table("sources"))
 
-		applyContextFilters(query, ContextFilterType.DELETE)
-		filters.applyTo(query)
+		query.addConditions(genContextFilterConditions(ContextFilterType.DELETE))
+		query.addConditions(filters.genConditions())
 		if(limit != null)
 			query.addLimit(limit)
 
