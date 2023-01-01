@@ -363,6 +363,8 @@ alter table lists
 alter table lists
     rename column list_show_all_user_files to list_show_all_account_files;
 alter table lists
+    alter column list_show_all_account_files drop not null;
+alter table lists
     rename column list_created_on to list_created_ts;
 alter table lists
     rename column list_modified_on to list_modified_ts;
@@ -550,7 +552,7 @@ create function handle_list_type_change() returns trigger as $$ begin
             list_source_created_before = null,
             list_source_created_after = null,
             list_source_mime = null,
-            list_show_all_account_files = false
+            list_show_all_account_files = null
             where lists.id = OLD.id;
     elsif NEW.list_type = 1 and OLD.list_type != 1 then
         -- Clear item count and delete items

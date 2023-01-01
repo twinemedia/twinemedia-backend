@@ -83,10 +83,10 @@ class ListDto(
 
 	/**
 	 * Whether files by all accounts should be shown in list, not just by the list creator.
-	 * Only applies to lists with type [ListType.AUTOMATICALLY_POPULATED]
+	 * Only applies to lists with type [ListType.AUTOMATICALLY_POPULATED], will be null for other types.
 	 * @since 2.0.0
 	 */
-	val showAllAccountFiles: Boolean,
+	val showAllAccountFiles: Boolean?,
 
 	/**
 	 * The number of items in the list.
@@ -111,7 +111,7 @@ class ListDto(
 		"description" to description,
 		"creator" to creator?.toJson(),
 		"type" to type.name, // TODO Always use name for enum values, and use PG enum for them. Check how jOOQ handles enums without codegen
-		"visibility" to visibility.ordinal,
+		"visibility" to visibility.name,
 		"sourceTags" to sourceTags?.toJsonArray(),
 		"sourceExcludeTags" to sourceExcludeTags?.toJsonArray(),
 		"sourceCreatedBefore" to sourceCreatedBefore?.toString(),
