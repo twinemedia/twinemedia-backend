@@ -86,6 +86,7 @@
 		"schemas": {
 			"ApiError": {
 				"type": "object",
+				"description": "An error that is returned in an error response",
 				"required": [
 					"name",
 					"message",
@@ -109,6 +110,7 @@
 			},
 			"ApiErrorRes": {
 				"type": "object",
+				"description": "An error response",
 				"required": ["errors"],
 				"properties": {
 					"errors": {
