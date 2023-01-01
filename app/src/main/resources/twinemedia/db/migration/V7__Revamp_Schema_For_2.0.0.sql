@@ -38,14 +38,14 @@ create table tags
     tag_id          char(10)                                         not null,
     tag_name        varchar(256)                                     not null,
     tag_description varchar(1024)                         not null default '',
-    tag_creator     integer,
+    tag_owner     integer,
     tag_file_count  integer                                not null default 0,
     tag_created_ts  timestamp with time zone default NOW(),
     tag_modified_ts timestamp with time zone default NOW(),
     constraint tags_pkey
         primary key (id),
-    constraint creator_fk
-        foreign key (tag_creator) references accounts (id)
+    constraint tag_owner_fk
+        foreign key (tag_owner) references accounts (id)
         on delete set null
 );
 create unique index tag_name_and_id_idx
@@ -54,7 +54,7 @@ create unique index tag_file_count_and_id_idx
     on tags (tag_file_count, id);
 -- Tag names retain their original case, but two tags with the same content but different cases cannot exist
 create unique index tag_name_and_creator_idx
-    on tags (lower(tag_name), tag_creator);
+    on tags (lower(tag_name), tag_owner);
 create unique index tag_created_ts_and_id_idx
     on tags (tag_created_ts, id);
 create unique index tag_modified_ts_and_id_idx
@@ -63,11 +63,11 @@ create table tag_uses
 (
     id             serial                                 not null,
     use_tag        integer                                not null
-        constraint tag_fk
+        constraint tag_use_tag_fk
             references tags (id)
             on delete cascade,
     use_file       integer                                not null
-        constraint file_fk
+        constraint tag_use_file_fk
             references files (id)
             on delete cascade,
     use_created_ts timestamp with time zone default NOW() not null,
@@ -99,7 +99,7 @@ do $$
             end if;
 
             -- Create record of the tag in the new tags table and get its ID
-            insert into tags (tag_id, tag_name, tag_creator, tag_created_ts, tag_modified_ts) values (
+            insert into tags (tag_id, tag_name, tag_owner, tag_created_ts, tag_modified_ts) values (
                 pg_temp.gen_id(),
                 name,
                 creator_or_null,
@@ -200,12 +200,10 @@ alter table api_keys
     alter column key_permissions type varchar(256)[] using pg_temp.jsonb_to_str_array(key_permissions);
 alter table api_keys
     alter column key_permissions set default array[]::varchar(256)[];
+delete from api_keys where (select count(*) from accounts where accounts.id = key_owner) < 1;
 alter table api_keys
-    rename column key_owner to key_creator;
-delete from api_keys where (select count(*) from accounts where accounts.id = key_creator) < 1;
-alter table api_keys
-    add constraint key_creator_fk
-        foreign key (key_creator) references accounts (id)
+    add constraint key_owner_fk
+        foreign key (key_owner) references accounts (id)
         on delete cascade;
 alter table api_keys
     rename column key_created_on to key_created_ts;
@@ -257,14 +255,14 @@ alter table files
 alter table files
     rename column media_meta to file_meta;
 alter table files
-    rename column media_creator to file_creator;
+    rename column media_creator to file_owner;
 alter table files
-    alter column file_creator drop not null;
-update files set file_creator = null
-    where (select count(*) from accounts where accounts.id = file_creator) < 1;
+    alter column file_owner drop not null;
+update files set file_owner = null
+    where (select count(*) from accounts where accounts.id = file_owner) < 1;
 alter table files
-    add constraint file_creator_fk
-        foreign key (file_creator) references accounts (id)
+    add constraint file_owner_fk
+        foreign key (file_owner) references accounts (id)
         on delete set null;
 alter table files
     rename column media_parent to file_parent;
@@ -339,14 +337,16 @@ create unique index list_id_idx
     on lists (list_id);
 alter table lists
     alter column list_creator drop not null;
-update lists set list_creator = null
-    where (select count(*) from accounts where accounts.id = list_creator) < 1;
+alter table lists
+    rename column list_creator to list_owner;
+update lists set list_owner = null
+    where (select count(*) from accounts where accounts.id = list_owner) < 1;
 update lists set list_description = '' where lists.list_description is null;
 alter table lists
     alter column list_description set not null;
 alter table lists
-    add constraint list_creator_fk
-        foreign key (list_creator) references accounts (id)
+    add constraint list_owner_fk
+        foreign key (list_owner) references accounts (id)
         on delete set null;
 alter table lists
     alter column list_source_tags drop default;
@@ -395,11 +395,11 @@ alter table process_presets
 alter table process_presets
     rename column process_settings to preset_settings;
 alter table process_presets
-    rename column process_creator to preset_creator;
-delete from process_presets where (select count(*) from accounts where accounts.id = preset_creator) < 1;
+    rename column process_creator to preset_owner;
+delete from process_presets where (select count(*) from accounts where accounts.id = preset_owner) < 1;
 alter table process_presets
-    add constraint process_preset_creator_fk
-        foreign key (preset_creator) references accounts (id)
+    add constraint process_preset_owner_fk
+        foreign key (preset_owner) references accounts (id)
         on delete cascade;
 alter table process_presets
     rename column process_created_on to preset_created_ts;
@@ -431,11 +431,13 @@ alter table sources
     alter column source_id drop default;
 alter table sources
     alter column source_creator drop not null;
-update sources set source_creator = null
-    where (select count(*) from accounts where accounts.id = source_creator) < 1;
 alter table sources
-    add constraint source_creator_fk
-        foreign key (source_creator) references accounts (id)
+    rename column source_creator to source_owner;
+update sources set source_owner = null
+    where (select count(*) from accounts where accounts.id = source_owner) < 1;
+alter table sources
+    add constraint source_owner_fk
+        foreign key (source_owner) references accounts (id)
         on delete set null;
 alter table sources
     rename column source_created_on to source_created_ts;
@@ -455,7 +457,7 @@ update sources set source_modified_ts = source_created_ts;
 -- Add counter columns to tables
 alter table accounts
     add account_file_count integer not null default 0;
-update accounts set account_file_count = (select count(*) from files where file_creator = accounts.id);
+update accounts set account_file_count = (select count(*) from files where file_owner = accounts.id);
 create unique index account_file_count_and_id_idx
     on accounts (account_file_count, id);
 alter table files
@@ -482,13 +484,13 @@ create unique index source_file_count_and_id_idx
 
 -- Update file counts on various tables
 create function inc_file_counts() returns trigger as $$ begin
-    update accounts set account_file_count = accounts.account_file_count + 1 where accounts.id = NEW.file_creator;
+    update accounts set account_file_count = accounts.account_file_count + 1 where accounts.id = NEW.file_owner;
     update files parents set file_child_count = file_child_count + 1 where parents.id = NEW.file_parent;
     update sources set source_file_count = source_file_count + 1 where sources.id = NEW.file_source;
     return null;
 end $$ language plpgsql;
 create function dec_file_counts() returns trigger as $$ begin
-    update accounts set account_file_count = accounts.account_file_count - 1 where accounts.id = OLD.file_creator;
+    update accounts set account_file_count = accounts.account_file_count - 1 where accounts.id = OLD.file_owner;
     update files parents set file_child_count = file_child_count - 1 where parents.id = OLD.file_parent;
     update sources set source_file_count = source_file_count - 1 where sources.id = OLD.file_source;
     return null;
