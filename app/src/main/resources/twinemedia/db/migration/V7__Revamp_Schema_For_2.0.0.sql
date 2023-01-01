@@ -549,7 +549,8 @@ create function handle_list_type_change() returns trigger as $$ begin
             list_source_exclude_tags = null,
             list_source_created_before = null,
             list_source_created_after = null,
-            list_source_mime = null
+            list_source_mime = null,
+            list_show_all_account_files = false
             where lists.id = OLD.id;
     elsif NEW.list_type = 1 and OLD.list_type != 1 then
         -- Clear item count and delete items
