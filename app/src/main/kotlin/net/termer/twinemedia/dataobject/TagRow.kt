@@ -24,10 +24,10 @@ class TagRow(
 	val description: String,
 
 	/**
-	 * The tag creator's account internal ID, or null if the account no longer exists
+	 * The tag owner's account internal ID, or null if the account no longer exists
 	 * @since 2.0.0
 	 */
-	val creatorInternalId: Int?,
+	val ownerInternalId: Int?,
 
 	/**
 	 * The number of files using the tag
@@ -48,7 +48,7 @@ class TagRow(
 			id = row.getString("tag_id"),
 			name = row.getString("tag_name"),
 			description = row.getString("tag_description"),
-			creatorInternalId = row.getInteger("tag_creator"),
+			ownerInternalId = row.getInteger("tag_owner"),
 			fileCount = row.getInteger("tag_file_count"),
 			createdTs = row.getOffsetDateTime("tag_created_ts"),
 			modifiedTs = row.getOffsetDateTime("tag_modified_ts")

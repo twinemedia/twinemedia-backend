@@ -4,19 +4,19 @@ import io.vertx.kotlin.core.json.jsonObjectOf
 import net.termer.twinemedia.util.JsonSerializable
 
 /**
- * DTO for a record's creator account.
+ * DTO for a record's owner account.
  * Used in properties of other DTOs.
  * @since 2.0.0
  */
-class RecordCreatorDto(
+class RecordOwnerDto(
 	/**
-	 * The creator account's alphanumeric ID
+	 * The owner account's alphanumeric ID
 	 * @since 2.0.0
 	 */
 	val id: String,
 
 	/**
-	 * The creator account's name
+	 * The owner account's name
 	 * @since 2.0.0
 	 */
 	val name: String

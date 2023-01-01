@@ -265,7 +265,7 @@
 								"type": "integer",
 								"format": "int32",
 								"minimum": 0,
-								"description": "The number of files the account is marked as the owner of."
+								"description": "The number of files owned by the account"
 							}
 						}
 					},

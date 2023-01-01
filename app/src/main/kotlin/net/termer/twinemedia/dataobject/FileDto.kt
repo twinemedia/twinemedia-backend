@@ -13,120 +13,120 @@ import java.time.OffsetDateTime
  * @since 2.0.0
  */
 class FileDto(
-	override val internalId: Int,
-	override val id: String,
+    override val internalId: Int,
+    override val id: String,
 
-	/**
+    /**
 	 * The internal ID of the file's parent, or null if not a child.
 	 * Not exposed in JSON.
 	 * @since 2.0.0
 	 */
 	val parentInternalId: Int?,
 
-	/**
+    /**
 	 * The file's title
 	 * @since 2.0.0
 	 */
 	val title: String,
 
-	/**
+    /**
 	 * The file's name
 	 * @since 2.0.0
 	 */
 	val name: String,
 
-	/**
+    /**
 	 * The file's description, or null if it was not included
 	 * @since 2.0.0
 	 */
 	val description: String?,
 
-	/**
+    /**
 	 * The file's size in bytes
 	 * @since 2.0.0
 	 */
 	val size: Long,
 
-	/**
+    /**
 	 * The file's MIME type
 	 * @since 2.0.0
 	 */
 	val mime: String,
 
-	/**
+    /**
 	 * Additional metadata for the file (such as video/audio bitrate, resolution, etc.) in JSON format, or null if it was not included
 	 * @since 2.0.0
 	 */
 	val meta: JsonObject?,
 
-	/**
+    /**
 	 * The file's hash
 	 * @since 2.0.0
 	 */
 	val hash: String,
 
-	/**
+    /**
 	 * Whether the file has a thumbnail
 	 * @since 2.0.0
 	 */
 	val hasThumbnail: Boolean,
 
-	/**
-	 * The file's creator, or null if the account no longer exists
+    /**
+	 * The file's owner, or null if the account no longer exists
 	 * @since 2.0.0
 	 */
-	val creator: RecordCreatorDto?,
+	val owner: RecordOwnerDto?,
 
-	/**
+    /**
 	 * The number of tags the file has
 	 * @since 2.0.0
 	 */
 	val tagCount: Int,
 
-	/**
+    /**
 	 * An array containing the file's tags, or null if they were not fetched
 	 * @since 2.0.0
 	 */
 	var tags: Array<TagDto>? = null,
 
-	/**
+    /**
 	 * The file's parent, or null if the file has no parent or if it was not fetched
 	 * @since 2.0.0
 	 */
 	var parent: FileDto? = null,
 
-	/**
+    /**
 	 * The number of children the file has
 	 * @since 2.0.0
 	 */
 	val childCount: Int,
 
-	/**
+    /**
 	 * An array containing the file's children, or null if they were not fetched
 	 * @since 2.0.0
 	 */
 	var children: Array<FileDto>? = null,
 
-	/**
+    /**
 	 * Whether the file is currently processing
 	 * @since 2.0.0
 	 */
 	val isProcessing: Boolean,
 
-	/**
+    /**
 	 * The error that caused the file's processing to fail, or null if no error has occurred
 	 * @since 2.0.0
 	 */
 	val processError: String?,
 
-	/**
+    /**
 	 * The file's source
 	 * @since 2.0.0
 	 */
 	val source: RecordSourceDto,
 
-	override val createdTs: OffsetDateTime,
-	override val modifiedTs: OffsetDateTime,
+    override val createdTs: OffsetDateTime,
+    override val modifiedTs: OffsetDateTime,
 ): JsonSerializable(), StandardRow {
 	override fun toJson(): JsonObject = jsonObjectOf(
 		"id" to id,
@@ -138,7 +138,7 @@ class FileDto(
 		"meta" to meta,
 		"hash" to hash,
 		"hasThumbnail" to hasThumbnail,
-		"creator" to creator?.toJson(),
+		"owner" to owner?.toJson(),
 		"tagCount" to tagCount,
 		"tags" to tags?.toJsonArray(),
 		"parent" to parent?.toJson(),
@@ -157,7 +157,7 @@ class FileDto(
 		 * @since 2.0.0
 		 */
 		fun fromRow(row: Row): FileDto {
-			val fileCreatorId = row.getString("file_creator_id")
+			val fileOwnerId = row.getString("file_owner_id")
 
 			return FileDto(
 				internalId = row.getInteger("id"),
@@ -171,9 +171,9 @@ class FileDto(
 				meta = if(row.hasCol("file_meta")) row.getJsonObject("file_meta") else null,
 				hash = row.getString("file_hash"),
 				hasThumbnail = row.getBoolean("file_has_thumbnail"),
-				creator = if(fileCreatorId == null) null else RecordCreatorDto(
-					id = fileCreatorId,
-					name = row.getString("file_creator_name")
+				owner = if(fileOwnerId == null) null else RecordOwnerDto(
+					id = fileOwnerId,
+					name = row.getString("file_owner_name")
 				),
 				tagCount = row.getInteger("file_tag_count"),
 				childCount = row.getInteger("file_child_count"),

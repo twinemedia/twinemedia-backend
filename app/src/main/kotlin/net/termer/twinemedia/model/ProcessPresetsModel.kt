@@ -71,11 +71,11 @@ class ProcessPresetsModel(context: Context?, ignoreContext: Boolean): Model(cont
 		override var whereModifiedAfter: Option<OffsetDateTime> = none(),
 
 		/**
-		 * Matches rows where the creator's internal ID is this.
+		 * Matches rows where the owner's internal ID is this.
 		 * API-unsafe.
 		 * @since 2.0.0
 		 */
-		var whereCreatorInternalIdIs: Option<Int> = none(),
+		var whereOwnerInternalIdIs: Option<Int> = none(),
 
 		/**
 		 * Matches rows where the MIME type matches this SQL LIKE pattern.
@@ -102,8 +102,8 @@ class ProcessPresetsModel(context: Context?, ignoreContext: Boolean): Model(cont
 
 			val prefix = "$table.$colPrefix"
 
-			if(whereCreatorInternalIdIs is Some)
-				res.add(field("${prefix}_creator").eq((whereCreatorInternalIdIs as Some).value))
+			if(whereOwnerInternalIdIs is Some)
+				res.add(field("${prefix}_owner").eq((whereOwnerInternalIdIs as Some).value))
 			if(whereMimeIsLike is Some)
 				res.add(field("${prefix}_mime").like((whereMimeIsLike as Some).value))
 			if(whereMatchesQuery is Some) {
@@ -209,7 +209,7 @@ class ProcessPresetsModel(context: Context?, ignoreContext: Boolean): Model(cont
 	 * @return The conditions
 	 */
 	private fun genContextFilterConditions(type: ContextFilterType): MutableList<Condition> {
-		return genGenericPermissionCreatorContextConditions(type, "process_presets", "process_presets.preset_creator", context?.account?.excludeOtherProcessPresets)
+		return genGenericPermissionOwnerContextConditions(type, "process_presets", "process_presets.preset_owner", context?.account?.excludeOtherProcessPresets)
 	}
 
 	/**
@@ -223,13 +223,13 @@ class ProcessPresetsModel(context: Context?, ignoreContext: Boolean): Model(cont
 			field("preset_mime"),
 			field("preset_settings"),
 			field("""trim('"' FROM (process_settings::jsonb->'extension')::text)""").`as`("preset_extension"), // Extract extension from JSON
-			field("account_id").`as`("preset_creator_id"),
-			field("account_name").`as`("preset_creator_name"),
+			field("account_id").`as`("preset_owner_id"),
+			field("account_name").`as`("preset_owner_name"),
 			field("preset_created_ts"),
 			field("preset_modified_ts")
 		)
 			.from(table("process_presets"))
-			.leftJoin(table("accounts")).on(field("accounts.id").eq(field("preset_creator")))
+			.leftJoin(table("accounts")).on(field("accounts.id").eq(field("preset_owner")))
 			.query
 
 	/**
@@ -237,7 +237,7 @@ class ProcessPresetsModel(context: Context?, ignoreContext: Boolean): Model(cont
 	 * @param name The name of the new preset
 	 * @param mime The MIME type (supports asterisk wildcards) that this preset applies to
 	 * @param settings The preset's settings
-	 * @param creatorInternalId The preset creator's internal ID
+	 * @param ownerInternalId The preset owner's internal ID
 	 * @return The newly created process preset row's ID
 	 * @since 2.0.0
 	 */
@@ -245,7 +245,7 @@ class ProcessPresetsModel(context: Context?, ignoreContext: Boolean): Model(cont
 		name: String,
 		mime: String,
 		settings: JsonObject,
-		creatorInternalId: Int
+		ownerInternalId: Int
 	): RowIdPair {
 		val id = genRowId()
 
@@ -255,14 +255,14 @@ class ProcessPresetsModel(context: Context?, ignoreContext: Boolean): Model(cont
 			field("preset_name"),
 			field("preset_mime"),
 			field("preset_settings"),
-			field("preset_creator")
+			field("preset_owner")
 		)
 			.values(
 				id,
 				name,
 				mime,
 				settings,
-				creatorInternalId
+				ownerInternalId
 			)
 			.returning(field("id"))
 			.fetchOneAwait()!!

@@ -225,22 +225,22 @@ abstract class Model(
 	}
 
 	/**
-	 * Generates generic permission and row creator-based context filter conditions.
-	 * Evaluates whether a user can access rows based on whether the context account is the creator of the row, or the context account has the "all" variant of the specified permission.
+	 * Generates generic permission and row owner-based context filter conditions.
+	 * Evaluates whether a user can access rows based on whether the context account is the owner of the row, or the context account has the "all" variant of the specified permission.
 	 * Permissions use the standard <data>.<verb>(.all) format.
 	 * The verb is selected based on [type] according to standard permission verbs ("view", "list", "edit" and "delete").
 	 * If [context] is null, a false condition is applied to the query.
 	 * If [ignoreContext] is true, no conditions are added, and the query is left unmodified.
 	 * @param type The context filter type
 	 * @param permissionPrefix The prefix of the permission to check, usually the resource that is being filtered (e.g. "files")
-	 * @param creatorField The row field that contains the row creator
+	 * @param ownerField The row field that contains the row owner
 	 * @param ignoreAllPermission Whether to ignore that the context account has the "all" variant of a permission, and only show the account's files (typically you would use an account's exclude preference to fill this value)
 	 * @since 2.0.0
 	 */
-	protected fun genGenericPermissionCreatorContextConditions(
+	protected fun genGenericPermissionOwnerContextConditions(
 		type: ContextFilterType,
 		permissionPrefix: String,
-		creatorField: String,
+		ownerField: String,
 		ignoreAllPermission: Boolean?
 	): MutableList<Condition> {
 		if(ignoreContext)
@@ -255,7 +255,7 @@ abstract class Model(
 
 		// Add filter condition
 		if(ignoreAllPermission == true || !acc.hasPermission("$permissionPrefix.${type.toPermissionVerb()}.all"))
-			return arrayListOf(field(creatorField).eq(acc.internalId))
+			return arrayListOf(field(ownerField).eq(acc.internalId))
 
 		// No conditions to return
 		return ArrayList(0)

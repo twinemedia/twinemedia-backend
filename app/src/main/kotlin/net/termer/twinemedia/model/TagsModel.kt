@@ -10,7 +10,6 @@ import net.termer.twinemedia.model.pagination.RowPagination
 import net.termer.twinemedia.model.pagination.TagPagination
 import net.termer.twinemedia.util.*
 import net.termer.twinemedia.util.db.*
-import org.jooq.ConditionProvider
 import org.jooq.Query
 import org.jooq.UpdateQuery
 import net.termer.twinemedia.util.db.Database.Sql
@@ -75,11 +74,11 @@ class TagsModel(context: Context?, ignoreContext: Boolean): Model(context, ignor
 		override var whereModifiedAfter: Option<OffsetDateTime> = none(),
 
 		/**
-		 * Matches rows where the creator's internal ID is this.
+		 * Matches rows where the owner's internal ID is this.
 		 * API-unsafe.
 		 * @since 2.0.0
 		 */
-		var whereCreatorInternalIdIs: Option<Int> = none(),
+		var whereOwnerInternalIdIs: Option<Int> = none(),
 
 		/**
 		 * Matches rows that have fewer files than this.
@@ -119,8 +118,8 @@ class TagsModel(context: Context?, ignoreContext: Boolean): Model(context, ignor
 
 			val prefix = "$table.$colPrefix"
 
-			if(whereCreatorInternalIdIs is Some)
-				res.add(field("${prefix}_creator").eq((whereCreatorInternalIdIs as Some).value))
+			if(whereOwnerInternalIdIs is Some)
+				res.add(field("${prefix}_owner").eq((whereOwnerInternalIdIs as Some).value))
 			if(whereFileCountLessThan is Some)
 				res.add(field("${prefix}_file_count").lt((whereFileCountLessThan as Some).value))
 			if(whereFileCountMoreThan is Some)
@@ -211,7 +210,7 @@ class TagsModel(context: Context?, ignoreContext: Boolean): Model(context, ignor
 	 * @return The conditions
 	 */
 	private fun genContextFilterConditions(type: ContextFilterType): MutableList<Condition> {
-		return genGenericPermissionCreatorContextConditions(type, "tags", "tags.tag_creator", context?.account?.excludeOtherTags)
+		return genGenericPermissionOwnerContextConditions(type, "tags", "tags.tag_ownewr", context?.account?.excludeOtherTags)
 	}
 
 	/**
@@ -224,8 +223,8 @@ class TagsModel(context: Context?, ignoreContext: Boolean): Model(context, ignor
 			field("tag_id"),
 			field("tag_name"),
 			field("tag_description"),
-			field("account_id").`as`("tag_creator_id"),
-			field("account_name").`as`("tag_creator_name"),
+			field("account_id").`as`("tag_owner_id"),
+			field("account_name").`as`("tag_owner_name"),
 			field("tag_file_count"),
 			field("tag_created_ts"),
 			field("tag_modified_ts")
@@ -233,7 +232,7 @@ class TagsModel(context: Context?, ignoreContext: Boolean): Model(context, ignor
 
 		return select
 			.from(table("tags"))
-			.leftJoin(table("accounts")).on(field("accounts.id").eq(field("tags.tag_creator")))
+			.leftJoin(table("accounts")).on(field("accounts.id").eq(field("tags.tag_owner")))
 			.query
 	}
 
@@ -241,14 +240,14 @@ class TagsModel(context: Context?, ignoreContext: Boolean): Model(context, ignor
 	 * Creates a new tag row with the provided details
 	 * @param name The name
 	 * @param description The description
-	 * @param creatorInternalId The tag creator's internal ID
+	 * @param ownerInternalId The tag owner's internal ID
 	 * @return The newly created tag row's ID
 	 * @since 2.0.0
 	 */
 	suspend fun createRow(
 		name: String,
 		description: String,
-		creatorInternalId: Int
+		ownerInternalId: Int
 	): RowIdPair {
 		val id = genRowId()
 
@@ -257,13 +256,13 @@ class TagsModel(context: Context?, ignoreContext: Boolean): Model(context, ignor
 			field("tag_id"),
 			field("tag_name"),
 			field("tag_description"),
-			field("tag_creator")
+			field("tag_owner")
 		)
 			.values(
 				id,
 				name,
 				description,
-				creatorInternalId
+				ownerInternalId
 			)
 			.returning(field("id"))
 			.fetchOneAwait()!!

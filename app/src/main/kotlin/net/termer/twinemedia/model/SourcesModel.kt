@@ -79,11 +79,11 @@ class SourcesModel(context: Context?, ignoreContext: Boolean): Model(context, ig
 		var whereTypeIs: Option<String> = none(),
 
 		/**
-		 * Matches rows where the creator's internal ID is this.
+		 * Matches rows where the owner's internal ID is this.
 		 * API-unsafe.
 		 * @since 2.0.0
 		 */
-		var whereCreatorInternalIdIs: Option<Int> = none(),
+		var whereOwnerInternalIdIs: Option<Int> = none(),
 
 		/**
 		 * Matches rows that have this global status.
@@ -126,8 +126,8 @@ class SourcesModel(context: Context?, ignoreContext: Boolean): Model(context, ig
 
 			if(whereTypeIs is Some)
 				res.add(field("sources.source_type").eq((whereTypeIs as Some).value))
-			if(whereCreatorInternalIdIs is Some)
-				res.add(field("${prefix}_creator").eq((whereCreatorInternalIdIs as Some).value))
+			if(whereOwnerInternalIdIs is Some)
+				res.add(field("${prefix}_owner").eq((whereOwnerInternalIdIs as Some).value))
 			if(whereGlobalStatusIs is Some)
 				res.add(field("${prefix}_global").eq((whereGlobalStatusIs as Some).value))
 			if(whereFileCountLessThan is Some)
@@ -229,7 +229,7 @@ class SourcesModel(context: Context?, ignoreContext: Boolean): Model(context, ig
 	 * @return The conditions
 	 */
 	private fun genContextFilterConditions(type: ContextFilterType): MutableList<Condition> {
-		return genGenericPermissionCreatorContextConditions(type, "sources", "sources.source_creator", context?.account?.excludeOtherSources)
+		return genGenericPermissionOwnerContextConditions(type, "sources", "sources.source_owner", context?.account?.excludeOtherSources)
 	}
 
 	/**
@@ -243,8 +243,8 @@ class SourcesModel(context: Context?, ignoreContext: Boolean): Model(context, ig
 			field("source_id"),
 			field("source_type"),
 			field("source_name"),
-			field("account_id").`as`("source_creator_id"),
-			field("account_name").`as`("source_creator_name"),
+			field("account_id").`as`("source_owner_id"),
+			field("account_name").`as`("source_owner_name"),
 			field("source_global"),
 			field("source_file_count"),
 			field("source_created_ts"),
@@ -256,7 +256,7 @@ class SourcesModel(context: Context?, ignoreContext: Boolean): Model(context, ig
 
 		return select
 			.from(table("sources"))
-			.leftJoin(table("accounts")).on(field("accounts.id").eq(field("sources.source_creator")))
+			.leftJoin(table("accounts")).on(field("accounts.id").eq(field("sources.source_owner")))
 			.query
 	}
 
@@ -266,7 +266,7 @@ class SourcesModel(context: Context?, ignoreContext: Boolean): Model(context, ig
 	 * @param name The name
 	 * @param config The source config
 	 * @param isGlobal Whether the file source is available to be used by all accounts
-	 * @param creatorInternalId The source creator's internal ID
+	 * @param ownerInternalId The source owner's internal ID
 	 * @return The newly created file source row's ID
 	 * @since 2.0.0
 	 */
@@ -275,7 +275,7 @@ class SourcesModel(context: Context?, ignoreContext: Boolean): Model(context, ig
 		name: String,
 		config: JsonObject,
 		isGlobal: Boolean,
-		creatorInternalId: Int
+		ownerInternalId: Int
 	): RowIdPair {
 		val id = genRowId()
 
@@ -286,7 +286,7 @@ class SourcesModel(context: Context?, ignoreContext: Boolean): Model(context, ig
 			field("source_name"),
 			field("source_config"),
 			field("source_global"),
-			field("source_creator")
+			field("source_owner")
 		)
 			.values(
 				id,
@@ -294,7 +294,7 @@ class SourcesModel(context: Context?, ignoreContext: Boolean): Model(context, ig
 				name,
 				config,
 				isGlobal,
-				creatorInternalId
+				ownerInternalId
 			)
 			.returning(field("id"))
 			.fetchOneAwait()!!

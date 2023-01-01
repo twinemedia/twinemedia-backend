@@ -44,7 +44,7 @@ class AccountDto(
 	val defaultSource: RecordSourceDto?,
 
 	/**
-	 * The number of files the account has created
+	 * The number of files owned by the account
 	 * @since 2.0.0
 	 */
 	val fileCount: Int,

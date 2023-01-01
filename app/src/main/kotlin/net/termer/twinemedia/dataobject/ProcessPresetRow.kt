@@ -31,10 +31,10 @@ class ProcessPresetRow(
 	val settings: JsonObject,
 
 	/**
-	 * The preset creator's account internal ID
+	 * The preset owner's account internal ID
 	 * @since 2.0.0
 	 */
-	val creatorInternalId: Int,
+	val ownerInternalId: Int,
 
 	override val createdTs: OffsetDateTime,
 	override val modifiedTs: OffsetDateTime
@@ -50,7 +50,7 @@ class ProcessPresetRow(
 			name = row.getString("preset_name"),
 			mime = row.getString("preset_mime"),
 			settings = row.getJsonObject("preset_settings"),
-			creatorInternalId = row.getInteger("preset_creator"),
+			ownerInternalId = row.getInteger("preset_owner"),
 			createdTs = row.getOffsetDateTime("preset_created_ts"),
 			modifiedTs = row.getOffsetDateTime("preset_modified_ts")
 		)

@@ -30,10 +30,10 @@ class ApiKeyRow(
 	val jwt: String,
 
 	/**
-	 * The key creator's account internal ID
+	 * The key owner's account internal ID
 	 * @since 2.0.0
 	 */
-	val creatorInternalId: Int,
+	val ownerInternalId: Int,
 
 	override val createdTs: OffsetDateTime,
 	override val modifiedTs: OffsetDateTime
@@ -49,7 +49,7 @@ class ApiKeyRow(
 			name = row.getString("key_name"),
 			permissions = row.getArrayOfStrings("key_permissions"),
 			jwt = row.getString("key_jwt"),
-			creatorInternalId = row.getInteger("key_creator"),
+			ownerInternalId = row.getInteger("key_owner"),
 			createdTs = row.getOffsetDateTime("key_created_ts"),
 			modifiedTs = row.getOffsetDateTime("key_modified_ts")
 		)

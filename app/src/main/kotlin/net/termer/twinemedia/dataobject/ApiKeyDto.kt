@@ -32,10 +32,10 @@ class ApiKeyDto(
 	val jwt: String,
 
 	/**
-	 * The key's creator
+	 * The key's owner
 	 * @since 2.0.0
 	 */
-	val creator: RecordCreatorDto,
+	val owner: RecordOwnerDto,
 
 	override val createdTs: OffsetDateTime,
 	override val modifiedTs: OffsetDateTime
@@ -45,7 +45,7 @@ class ApiKeyDto(
 		"name" to name,
 		"permissions" to permissions,
 		"jwt" to jwt,
-		"creator" to creator.toJson(),
+		"owner" to owner.toJson(),
 		"createdTs" to createdTs.toString(),
 		"modifiedTs" to modifiedTs.toString()
 	)
@@ -61,9 +61,9 @@ class ApiKeyDto(
 			name = row.getString("key_name"),
 			permissions = row.getArrayOfStrings("key_permissions"),
 			jwt = row.getString("key_jwt"),
-			creator = RecordCreatorDto(
-				id = row.getString("key_creator_id"),
-				name = row.getString("key_creator_name")
+			owner = RecordOwnerDto(
+				id = row.getString("key_owner_id"),
+				name = row.getString("key_owner_name")
 			),
 			createdTs = row.getOffsetDateTime("key_created_ts"),
 			modifiedTs = row.getOffsetDateTime("key_modified_ts")

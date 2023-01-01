@@ -13,92 +13,92 @@ import java.time.OffsetDateTime
  * @since 2.0.0
  */
 class ListDto(
-	override val internalId: Int,
-	override val id: String,
+    override val internalId: Int,
+    override val id: String,
 
-	/**
+    /**
 	 * The list's name
 	 * @since 2.0.0
 	 */
 	val name: String,
 
-	/**
+    /**
 	 * The list's description
 	 * @since 2.0.0
 	 */
 	val description: String?,
 
-	/**
-	 * The list's creator, or null if the account no longer exists
+    /**
+	 * The list's owner, or null if the account no longer exists
 	 * @since 2.0.0
 	 */
-	val creator: RecordCreatorDto?,
+	val owner: RecordOwnerDto?,
 
-	/**
+    /**
 	 * The list's type
 	 * @since 2.0.0
 	 */
 	val type: ListType,
 
-	/**
+    /**
 	 * The list's visibility
 	 * @since 2.0.0
 	 */
 	val visibility: ListVisibility,
 
-	/**
+    /**
 	 * The tags that files must have to be in this list.
 	 * Only applies to lists with type [ListType.AUTOMATICALLY_POPULATED], will be null for other types.
 	 * @since 2.0.0
 	 */
 	val sourceTags: Array<String>?,
 
-	/**
+    /**
 	 * The tags that files must NOT have to be in this list.
 	 * Only applies to lists with type [ListType.AUTOMATICALLY_POPULATED], will be null for other types.
 	 * @since 2.0.0
 	 */
 	val sourceExcludeTags: Array<String>?,
 
-	/**
+    /**
 	 * The MIME type files must have to be in this list.
 	 * Only applies to lists with type [ListType.AUTOMATICALLY_POPULATED], will be null for other types.
 	 * @since 2.0.0
 	 */
 	val sourceMime: String?,
 
-	/**
+    /**
 	 * The time files must have been uploaded before to be in this list.
 	 * Only applies to lists with type [ListType.AUTOMATICALLY_POPULATED], will be null for other types.
 	 * @since 2.0.0
 	 */
 	val sourceCreatedBefore: OffsetDateTime?,
 
-	/**
+    /**
 	 * The time files must have been uploaded after to be in this list.
 	 * Only applies to lists with type [ListType.AUTOMATICALLY_POPULATED], will be null for other types.
 	 * @since 2.0.0
 	 */
 	val sourceCreatedAfter: OffsetDateTime?,
 
-	/**
-	 * Whether files by all accounts should be shown in list, not just by the list creator.
+    /**
+	 * Whether files by all accounts should be shown in list, not just by the list owner.
 	 * Only applies to lists with type [ListType.AUTOMATICALLY_POPULATED], will be null for other types.
 	 * @since 2.0.0
 	 */
 	val showAllAccountFiles: Boolean?,
 
-	/**
+    /**
 	 * The number of items in the list.
 	 * Only applies to lists with type [ListType.STANDARD], otherwise it will be null.
 	 * @since 2.0.0
 	 */
 	val itemCount: Int?,
 
-	override val createdTs: OffsetDateTime,
-	override val modifiedTs: OffsetDateTime,
+    override val createdTs: OffsetDateTime,
+    override val modifiedTs: OffsetDateTime,
 
-	/**
+    /**
 	 * Whether this list contains a file that was specified in a query.
 	 * Will be null if none was specified.
 	 * @since 2.0.0
@@ -109,7 +109,7 @@ class ListDto(
 		"id" to id,
 		"name" to name,
 		"description" to description,
-		"creator" to creator?.toJson(),
+		"owner" to owner?.toJson(),
 		"type" to type.name, // TODO Always use name for enum values, and use PG enum for them. Check how jOOQ handles enums without codegen
 		"visibility" to visibility.name,
 		"sourceTags" to sourceTags?.toJsonArray(),
@@ -130,16 +130,16 @@ class ListDto(
 		 * @since 2.0.0
 		 */
 		fun fromRow(row: Row): ListDto {
-			val listCreatorId = row.getString("list_creator_id")
+			val listOwnerId = row.getString("list_owner_id")
 
 			return ListDto(
 				internalId = row.getInteger("id"),
 				id = row.getString("list_id"),
 				name = row.getString("list_name"),
 				description = row.getString("list_description"),
-				creator = if(listCreatorId == null) null else RecordCreatorDto(
-					id = listCreatorId,
-					name = row.getString("list_creator_name")
+				owner = if(listOwnerId == null) null else RecordOwnerDto(
+					id = listOwnerId,
+					name = row.getString("list_owner_name")
 				),
 				// Allow throwing of NPE here because an invalid type should never have been in the database in the first place
 				type = intToListType(row.getInteger("list_type"))!!,

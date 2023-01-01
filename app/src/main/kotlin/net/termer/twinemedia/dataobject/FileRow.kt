@@ -55,10 +55,10 @@ class FileRow(
 	val meta: JsonObject,
 
 	/**
-	 * The file creator's account internal ID, or null if the account no longer exists
+	 * The file owner's account internal ID, or null if the account no longer exists
 	 * @since 2.0.0
 	 */
-	val creatorInternalId: Int?,
+	val ownerInternalId: Int?,
 
 	/**
 	 * The file's parent internal ID, of null if not a child
@@ -126,7 +126,7 @@ class FileRow(
 			key = row.getString("file_key"),
 			description = row.getString("file_description"),
 			meta = row.getJsonObject("file_meta"),
-			creatorInternalId = row.getInteger("file_creator"),
+			ownerInternalId = row.getInteger("file_owner"),
 			parentInternalId = row.getInteger("file_parent"),
 			hash = row.getString("file_hash"),
 			thumbnailKey = row.getString("file_thumbnail_key"),

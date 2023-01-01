@@ -28,10 +28,10 @@ class ListRow(
 	val description: String,
 
 	/**
-	 * The list creator's account internal ID, or null if the account no longer exists
+	 * The list owner's account internal ID, or null if the account no longer exists
 	 * @since 2.0.0
 	 */
-	val creatorInternalId: Int?,
+	val ownerInternalId: Int?,
 
 	/**
 	 * The list's type
@@ -81,7 +81,7 @@ class ListRow(
 	val sourceCreatedAfter: OffsetDateTime?,
 
 	/**
-	 * Whether files by all accounts should be shown in list, not just by the list creator.
+	 * Whether files by all accounts should be shown in list, not just by the list owner.
 	 * Only applies to lists with type [ListType.AUTOMATICALLY_POPULATED]
 	 * @since 2.0.0
 	 */
@@ -107,7 +107,7 @@ class ListRow(
 			id = row.getString("list_id"),
 			name = row.getString("list_name"),
 			description = row.getString("list_description"),
-			creatorInternalId = row.getInteger("list_creator"),
+			ownerInternalId = row.getInteger("list_owner"),
 			// Allow throwing of NPE here because an invalid type should never have been in the database in the first place
 			type = intToListType(row.getInteger("list_type"))!!,
 			// Same rationale for this column as well

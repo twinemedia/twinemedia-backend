@@ -64,11 +64,11 @@ class ApiKeysModel(context: Context?, ignoreContext: Boolean): Model(context, ig
 		override var whereModifiedAfter: Option<OffsetDateTime> = none(),
 
 		/**
-		 * Matches rows where the creator's internal ID is this.
+		 * Matches rows where the owner's internal ID is this.
 		 * API-unsafe.
 		 * @since 2.0.0
 		 */
-		var whereCreatorInternalIdIs: Option<Int> = none(),
+		var whereOwnerInternalIdIs: Option<Int> = none(),
 
 		/**
 		 * Matches rows where their values match this plaintext query.
@@ -88,8 +88,8 @@ class ApiKeysModel(context: Context?, ignoreContext: Boolean): Model(context, ig
 
 			val prefix = "$table.$colPrefix"
 
-			if(whereCreatorInternalIdIs is Some)
-				res.add(field("${prefix}_creator").eq((whereCreatorInternalIdIs as Some).value))
+			if(whereOwnerInternalIdIs is Some)
+				res.add(field("${prefix}_owner").eq((whereOwnerInternalIdIs as Some).value))
 			if(whereMatchesQuery is Some) {
 				res.addAll(genFulltextSearchConditions(
 					(whereMatchesQuery as Some).value,
@@ -194,13 +194,13 @@ class ApiKeysModel(context: Context?, ignoreContext: Boolean): Model(context, ig
 			field("key_name"),
 			field("key_permissions"),
 			field("key_jwt"),
-			field("account_id").`as`("key_creator_id"),
-			field("account_name").`as`("key_creator_name"),
+			field("account_id").`as`("key_owner_id"),
+			field("account_name").`as`("key_owner_name"),
 			field("key_created_ts"),
 			field("key_modified_ts")
 		)
 			.from(table("api_keys"))
-			.leftJoin(table("accounts")).on(field("accounts.id").eq(field("key_creator")))
+			.leftJoin(table("accounts")).on(field("accounts.id").eq(field("key_owner")))
 			.query
 
 	/**
@@ -208,7 +208,7 @@ class ApiKeysModel(context: Context?, ignoreContext: Boolean): Model(context, ig
 	 * @param name The name of the new API key
 	 * @param permissions An array of permissions that the new API key will have
 	 * @param jwt The API key's actual JWT token
-	 * @param creatorInternalId The API key creator's internal ID
+	 * @param ownerInternalId The API key owner's internal ID
 	 * @return The newly created API key row's ID
 	 * @since 2.0.0
 	 */
@@ -216,7 +216,7 @@ class ApiKeysModel(context: Context?, ignoreContext: Boolean): Model(context, ig
 		name: String,
 		permissions: Array<String>,
 		jwt: String,
-		creatorInternalId: Int
+		ownerInternalId: Int
 	): RowIdPair {
 		val id = genRowId()
 
@@ -226,9 +226,9 @@ class ApiKeysModel(context: Context?, ignoreContext: Boolean): Model(context, ig
 			field("key_name"),
 			field("key_permissions"),
 			field("key_jwt"),
-			field("key_creator")
+			field("key_owner")
 		)
-			.values(id, name, permissions, jwt, creatorInternalId)
+			.values(id, name, permissions, jwt, ownerInternalId)
 			.returning(field("id"))
 			.fetchOneAwait()!!
 			.getInteger("id")

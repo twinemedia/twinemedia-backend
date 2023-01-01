@@ -90,11 +90,11 @@ class FilesModel(context: Context?, ignoreContext: Boolean): Model(context, igno
 		override var whereModifiedAfter: Option<OffsetDateTime> = none(),
 
 		/**
-		 * Matches rows where the creator's internal ID is this.
+		 * Matches rows where the owner's internal ID is this.
 		 * API-unsafe.
 		 * @since 2.0.0
 		 */
-		var whereCreatorInternalIdIs: Option<Int> = none(),
+		var whereOwnerInternalIdIs: Option<Int> = none(),
 
 		/**
 		 * Matches rows where the MIME type matches this SQL LIKE pattern.
@@ -161,8 +161,8 @@ class FilesModel(context: Context?, ignoreContext: Boolean): Model(context, igno
 
 			val prefix = "$table.$colPrefix"
 
-			if(whereCreatorInternalIdIs is Some)
-				res.add(field("${prefix}_creator").eq((whereCreatorInternalIdIs as Some).value))
+			if(whereOwnerInternalIdIs is Some)
+				res.add(field("${prefix}_owner").eq((whereOwnerInternalIdIs as Some).value))
 			if(whereMimeIsLike is Some)
 				res.add(field("${prefix}_mime").like((whereMimeIsLike as Some).value))
 			if(whereTagCountLessThan is Some)
@@ -301,7 +301,7 @@ class FilesModel(context: Context?, ignoreContext: Boolean): Model(context, igno
 	 * @return The conditions
 	 */
 	private fun genContextFilterConditions(type: ContextFilterType): MutableList<Condition> {
-		return genGenericPermissionCreatorContextConditions(type, "files", "files.file_creator", context?.account?.excludeOtherLists)
+		return genGenericPermissionOwnerContextConditions(type, "files", "files.file_owner", context?.account?.excludeOtherLists)
 	}
 
 	/**
@@ -323,8 +323,8 @@ class FilesModel(context: Context?, ignoreContext: Boolean): Model(context, igno
 			field("file_child_count"),
 			field("file_processing"),
 			field("file_process_error"),
-			field("account_id").`as`("file_creator_id"),
-			field("account_name").`as`("file_creator_name"),
+			field("account_id").`as`("file_owner_id"),
+			field("account_name").`as`("file_owner_name"),
 			field("source_id").`as`("file_source_id"),
 			field("source_name").`as`("file_source_name"),
 			field("source_type").`as`("file_source_type"),
@@ -339,7 +339,7 @@ class FilesModel(context: Context?, ignoreContext: Boolean): Model(context, igno
 
 		return select
 			.from(table("files"))
-			.leftJoin(table("accounts")).on(field("accounts.id").eq(field("files.file_creator")))
+			.leftJoin(table("accounts")).on(field("accounts.id").eq(field("files.file_owner")))
 			.join(table("sources")).on(field("sources.id").eq(field("files.file_source")))
 			.query
 	}
@@ -358,7 +358,7 @@ class FilesModel(context: Context?, ignoreContext: Boolean): Model(context, igno
 	 * @param parentInternalId The internal ID of the file's parent, or null if it is not a child
 	 * @param isProcessing Whether the file is currently processing
 	 * @param sourceInternalId The internal ID of the file source where the file resides
-	 * @param creatorInternalId The file creator's internal ID
+	 * @param ownerInternalId The file owner's internal ID
 	 * @return The newly created file row's ID
 	 * @since 2.0.0
 	 */
@@ -375,7 +375,7 @@ class FilesModel(context: Context?, ignoreContext: Boolean): Model(context, igno
 		parentInternalId: Int?,
 		isProcessing: Boolean,
 		sourceInternalId: Int,
-		creatorInternalId: Int
+		ownerInternalId: Int
 	): RowIdPair {
 		val id = genRowId()
 
@@ -394,7 +394,7 @@ class FilesModel(context: Context?, ignoreContext: Boolean): Model(context, igno
 			field("file_parent"),
 			field("file_processing"),
 			field("file_source"),
-			field("file_creator")
+			field("file_owner")
 		)
 			.values(
 				id,
@@ -410,7 +410,7 @@ class FilesModel(context: Context?, ignoreContext: Boolean): Model(context, igno
 				parentInternalId,
 				isProcessing,
 				sourceInternalId,
-				creatorInternalId
+				ownerInternalId
 			)
 			.returning(field("id"))
 			.fetchOneAwait()!!

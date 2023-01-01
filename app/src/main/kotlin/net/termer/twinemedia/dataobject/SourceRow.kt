@@ -32,10 +32,10 @@ class SourceRow(
 	val config: JsonObject,
 
 	/**
-	 * The file source creator's account internal ID
+	 * The file source owner's account internal ID
 	 * @since 2.0.0
 	 */
-	val creatorInternalId: Int?,
+	val ownerInternalId: Int?,
 
 	/**
 	 * Whether the file source is available to be used by all users
@@ -63,7 +63,7 @@ class SourceRow(
 			type = row.getString("source_type"),
 			name = row.getString("source_name"),
 			config = row.getJsonObject("source_config"),
-			creatorInternalId = row.getInteger("source_creator"),
+			ownerInternalId = row.getInteger("source_owner"),
 			isGlobal = row.getBoolean("source_global"),
 			fileCount = row.getInteger("source_file_count"),
 			createdTs = row.getOffsetDateTime("source_created_ts"),

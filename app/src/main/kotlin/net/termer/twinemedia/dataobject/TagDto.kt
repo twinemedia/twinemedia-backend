@@ -28,10 +28,10 @@ class TagDto(
 	val description: String?,
 
 	/**
-	 * The tag creator's account, or null if the account no longer exists
+	 * The tag owner's account, or null if the account no longer exists
 	 * @since 2.0.0
 	 */
-	val creator: RecordCreatorDto?,
+	val owner: RecordOwnerDto?,
 
 	/**
 	 * The number of files using the tag
@@ -46,7 +46,7 @@ class TagDto(
 		"id" to id,
 		"name" to name,
 		"description" to description,
-		"creator" to creator?.toJson(),
+		"owner" to owner?.toJson(),
 		"fileCount" to fileCount,
 		"createdTs" to createdTs.toString(),
 		"modifiedTs" to modifiedTs.toString()
@@ -58,16 +58,16 @@ class TagDto(
 		 * @since 2.0.0
 		 */
 		fun fromRow(row: Row): TagDto {
-			val tagCreatorId = row.getString("tag_creator_id")
+			val tagOwnerId = row.getString("tag_owner_id")
 
 			return TagDto(
 				internalId = row.getInteger("id"),
 				id = row.getString("tag_id"),
 				name = row.getString("tag_name"),
 				description = if(row.hasCol("tag_description")) row.getString("tag_description") else null,
-				creator = if(tagCreatorId == null) null else RecordCreatorDto(
-					id = tagCreatorId,
-					name = row.getString("tag_creator_name")
+				owner = if(tagOwnerId == null) null else RecordOwnerDto(
+					id = tagOwnerId,
+					name = row.getString("tag_owner_name")
 				),
 				fileCount = row.getInteger("tag_file_count"),
 				createdTs = row.getOffsetDateTime("tag_created_ts"),

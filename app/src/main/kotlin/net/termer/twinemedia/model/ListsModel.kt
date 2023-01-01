@@ -73,11 +73,11 @@ class ListsModel(context: Context?, ignoreContext: Boolean): Model(context, igno
 		override var whereModifiedAfter: Option<OffsetDateTime> = none(),
 
 		/**
-		 * Matches rows where the creator's internal ID is this.
+		 * Matches rows where the owner's internal ID is this.
 		 * API-unsafe.
 		 * @since 2.0.0
 		 */
-		var whereCreatorInternalIdIs: Option<Int> = none(),
+		var whereOwnerInternalIdIs: Option<Int> = none(),
 
 		/**
 		 * Matches rows where the type is this.
@@ -137,8 +137,8 @@ class ListsModel(context: Context?, ignoreContext: Boolean): Model(context, igno
 				res.add(field("${prefix}_type").eq((whereTypeIs as Some).value.ordinal))
 			if(whereVisibilityIs is Some)
 				res.add(field("${prefix}_visibility").eq((whereVisibilityIs as Some).value.ordinal))
-			if(whereCreatorInternalIdIs is Some)
-				res.add(field("${prefix}_creator").eq((whereCreatorInternalIdIs as Some).value))
+			if(whereOwnerInternalIdIs is Some)
+				res.add(field("${prefix}_owner").eq((whereOwnerInternalIdIs as Some).value))
 			if(whereFileCountLessThan is Some)
 				res.add(field("${prefix}_file_count").lt((whereFileCountLessThan as Some).value))
 			if(whereFileCountMoreThan is Some)
@@ -245,7 +245,7 @@ class ListsModel(context: Context?, ignoreContext: Boolean): Model(context, igno
 		val sourceCreatedAfter: Option<OffsetDateTime>,
 
 		/**
-		 * Whether files by all users should be shown in list, not just by the list creator.
+		 * Whether files by all users should be shown in list, not just by the list owner.
 		 * Only applies to lists with type [ListType.AUTOMATICALLY_POPULATED], should be [None] for other types.
 		 * @since 2.0.0
 		 */
@@ -313,7 +313,7 @@ class ListsModel(context: Context?, ignoreContext: Boolean): Model(context, igno
 				val perm = "lists.${type.toPermissionVerb()}.all"
 
 				return if(!acc.hasPermission(perm) || context!!.account.excludeOtherLists) {
-					val cond = field("lists.list_creator").eq(acc.internalId)
+					val cond = field("lists.list_owner").eq(acc.internalId)
 
 					// Show public lists if not a listing query
 					arrayListOf(if(type == ContextFilterType.VIEW)
@@ -339,8 +339,8 @@ class ListsModel(context: Context?, ignoreContext: Boolean): Model(context, igno
 			field("lists.id"),
 			field("list_name"),
 			field("list_description"),
-			field("account_id").`as`("list_creator_id"),
-			field("account_name").`as`("list_creator_name"),
+			field("account_id").`as`("list_owner_id"),
+			field("account_name").`as`("list_owner_name"),
 			field("list_type"),
 			field("list_visibility"),
 			field("list_source_tags"),
@@ -354,14 +354,14 @@ class ListsModel(context: Context?, ignoreContext: Boolean): Model(context, igno
 			field("list_modified_ts")
 		)
 			.from(table("lists"))
-			.leftJoin(table("accounts")).on(field("accounts.id").eq(field("list_creator")))
+			.leftJoin(table("accounts")).on(field("accounts.id").eq(field("list_owner")))
 			.query
 
 	/**
 	 * Creates a new list row with the provided details
 	 * @param name The name of the new list
 	 * @param description The list's description (defaults to an empty string)
-	 * @param creatorInternalId The list creator's internal ID
+	 * @param ownerInternalId The list owner's internal ID
 	 * @param type The list type
 	 * @param visibility The list visibility
 	 * @param sourceTags The tags that files must have to be in this list (value will be ignored if type is not [ListType.AUTOMATICALLY_POPULATED])
@@ -369,14 +369,14 @@ class ListsModel(context: Context?, ignoreContext: Boolean): Model(context, igno
 	 * @param sourceMime The MIME type files must have to be in this list (value will be ignored if type is not [ListType.AUTOMATICALLY_POPULATED])
 	 * @param sourceCreatedBefore The time files must have been uploaded before to be in this list (value will be ignored if type is not [ListType.AUTOMATICALLY_POPULATED])
 	 * @param sourceCreatedAfter The time files must have been uploaded after to be in this list (value will be ignored if type is not [ListType.AUTOMATICALLY_POPULATED])
-	 * @param showAllAccountFiles Whether files by all accounts should be shown in list, not just by the list creator (value will be ignored if type is not [ListType.AUTOMATICALLY_POPULATED])
+	 * @param showAllAccountFiles Whether files by all accounts should be shown in list, not just by the list owner (value will be ignored if type is not [ListType.AUTOMATICALLY_POPULATED])
 	 * @return The newly created list row's ID
 	 * @since 2.0.0
 	 */
 	suspend fun createRow(
 		name: String,
 		description: String,
-		creatorInternalId: Int,
+		ownerInternalId: Int,
 		type: ListType,
 		visibility: ListVisibility,
 		sourceTags: Array<String>?,
@@ -393,7 +393,7 @@ class ListsModel(context: Context?, ignoreContext: Boolean): Model(context, igno
 			field("list_id"),
 			field("list_name"),
 			field("list_description"),
-			field("list_creator"),
+			field("list_owner"),
 			field("list_type"),
 			field("list_visibility"),
 			field("list_source_tags"),
@@ -411,7 +411,7 @@ class ListsModel(context: Context?, ignoreContext: Boolean): Model(context, igno
 				id,
 				name,
 				description,
-				creatorInternalId,
+				ownerInternalId,
 				type,
 				visibility,
 				null,
@@ -426,7 +426,7 @@ class ListsModel(context: Context?, ignoreContext: Boolean): Model(context, igno
 				id,
 				name,
 				description,
-				creatorInternalId,
+				ownerInternalId,
 				type,
 				visibility,
 				sourceTags,
