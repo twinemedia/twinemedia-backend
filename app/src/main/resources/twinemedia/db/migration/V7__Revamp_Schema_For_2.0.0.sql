@@ -246,6 +246,8 @@ alter table files
 alter table files
     rename column media_key to file_key;
 alter table files
+    alter column file_key type varchar(255) using file_key::varchar(255);
+alter table files
     rename column media_created_on to file_created_ts;
 alter table files
     rename column media_description to file_description;
