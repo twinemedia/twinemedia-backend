@@ -44,6 +44,20 @@ class AccountDto(
 	val defaultSource: RecordSourceDto?,
 
 	/**
+	 * The account's maximum allowed file upload size, or null to use the application configured value.
+	 * This value overrides the application's configured value.
+	 * @since 2.0.0
+	 */
+	val maxUploadSize: Long?,
+
+	/**
+	 * The account's maximum allowed number of concurrent file uploads, or null to use the application configured value
+	 * This value overrides the application's configured value.
+	 * @since 2.0.0
+	 */
+	val maxConcurrentUploads: Int?,
+
+	/**
 	 * The number of files owned by the account
 	 * @since 2.0.0
 	 */
@@ -59,6 +73,8 @@ class AccountDto(
 		"permissions" to permissions,
 		"isAdmin" to isAdmin,
 		"defaultSource" to defaultSource?.toJson(),
+		"maxUploadSize" to maxUploadSize,
+		"maxConcurrentUploads" to maxConcurrentUploads,
 		"fileCount" to fileCount,
 		"createdTs" to createdTs.toString(),
 		"modifiedTs" to modifiedTs.toString()
@@ -84,6 +100,8 @@ class AccountDto(
 					name = row.getString("account_default_source_name"),
 					type = row.getString("account_default_source_type")
 				),
+				maxUploadSize = row.getLong("account_max_upload_size"),
+				maxConcurrentUploads = row.getInteger("account_max_concurrent_uploads"),
 				fileCount = row.getInteger("account_file_count"),
 				createdTs = row.getOffsetDateTime("account_created_ts"),
 				modifiedTs = row.getOffsetDateTime("account_modified_ts")

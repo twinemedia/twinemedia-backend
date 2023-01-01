@@ -56,6 +56,12 @@ data class AppConfig(
     var maxUploadSize: Long = 1073741824, // 1GB
 
     /**
+     * The maximum number of concurrent uploads per account
+     * @since 2.0.0
+     */
+    var maxConcurrentUploads: Int = 5,
+
+    /**
      * The application database's host
      * @since 2.0.0
      */

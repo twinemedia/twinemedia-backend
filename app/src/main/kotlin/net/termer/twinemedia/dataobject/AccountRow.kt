@@ -83,16 +83,32 @@ class AccountRow(
     val excludeOtherSources: Boolean,
 
 	/**
+	 * TODO This is not part of the row, instead move this into AccountInfoDto
      * Whether this account is being accessed by an API key
      * @since 2.0.0
      */
     val isApiKey: Boolean = false,
 
 	/**
+	 * TODO This is not part of the row, instead move this into AccountInfoDto
      * An array of permissions that this key is authorized to use
      * @since 2.0.0
      */
     val keyPermissions: Array<String>? = null,
+
+	/**
+	 * The account's maximum allowed file upload size, or null to use the application configured value.
+	 * This value overrides the application's configured value.
+	 * @since 2.0.0
+	 */
+	val maxUploadSize: Long?,
+
+	/**
+	 * The account's maximum allowed number of concurrent file uploads, or null to use the application configured value
+	 * This value overrides the application's configured value.
+	 * @since 2.0.0
+	 */
+	val maxConcurrentUploads: Int?,
 
 	/**
      * The ID of this account's default file source internal ID, or null if none
@@ -171,6 +187,8 @@ class AccountRow(
 					row.getArrayOfStrings("key_permissions")
 				else null,
 				defaultSourceInternalId = row.getInteger("account_default_source"),
+				maxUploadSize = row.getLong("account_max_upload_size"),
+				maxConcurrentUploads = row.getInteger("account_max_concurrent_uploads"),
 				fileCount = row.getInteger("account_file_count"),
 				createdTs = row.getOffsetDateTime("account_created_ts"),
 				modifiedTs = row.getOffsetDateTime("account_modified_ts")

@@ -164,6 +164,12 @@ alter table accounts
         foreign key (account_default_source) references sources (id)
         on delete set null;
 alter table accounts
+    add account_max_upload_size bigint;
+comment on column accounts.account_max_upload_size is 'The maximum file size in bytes that the account is allowed to upload. If null, the application configured value will be used. This field''s value overrides the application''s configured max upload size.';
+alter table accounts
+    add account_max_concurrent_uploads integer;
+comment on column accounts.account_max_concurrent_uploads is 'The maximum number of concurrent uploads allowed for the account. If null, the application configured value will be used. This field''s value overrides the application''s configured max upload size.';
+alter table accounts
     rename column account_exclude_other_media to account_exclude_other_files;
 alter table accounts
     rename column account_exclude_other_processes to account_exclude_other_process_presets

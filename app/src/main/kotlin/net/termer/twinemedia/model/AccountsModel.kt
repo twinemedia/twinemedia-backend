@@ -258,6 +258,18 @@ class AccountsModel(context: Context?, ignoreContext: Boolean): Model(context, i
 		var excludeOtherSources: Option<Boolean> = none(),
 
 		/**
+		 * The account's maximum allowed file upload size, or null to use the application configured value.
+		 * This value overrides the application's configured value.
+		 */
+		val maxUploadSize: Option<Long?> = none(),
+
+		/**
+		 * The account's maximum allowed number of concurrent file uploads, or null to use the application configured value
+		 * This value overrides the application's configured value.
+		 */
+		val maxConcurrentUploads: Option<Int?> = none(),
+
+		/**
 		 * Default source internal ID
 		 * @since 2.0.0
 		 */
@@ -280,6 +292,8 @@ class AccountsModel(context: Context?, ignoreContext: Boolean): Model(context, i
 			set("exclude_other_tags", excludeOtherTags)
 			set("exclude_other_process_presets", excludeOtherProcessPresets)
 			set("exclude_other_sources", excludeOtherSources)
+			set("max_upload_size", maxUploadSize)
+			set("max_concurrent_uploads", maxConcurrentUploads)
 			set("default_source", defaultSourceId)
 		}
 	}
@@ -332,6 +346,8 @@ class AccountsModel(context: Context?, ignoreContext: Boolean): Model(context, i
 			field("source_id").`as`("account_default_source_id"),
 			field("source_name").`as`("account_default_source_name"),
 			field("source_type").`as`("account_default_source_type"),
+			field("account_max_upload_size"),
+			field("account_max_concurrent_uploads"),
 			field("account_file_count"),
 			field("account_created_ts"),
 			field("account_modified_ts")
