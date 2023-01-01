@@ -1,7 +1,8 @@
 import java.net.URI
+import org.jetbrains.kotlin.gradle.tasks.KotlinCompile
 
 plugins {
-    val kotlinVersion = "1.7.10"
+    val kotlinVersion = "1.8.0"
 
     kotlin("jvm") version kotlinVersion
     kotlin("kapt") version kotlinVersion
@@ -19,7 +20,7 @@ repositories {
 }
 
 val jvmVersion = 17
-val vertxVersion = "4.3.4"
+val vertxVersion = "4.3.7"
 
 dependencies {
     // Kotlin dependencies
@@ -35,13 +36,13 @@ dependencies {
     implementation("io.vertx:vertx-web-openapi:$vertxVersion")
 
     // Logging
-    implementation("org.slf4j:slf4j-api:1.7.32")
-    implementation("org.slf4j:slf4j-simple:1.7.32")
+    implementation("org.slf4j:slf4j-api:2.0.5")
+    implementation("org.slf4j:slf4j-simple:2.0.5")
 
     // Misc dependencies
     implementation("de.mkammerer:argon2-jvm:2.11")
     implementation("net.bramp.ffmpeg:ffmpeg:0.7.0")
-    implementation("com.fasterxml.jackson.core:jackson-databind:2.13.3")
+    implementation("com.fasterxml.jackson.core:jackson-databind:2.14.0")
     implementation("net.termer.vertx.kotlin.validation:vertx-web-validator-kotlin:2.0.0")
     implementation("net.termer.krestx:krestx-api:1.0.0")
 
@@ -52,10 +53,10 @@ dependencies {
 
     // Database
     implementation("io.vertx:vertx-pg-client:$vertxVersion")
-    implementation("org.flywaydb:flyway-core:9.0.4")
+    implementation("org.flywaydb:flyway-core:9.10.2")
     implementation("com.ongres.scram:client:2.1")
     implementation("commons-cli:commons-cli:1.5.0")
-    implementation("org.jooq:jooq:3.17.4")
+    implementation("org.jooq:jooq:3.17.6")
 
     // Code generation
     implementation("com.github.wowselim.eventbus-service:eventbus-service-core:2.1.0")
@@ -67,9 +68,10 @@ application {
 }
 
 // Use Java 17 bytecode
-tasks.withType<org.jetbrains.kotlin.gradle.tasks.KotlinCompile> {
+tasks.withType<KotlinCompile> {
     kotlinOptions {
         jvmTarget = jvmVersion.toString()
+        languageVersion = "1.8"
     }
 }
 java {
@@ -78,6 +80,7 @@ java {
         implementation.set(JvmImplementation.J9)
     }
 }
+
 
 // Task dependencies
 tasks.named("build") {
