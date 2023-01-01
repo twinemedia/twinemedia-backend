@@ -340,28 +340,16 @@
 							"type": {
 								"type": "string",
 								"enum": [
-									{
-										"value": "STANDARD",
-										"description": "A standard list that is manually populated"
-									},
-									{
-										"value": "AUTOMATICALLY_POPULATED",
-										"description": "A list that is automatically populated based on criteria such as file tags, upload time, etc"
-									}
+									"STANDARD",
+									"AUTOMATICALLY_POPULATED"
 								],
 								"description": "The list type"
 							},
 							"visibility": {
 								"type": "string",
 								"enum": [
-									{
-										"value": "PRIVATE",
-										"description": "A private list that can only be viewed by users who created the list and have lists.view OR have lists.view.all permissions"
-									},
-									{
-										"value": "PUBLIC",
-										"description": "A public list that can be viewed by all users AND non-users alike"
-									}
+									"PRIVATE",
+									"PUBLIC"
 								],
 								"description": "The list visibility"
 							},
@@ -459,6 +447,9 @@
 						"$ref": "#/components/schemas/RecordWithCreator"
 					}
 				]
+			},
+			"Source": {
+				"description": "A file source"
 			},
 			"Tag": {
 				"description": "A file tag",
