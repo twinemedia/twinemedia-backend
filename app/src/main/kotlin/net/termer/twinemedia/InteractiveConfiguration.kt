@@ -182,9 +182,16 @@ fun interactiveInstall(configPath: Path, shutDown: Boolean = true) {
 		}
 
 		config.maxUploadSize = cons.promptNumber(
-			"What maximum upload size do you want (in MB)?",
+			"What should the default maximum file upload size be (in MiB)?",
 			config.maxUploadSize / 1024 / 1024
 		) * 1024 * 1024
+
+		if (advanced) {
+			config.maxConcurrentUploads = cons.promptNumber(
+				"How many files should an account be able to upload concurrently?",
+				config.maxConcurrentUploads
+			)
+		}
 
 		// Generate new JWT secret if the default hasn't been changed
 		var jwtSecret = if (config.jwtSecret == defaultConfig.jwtSecret)
