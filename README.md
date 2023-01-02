@@ -30,3 +30,6 @@ API documentation is an ongoing effort, but due to lack of time, it is not curre
 If you want to learn how to do something with the API, you can look at what's going on with the frontend's API access using your browser's network tab.
 
 The backend source includes documentation for API routes in every controller as well, so you can look at those for reference until a proper API document is created.
+
+# Mirror
+This repository's code is mirrored on [git.termer.net](https://git.termer.net/TwineMedia/twinemedia-backend). It is synced every 8 hours.
