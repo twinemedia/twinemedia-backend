@@ -138,6 +138,8 @@ create unique index account_id_idx
     on accounts (account_id);
 alter table accounts
     alter column account_id drop default;
+alter table accounts
+    alter column account_email type varchar(254) using account_email::varchar(254);
 create unique index account_email_idx
     on accounts (lower(account_email));
 alter table accounts
