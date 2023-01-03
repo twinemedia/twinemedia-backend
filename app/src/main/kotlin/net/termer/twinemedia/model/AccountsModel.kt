@@ -1,8 +1,6 @@
 package net.termer.twinemedia.model
 
 import io.vertx.core.http.HttpServerRequest
-import io.vertx.sqlclient.Row
-import io.vertx.sqlclient.RowSet
 import net.termer.twinemedia.AppConfig
 import net.termer.twinemedia.Constants.API_MAX_RESULT_LIMIT
 import net.termer.twinemedia.dataobject.AccountDto
