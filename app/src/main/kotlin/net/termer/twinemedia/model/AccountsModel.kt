@@ -1,10 +1,14 @@
 package net.termer.twinemedia.model
 
 import io.vertx.core.http.HttpServerRequest
+import io.vertx.sqlclient.Row
+import io.vertx.sqlclient.RowSet
+import net.termer.twinemedia.AppConfig
 import net.termer.twinemedia.Constants.API_MAX_RESULT_LIMIT
 import net.termer.twinemedia.dataobject.AccountDto
 import net.termer.twinemedia.dataobject.AccountRow
 import net.termer.twinemedia.dataobject.RowIdPair
+import net.termer.twinemedia.dataobject.SelfAccountDto
 import net.termer.twinemedia.model.pagination.AccountPagination
 import net.termer.twinemedia.model.pagination.RowPagination
 import net.termer.twinemedia.util.*
@@ -87,7 +91,7 @@ class AccountsModel(context: Context?, ignoreContext: Boolean): Model(context, i
 
 		/**
 		 * Matches rows where the ID of the API key associated with it is this.
-		 * Will be set to null if used in a DTO fetch method or if API key fetching is disabled on the row fetch method.
+		 * Will be set to null if used in any non-[SelfAccountDto] fetch method.
 		 * API-unsafe.
 		 * @since 2.0.0
 		 */
@@ -339,10 +343,42 @@ class AccountsModel(context: Context?, ignoreContext: Boolean): Model(context, i
 	private fun infoQuery() =
 		Sql.select(
 			field("accounts.id"),
+			field("account_id"),
 			field("account_email"),
 			field("account_name"),
 			field("account_admin"),
 			field("account_permissions"),
+			field("source_id").`as`("account_default_source_id"),
+			field("source_name").`as`("account_default_source_name"),
+			field("source_type").`as`("account_default_source_type"),
+			field("account_max_upload_size"),
+			field("account_max_concurrent_uploads"),
+			field("account_file_count"),
+			field("account_created_ts"),
+			field("account_modified_ts")
+		)
+			.from(table("accounts"))
+			.leftJoin(table("sources")).on(field("sources.id").eq(field("account_default_source")))
+			.query
+
+	/**
+	 * Generates a query for getting self-account DTO info
+	 * @return The query
+	 */
+	private fun selfQuery() =
+		Sql.select(
+			field("accounts.id"),
+			field("account_id"),
+			field("account_email"),
+			field("account_name"),
+			field("account_permissions"),
+			field("account_admin"),
+			field("account_exclude_tags"),
+			field("account_exclude_other_files"),
+			field("account_exclude_other_lists"),
+			field("account_exclude_other_tags"),
+			field("account_exclude_other_process_presets"),
+			field("account_exclude_other_sources"),
 			field("source_id").`as`("account_default_source_id"),
 			field("source_name").`as`("account_default_source_name"),
 			field("source_type").`as`("account_default_source_type"),
@@ -484,13 +520,90 @@ class AccountsModel(context: Context?, ignoreContext: Boolean): Model(context, i
 	}
 
 	/**
+	 * Fetches many accounts' self-account DTOs.
+	 * Use [fetchOneSelfDto] to fetch only one self-account.
+	 * @param filters Additional filters to apply
+	 * @param order Which order to sort results with (defaults to [SortOrder.CREATED_TS])
+	 * @param orderDesc Whether to sort results in descending order (defaults to false)
+	 * @param limit The number of results to return (defaults to [API_MAX_RESULT_LIMIT])
+	 * @param fetchApiKeyInfo Whether to fetch key info associated with the account (should be used in conjunction with [Filters.whereApiKeyIdIs]) (defaults to false)
+	 * @param config The [AppConfig] to be used for filling in missing values in resulting [SelfAccountDto] objects, or null to do nothing
+	 * @return The results
+	 * @since 2.0.0
+	 */
+	suspend fun fetchManySelfDtos(
+		filters: Filters = Filters(),
+		order: SortOrder = SortOrder.CREATED_TS,
+		orderDesc: Boolean = false,
+		limit: Int = API_MAX_RESULT_LIMIT,
+		fetchApiKeyInfo: Boolean = false,
+		config: AppConfig? = null
+	): List<SelfAccountDto> {
+		val query = selfQuery()
+
+		handleFetchKeyInfo(query, filters, fetchApiKeyInfo)
+
+		query.addConditions(genContextFilterConditions(ContextFilterType.LIST))
+		query.addConditions(filters.genConditions())
+		query.orderBy(order, orderDesc)
+		query.addLimit(limit)
+
+		val res = query.fetchManyAwait()
+
+		return if (config == null) {
+			res.map { SelfAccountDto.fromRow(it) }
+		} else {
+			res.map {
+				val obj = SelfAccountDto.fromRow(it)
+				obj.setMissingValues(config)
+				obj
+			}
+		}
+	}
+
+	/**
+	 * Fetches one account's self-account DTO.
+	 * Use [fetchManySelfDtos] to fetch multiple self-accounts.
+	 * @param filters Additional filters to apply
+	 * @param fetchApiKeyInfo Whether to fetch key info associated with the account (should be used in conjunction with [Filters.whereApiKeyIdIs]) (defaults to false)
+	 * @param config The [AppConfig] to be used for filling in missing values in resulting [SelfAccountDto] object, or null to do nothing
+	 * @return The account DTO, or null if there was no result
+	 * @since 2.0.0
+	 */
+	suspend fun fetchOneSelfDto(
+		filters: Filters = Filters(),
+		fetchApiKeyInfo: Boolean = false,
+		config: AppConfig?
+	): SelfAccountDto? {
+		val query = selfQuery()
+
+		handleFetchKeyInfo(query, filters, fetchApiKeyInfo)
+
+		query.addConditions(genContextFilterConditions(ContextFilterType.VIEW))
+		query.addConditions(filters.genConditions())
+		query.addLimit(1)
+
+		val row = query.fetchOneAwait()
+
+		return if (row == null) {
+			null
+		} else {
+			val obj = SelfAccountDto.fromRow(row)
+
+			if (config != null)
+				obj.setMissingValues(config)
+
+			obj
+		}
+	}
+
+	/**
 	 * Fetches many account rows.
 	 * Use [fetchOneRow] to fetch only one account.
 	 * @param filters Additional filters to apply
 	 * @param order Which order to sort results with (defaults to [SortOrder.CREATED_TS])
 	 * @param orderDesc Whether to sort results in descending order (defaults to false)
 	 * @param limit The number of results to return (defaults to [API_MAX_RESULT_LIMIT])
-	 * @param fetchApiKeyInfo Whether to fetch key info associated with the account (should be used in conjunction with [Filters.whereApiKeyIdIs]) (defaults to false)
 	 * @return The results
 	 * @since 2.0.0
 	 */
@@ -498,15 +611,14 @@ class AccountsModel(context: Context?, ignoreContext: Boolean): Model(context, i
 		filters: Filters = Filters(),
 		order: SortOrder = SortOrder.CREATED_TS,
 		orderDesc: Boolean = false,
-		limit: Int = API_MAX_RESULT_LIMIT,
-		fetchApiKeyInfo: Boolean = false
+		limit: Int = API_MAX_RESULT_LIMIT
 	): List<AccountRow> {
 		val query =
 			Sql.select(asterisk())
 				.from(table("accounts"))
 				.query
 
-		handleFetchKeyInfo(query, filters, fetchApiKeyInfo)
+		filters.whereApiKeyIdIs = none()
 
 		query.addConditions(genContextFilterConditions(ContextFilterType.LIST))
 		query.addConditions(filters.genConditions())
@@ -520,17 +632,16 @@ class AccountsModel(context: Context?, ignoreContext: Boolean): Model(context, i
 	 * Fetches one account row.
 	 * Use [fetchManyRows] to fetch many accounts.
 	 * @param filters Additional filters to apply
-	 * @param fetchApiKeyInfo Whether to fetch key info associated with the account (should be used in conjunction with [Filters.whereApiKeyIdIs]) (defaults to false)
 	 * @return The account row, or null if there was no result
 	 * @since 2.0.0
 	 */
-	suspend fun fetchOneRow(filters: Filters = Filters(), fetchApiKeyInfo: Boolean = false): AccountRow? {
+	suspend fun fetchOneRow(filters: Filters = Filters()): AccountRow? {
 		val query =
 			Sql.select(field("accounts.*"))
 				.from(table("accounts"))
 				.query
 
-		handleFetchKeyInfo(query, filters, fetchApiKeyInfo)
+		filters.whereApiKeyIdIs = none()
 
 		query.addConditions(genContextFilterConditions(ContextFilterType.VIEW))
 		query.addConditions(filters.genConditions())
@@ -556,6 +667,8 @@ class AccountsModel(context: Context?, ignoreContext: Boolean): Model(context, i
 				.from("accounts")
 				.query
 
+		filters.whereApiKeyIdIs = none()
+
 		query.addConditions(genContextFilterConditions(ContextFilterType.LIST))
 		query.addConditions(filters.genConditions())
 
@@ -572,6 +685,8 @@ class AccountsModel(context: Context?, ignoreContext: Boolean): Model(context, i
 	 */
 	suspend fun updateMany(values: UpdateValues, filters: Filters, limit: Int? = null, updateModifiedTs: Boolean = true) {
 		val query = Sql.updateQuery(table("accounts"))
+
+		filters.whereApiKeyIdIs = none()
 
 		query.addConditions(genContextFilterConditions(ContextFilterType.UPDATE))
 		query.addConditions(filters.genConditions())
@@ -605,6 +720,8 @@ class AccountsModel(context: Context?, ignoreContext: Boolean): Model(context, i
 	 */
 	suspend fun deleteMany(filters: Filters, limit: Int? = null) {
 		val query = Sql.deleteQuery(table("accounts"))
+
+		filters.whereApiKeyIdIs = none()
 
 		query.addConditions(genContextFilterConditions(ContextFilterType.DELETE))
 		query.addConditions(filters.genConditions())

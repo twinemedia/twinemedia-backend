@@ -83,20 +83,6 @@ class AccountRow(
     val excludeOtherSources: Boolean,
 
 	/**
-	 * TODO This is not part of the row, instead move this into AccountInfoDto
-     * Whether this account is being accessed by an API key
-     * @since 2.0.0
-     */
-    val isApiKey: Boolean = false,
-
-	/**
-	 * TODO This is not part of the row, instead move this into AccountInfoDto
-     * An array of permissions that this key is authorized to use
-     * @since 2.0.0
-     */
-    val keyPermissions: Array<String>? = null,
-
-	/**
 	 * The account's maximum allowed file upload size, or null to use the application configured value.
 	 * This value overrides the application's configured value.
 	 * @since 2.0.0
@@ -125,41 +111,6 @@ class AccountRow(
 	override val createdTs: OffsetDateTime,
 	override val modifiedTs: OffsetDateTime
 ): StandardRow {
-	/**
-	 * Returns if this user account has the specified permission
-	 * @param permission The permission to check
-	 * @return Whether this user account has the specified permission
-	 * @since 1.0.0
-	 */
-	fun hasPermission(permission: String): Boolean {
-		return if(isApiKey && keyPermissions != null)
-			(isAdmin || permissions.containsPermission(permission)) && keyPermissions.containsPermission(permission)
-		else
-			isAdmin || permissions.containsPermission(permission)
-	}
-
-	/**
-	 * Returns whether this user has administrator permissions
-	 * @return whether this user has administrator permissions
-	 * @since 2.0.0
-	 */
-	fun hasAdminPermission() = !isApiKey && isAdmin
-
-	/**
-	 * Sends an event to all SockJS clients authenticated as this account
-	 * @param vertx The Vert.x instance to use for sending the event
-	 * @param type The event type
-	 * @param json The event's JSON body
-	 * @since 2.0.0
-	 */
-	fun sendEvent(vertx: Vertx, type: String, json: JsonObject = JsonObject()) {
-		vertx.eventBus().publish("twinemedia.event.account", jsonObjectOf(
-			"account" to id,
-			"type" to type,
-			"json" to json
-		))
-	}
-
 	companion object {
 		/**
 		 * Maps a row to a new object instance
