@@ -116,30 +116,26 @@ class AccountRow(
 		 * Maps a row to a new object instance
 		 * @since 2.0.0
 		 */
-		fun fromRow(row: Row): AccountRow {
-			val isApiKey = row.hasCol("key_permissions")
-
-			return AccountRow(
-				internalId = row.getInteger("id"),
-				id = row.getString("account_id"),
-				email = row.getString("account_email"),
-				name = row.getString("account_name"),
-				permissions = row.getArrayOfStrings("account_permissions"),
-				isAdmin = row.getBoolean("account_admin"),
-				hash = row.getString("account_hash"),
-				excludeTags = row.getArrayOfStrings("account_exclude_tags"),
-				excludeOtherFiles = row.getBoolean("account_exclude_other_files"),
-				excludeOtherLists = row.getBoolean("account_exclude_other_lists"),
-				excludeOtherTags = row.getBoolean("account_exclude_other_tags"),
-				excludeOtherProcessPresets = row.getBoolean("account_exclude_other_process_presets"),
-				excludeOtherSources = row.getBoolean("account_exclude_other_sources"),
-				defaultSourceInternalId = row.getInteger("account_default_source"),
-				maxUploadSize = row.getLong("account_max_upload_size"),
-				maxConcurrentUploads = row.getInteger("account_max_concurrent_uploads"),
-				fileCount = row.getInteger("account_file_count"),
-				createdTs = row.getOffsetDateTime("account_created_ts"),
-				modifiedTs = row.getOffsetDateTime("account_modified_ts")
-			)
-		}
+		fun fromRow(row: Row) = AccountRow(
+			internalId = row.getInteger("id"),
+			id = row.getString("account_id"),
+			email = row.getString("account_email"),
+			name = row.getString("account_name"),
+			permissions = row.getArrayOfStrings("account_permissions"),
+			isAdmin = row.getBoolean("account_admin"),
+			hash = row.getString("account_hash"),
+			excludeTags = row.getArrayOfStrings("account_exclude_tags"),
+			excludeOtherFiles = row.getBoolean("account_exclude_other_files"),
+			excludeOtherLists = row.getBoolean("account_exclude_other_lists"),
+			excludeOtherTags = row.getBoolean("account_exclude_other_tags"),
+			excludeOtherProcessPresets = row.getBoolean("account_exclude_other_process_presets"),
+			excludeOtherSources = row.getBoolean("account_exclude_other_sources"),
+			defaultSourceInternalId = row.getInteger("account_default_source"),
+			maxUploadSize = row.getLong("account_max_upload_size"),
+			maxConcurrentUploads = row.getInteger("account_max_concurrent_uploads"),
+			fileCount = row.getInteger("account_file_count"),
+			createdTs = row.getOffsetDateTime("account_created_ts"),
+			modifiedTs = row.getOffsetDateTime("account_modified_ts")
+		)
 	}
 }
