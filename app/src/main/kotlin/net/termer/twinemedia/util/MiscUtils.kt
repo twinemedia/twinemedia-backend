@@ -132,7 +132,8 @@ fun Array<out JsonSerializable>.toJsonArray(): JsonArray {
 }
 
 /**
- * Converts this array into a JsonArray
+ * Converts this array into a JsonArray.
+ * Note that this method does not recursively convert objects within the array, and therefore should only be used for arrays of JSON-compatible types.
  * @return This array as a JsonArray
  * @since 1.4.0
  */
