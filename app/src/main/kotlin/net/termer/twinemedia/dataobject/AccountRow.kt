@@ -133,10 +133,6 @@ class AccountRow(
 				excludeOtherTags = row.getBoolean("account_exclude_other_tags"),
 				excludeOtherProcessPresets = row.getBoolean("account_exclude_other_process_presets"),
 				excludeOtherSources = row.getBoolean("account_exclude_other_sources"),
-				isApiKey = isApiKey,
-				keyPermissions = if(isApiKey)
-					row.getArrayOfStrings("key_permissions")
-				else null,
 				defaultSourceInternalId = row.getInteger("account_default_source"),
 				maxUploadSize = row.getLong("account_max_upload_size"),
 				maxConcurrentUploads = row.getInteger("account_max_concurrent_uploads"),
