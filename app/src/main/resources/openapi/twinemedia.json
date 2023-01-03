@@ -215,7 +215,7 @@
 					}
 				}
 			},
-			"AccountDto": {
+			"Account": {
 				"description": "An account",
 				"allOf": [
 					{
@@ -226,6 +226,8 @@
 							"permissions",
 							"isAdmin",
 							"defaultSource",
+							"maxUploadSize",
+							"maxConcurrentUploads",
 							"fileCount"
 						],
 						"properties": {
@@ -260,6 +262,140 @@
 								],
 								"nullable": true,
 								"description": "The account's default source. Will be null if the account has no default source."
+							},
+							"maxUploadSize": {
+								"type": "integer",
+								"format": "int64",
+								"nullable": true,
+								"description": "The account's maximum allowed file upload size. Will be null if the server default is being used."
+							},
+							"maxConcurrentUploads": {
+								"type": "integer",
+								"format": "int32",
+								"nullable": true,
+								"description": "The account's maximum allowed number of concurrent file uploads. Will be null if the server default is being used."
+							},
+							"fileCount": {
+								"type": "integer",
+								"format": "int32",
+								"minimum": 0,
+								"description": "The number of files owned by the account"
+							}
+						}
+					},
+					{
+						"$ref": "#/components/schemas/StandardRecord"
+					}
+				]
+			},
+			"SelfAccount": {
+				"description": "The user's self-account info",
+				"allOf": [
+					{
+						"type": "object",
+						"required": [
+							"email",
+							"name",
+							"permissions",
+							"isAdmin",
+							"excludeTags",
+							"excludeOtherFiles",
+							"excludeOtherLists",
+							"excludeOtherTags",
+							"excludeOtherProcessPresets",
+							"excludeOtherSources",
+							"isApiKey",
+							"keyPermissions",
+							"defaultSource",
+							"maxUploadSize",
+							"maxConcurrentUploads",
+							"fileCount"
+						],
+						"properties": {
+							"email": {
+								"type": "string",
+								"maxLength": 64,
+								"description": "The account's email address"
+							},
+							"name": {
+								"type": "string",
+								"maxLength": 64,
+								"description": "The account's name"
+							},
+							"permissions": {
+								"type": "array",
+								"items": {
+									"type": "string",
+									"maxLength": 256
+								},
+								"description": "The account's permissions. If the \"isAdmin\" field is true, it overrides all permissions in this field."
+							},
+							"isAdmin": {
+								"type": "boolean",
+								"description": "Whether the account is an administrator. Administrators have all permissions. If this field is true, the \"permissions\" field is overridden."
+							},
+							"excludeTags": {
+								"type": "array",
+								"items": {
+									"type": "string",
+									"maxLength": 256
+								},
+								"description": "The tags to exclude globally when listing and searching files"
+							},
+							"excludeOtherFiles": {
+								"type": "boolean",
+								"description": "Whether to globally exclude files created by other accounts"
+							},
+							"excludeOtherLists": {
+								"type": "boolean",
+								"description": "Whether to globally exclude lists created by other accounts"
+							},
+							"excludeOtherTags": {
+								"type": "boolean",
+								"description": "Whether to globally exclude tags on files created by other accounts"
+							},
+							"excludeOtherProcessPresets": {
+								"type": "boolean",
+								"description": "Whether to globally exclude process presets created by other accounts"
+							},
+							"excludeOtherSources": {
+								"type": "boolean",
+								"description": "Whether to globally exclude file sources created by other accounts"
+							},
+							"isApiKey": {
+								"type": "boolean",
+								"description": "Whether this account is being accessed by an API key"
+							},
+							"keyPermissions": {
+								"type": "array",
+								"items": {
+									"type": "string",
+									"maxLength": 256
+								},
+								"nullable": true,
+								"description": "An array of permissions that this key is authorized to use. Will be null if the account is not being accessed by an API key."
+							},
+							"defaultSource": {
+								"type": "object",
+								"allOf": [
+									{
+										"$ref": "#/components/schemas/RecordSource"
+									}
+								],
+								"nullable": true,
+								"description": "The account's default source. Will be null if the account has no default source."
+							},
+							"maxUploadSize": {
+								"type": "integer",
+								"format": "int64",
+								"nullable": true,
+								"description": "The account's maximum allowed file upload size"
+							},
+							"maxConcurrentUploads": {
+								"type": "integer",
+								"format": "int32",
+								"nullable": true,
+								"description": "The account's maximum allowed number of concurrent file uploads"
 							},
 							"fileCount": {
 								"type": "integer",
