@@ -86,7 +86,7 @@ class SelfAccountDto(
 	val isApiKey: Boolean = false,
 
 	/**
-	 * An array of permissions that this key is authorized to use
+	 * An array of permissions that this key is authorized to use, or null if the account is not being accessed by an API key
 	 * @since 2.0.0
 	 */
 	val keyPermissions: Array<String>? = null,
