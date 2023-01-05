@@ -229,7 +229,7 @@ class SourcesModel(context: Context?, ignoreContext: Boolean): Model(context, ig
 	 * @return The conditions
 	 */
 	private fun genContextFilterConditions(type: ContextFilterType): MutableList<Condition> {
-		return genGenericPermissionOwnerContextConditions(type, "sources", "sources.source_owner", context?.account?.excludeOtherSources)
+		return genGenericPermissionOwnerContextConditions(type, "sources", "sources.source_owner", context?.account?.selfAccount?.excludeOtherSources)
 	}
 
 	/**

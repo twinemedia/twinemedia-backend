@@ -312,8 +312,10 @@ class ListsModel(context: Context?, ignoreContext: Boolean): Model(context, igno
 				val acc = context!!.account
 				val perm = "lists.${type.toPermissionVerb()}.all"
 
-				return if(!acc.hasPermission(perm) || context!!.account.excludeOtherLists) {
-					val cond = field("lists.list_owner").eq(acc.internalId)
+				val selfAcc = context!!.account.selfAccount
+
+				return if(!acc.hasPermission(perm) || selfAcc.excludeOtherLists) {
+					val cond = field("lists.list_owner").eq(selfAcc.internalId)
 
 					// Show public lists if not a listing query
 					arrayListOf(if(type == ContextFilterType.VIEW)

@@ -1,9 +1,7 @@
 package net.termer.twinemedia.task
 
-import io.vertx.core.Handler
-import io.vertx.kotlin.core.json.jsonObjectOf
 import kotlinx.coroutines.DelicateCoroutinesApi
-import net.termer.twinemedia.dataobject.AccountRow
+import net.termer.twinemedia.util.account.AccountContext
 import java.util.concurrent.ConcurrentHashMap
 
 /**
@@ -71,42 +69,42 @@ class TaskManager {
 //	}
 
 	/**
-	 * Returns whether the provided account can view the specified task
-	 * @param account The account
+	 * Returns whether the provided [AccountContext] can view the specified task
+	 * @param accountCtx The account context
 	 * @param task The task to check against
 	 * @return Whether the provided account can view the specified task
-	 * @since 1.5.0
+	 * @since 2.0.0
 	 */
-	fun canAccountViewTask(account: AccountRow, task: Task): Boolean {
-		return task.subjects.contains(account.internalId) || (task.isGlobal && (task.viewPermission == null || account.hasPermission(task.viewPermission)))
+	fun canAccountViewTask(accountCtx: AccountContext, task: Task): Boolean {
+		return task.subjects.contains(accountCtx.selfAccount.internalId) || (task.isGlobal && (task.viewPermission == null || accountCtx.hasPermission(task.viewPermission)))
 	}
 
 	/**
-	 * Returns all tasks that are visible to the provided account
-	 * @param account The account to check against
+	 * Returns all tasks that are visible to the provided [AccountContext]
+	 * @param accountCtx The account context to check against
 	 * @return All tasks that are visible to the provided account
-	 * @since 1.5.0
+	 * @since 2.0.0
 	 */
-	fun tasksViewableByAccount(account: AccountRow): Array<Task> {
+	fun tasksViewableByAccount(accountCtx: AccountContext): Array<Task> {
 		val tasks = tasks
 		val res = ArrayList<Task>()
 
 		for(task in tasks)
-			if(canAccountViewTask(account, task))
+			if(canAccountViewTask(accountCtx, task))
 				res.add(task)
 
 		return res.toTypedArray()
 	}
 
 	/**
-	 * Returns whether the provided account can cancel the specified task
-	 * @param account The account
+	 * Returns whether the provided [AccountContext] can cancel the specified task
+	 * @param accountCtx The account context
 	 * @param task The task to check against
 	 * @return Whether the provided account can cancel the specified task
-	 * @since 1.5.0
+	 * @since 2.0.0
 	 */
-	fun canAccountCancelTask(account: AccountRow, task: Task): Boolean {
-		return task.isCancellable && canAccountViewTask(account, task) && (task.cancelPermission == null || account.hasPermission(task.cancelPermission))
+	fun canAccountCancelTask(accountCtx: AccountContext, task: Task): Boolean {
+		return task.isCancellable && canAccountViewTask(accountCtx, task) && (task.cancelPermission == null || accountCtx.hasPermission(task.cancelPermission))
 	}
 
 //	/**

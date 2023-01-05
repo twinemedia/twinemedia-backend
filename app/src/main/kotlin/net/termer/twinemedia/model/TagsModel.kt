@@ -210,7 +210,7 @@ class TagsModel(context: Context?, ignoreContext: Boolean): Model(context, ignor
 	 * @return The conditions
 	 */
 	private fun genContextFilterConditions(type: ContextFilterType): MutableList<Condition> {
-		return genGenericPermissionOwnerContextConditions(type, "tags", "tags.tag_ownewr", context?.account?.excludeOtherTags)
+		return genGenericPermissionOwnerContextConditions(type, "tags", "tags.tag_owner", context?.account?.selfAccount?.excludeOtherTags)
 	}
 
 	/**

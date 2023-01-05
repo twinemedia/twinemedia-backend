@@ -1,10 +1,10 @@
 package net.termer.twinemedia.model
 
 import io.vertx.core.http.HttpServerRequest
-import net.termer.twinemedia.dataobject.AccountRow
 import net.termer.twinemedia.dataobject.StandardRow
 import net.termer.twinemedia.util.Option
 import net.termer.twinemedia.util.Some
+import net.termer.twinemedia.util.account.AccountContext
 import net.termer.twinemedia.util.dateStringToOffsetDateTimeOrNone
 import org.jooq.Condition
 import org.jooq.UpdateQuery
@@ -35,10 +35,10 @@ abstract class Model(
 	 */
 	data class Context(
 		/**
-		 * The observer's account
+		 * The observer's account context
 		 * @since 2.0.0
 		 */
-		val account: AccountRow
+		val account: AccountContext
 	)
 
 	/**
@@ -255,7 +255,7 @@ abstract class Model(
 
 		// Add filter condition
 		if(ignoreAllPermission == true || !acc.hasPermission("$permissionPrefix.${type.toPermissionVerb()}.all"))
-			return arrayListOf(field(ownerField).eq(acc.internalId))
+			return arrayListOf(field(ownerField).eq(acc.selfAccount.internalId))
 
 		// No conditions to return
 		return ArrayList(0)

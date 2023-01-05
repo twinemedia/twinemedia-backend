@@ -209,7 +209,7 @@ class ProcessPresetsModel(context: Context?, ignoreContext: Boolean): Model(cont
 	 * @return The conditions
 	 */
 	private fun genContextFilterConditions(type: ContextFilterType): MutableList<Condition> {
-		return genGenericPermissionOwnerContextConditions(type, "process_presets", "process_presets.preset_owner", context?.account?.excludeOtherProcessPresets)
+		return genGenericPermissionOwnerContextConditions(type, "process_presets", "process_presets.preset_owner", context?.account?.selfAccount?.excludeOtherProcessPresets)
 	}
 
 	/**

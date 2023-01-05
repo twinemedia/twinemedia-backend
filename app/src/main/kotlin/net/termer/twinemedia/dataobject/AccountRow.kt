@@ -47,12 +47,14 @@ class AccountRow(
     val hash: String,
 
 	/**
+	 * TODO Make sure this is being applied in models
      * The tags to exclude globally when listing and searching files
      * @since 2.0.0
      */
     val excludeTags: Array<String>,
 
 	/**
+	 * TODO Make sure this is being applied in models
      * Whether to globally exclude files created by other accounts
      * @since 2.0.0
      */

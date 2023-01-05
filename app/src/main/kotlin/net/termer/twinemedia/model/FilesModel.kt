@@ -301,7 +301,7 @@ class FilesModel(context: Context?, ignoreContext: Boolean): Model(context, igno
 	 * @return The conditions
 	 */
 	private fun genContextFilterConditions(type: ContextFilterType): MutableList<Condition> {
-		return genGenericPermissionOwnerContextConditions(type, "files", "files.file_owner", context?.account?.excludeOtherLists)
+		return genGenericPermissionOwnerContextConditions(type, "files", "files.file_owner", context?.account?.selfAccount?.excludeOtherFiles)
 	}
 
 	/**
