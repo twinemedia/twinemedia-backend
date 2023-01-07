@@ -18,6 +18,12 @@ object Constants {
 	const val VERSION = "2.0.0"
 
 	/**
+	 * The application's current API version
+	 * @since 2.0.0
+	 */
+	const val CURRENT_API_VERSION = "v2"
+
+	/**
 	 * The application's supported API versions
 	 * @since 1.4.1
 	 */

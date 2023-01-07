@@ -10,10 +10,30 @@
 	},
 	"servers": [
 		{
-			"url": "http://127.0.0.1/api/v2"
+			"url": "http://twinemedia.local/api/v2"
 		}
 	],
 	"paths": {
+		"/": {
+			"get": {
+				"summary": "Returns API info. Does not require any authentication.",
+				"operationId": "apiInfo",
+				"tags": ["meta"],
+				"responses": {
+					"200": {
+						"description": "The API info",
+						"headers": {},
+						"content": {
+							"application/json": {
+								"schema": {
+									"$ref": "#/components/schemas/ApiInfo"
+								}
+							}
+						}
+					}
+				}
+			}
+		},
 		"/auth": {
 			"post": {
 				"summary": "Authenticates with email and passwords and returns a new authorization token",
@@ -90,6 +110,16 @@
 								}
 							}
 						}
+					},
+					"default": {
+						"description": "An error occurred",
+						"content": {
+							"application/json": {
+								"schema": {
+									"$ref": "#/components/schemas/ApiErrorRes"
+								}
+							}
+						}
 					}
 				}
 			},
@@ -104,7 +134,6 @@
 					"content": {
 						"application/json": {
 							"schema": {
-								"required": [],
 								"type": "object",
 								"properties": {
 									"currentPassword": {
@@ -195,6 +224,27 @@
 			}
 		},
 		"schemas": {
+			"ApiInfo": {
+				"type": "object",
+				"description": "Info about the API",
+				"required": [
+					"currentVersion",
+					"supportedVersions"
+				],
+				"properties": {
+					"currentVersion": {
+						"type": "string",
+						"description": "The current API version"
+					},
+					"supportedVersions": {
+						"type": "array",
+						"items": {
+							"type": "string"
+						},
+						"description": "All supported API versions"
+					}
+				}
+			},
 			"ApiError": {
 				"type": "object",
 				"description": "An error that is returned in an error response",
