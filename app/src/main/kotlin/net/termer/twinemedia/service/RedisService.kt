@@ -249,7 +249,7 @@ class RedisService(
      * @since 2.0.0
      */
     suspend fun delete(key: String): Boolean {
-        return api.del(listOf(mkKey(key))).await().toInteger() > 0
+        return api.del(listOf(mkKey(mkKey(key)))).await().toInteger() > 0
     }
 
     /**
@@ -259,7 +259,7 @@ class RedisService(
      * @since 2.0.0
      */
     suspend fun deleteMany(keys: List<String>): Int {
-        return api.del(keys).await().toInteger()
+        return api.del(keys.map { mkKey(it) }).await().toInteger()
     }
 
     /**
@@ -269,7 +269,7 @@ class RedisService(
      * @since 2.0.0
      */
     suspend fun exists(key: String): Boolean {
-        return api.exists(listOf(key)).await().toInteger() > 0
+        return api.exists(listOf(mkKey(key))).await().toInteger() > 0
     }
 
     /**
@@ -279,6 +279,6 @@ class RedisService(
      * @since 2.0.0
      */
     suspend fun existsMany(keys: List<String>): Int {
-        return api.exists(keys).await().toInteger()
+        return api.exists(keys.map { mkKey(it) }).await().toInteger()
     }
 }
