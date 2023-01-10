@@ -1,11 +1,13 @@
-package net.termer.twinemedia.util
+package net.termer.twinemedia.service
 
 import de.mkammerer.argon2.Argon2
 import de.mkammerer.argon2.Argon2Factory
 import de.mkammerer.argon2.Argon2Factory.Argon2Types
 import io.vertx.core.Vertx
 import io.vertx.kotlin.coroutines.await
-import net.termer.twinemedia.AppContext
+import net.termer.twinemedia.AppConfig
+import net.termer.twinemedia.util.base64ToBase64Url
+import net.termer.twinemedia.util.base64UrlToBase64
 import java.util.*
 import javax.crypto.Cipher
 import javax.crypto.SecretKey
@@ -15,31 +17,66 @@ import javax.crypto.spec.PBEKeySpec
 import javax.crypto.spec.SecretKeySpec
 import kotlin.text.Charsets.UTF_8
 
-
 /**
- * Utility class for dealing with hashing and other cryptographic tasks
- * @param vertx The [Vertx] instance to use
- * @param appCtx Application context to use
+ * Service for dealing with hashing and other cryptographic tasks
  * @since 2.0.0
  */
-class Crypto(
+class CryptoService(
+    /**
+     * The Vert.x instance to use
+     */
     private val vertx: Vertx,
-    private val appCtx: AppContext
+
+    /**
+     * The number of threads to use for password hashing
+     */
+    private val passwordHashThreadCount: Int,
+
+    /**
+     * The amount of memory to use for password hashing, in kibibytes
+     */
+    private val passwordHashMemoryKib: Int,
+
+    /**
+     * An ideally 26 character long encryption key for the application to use.
+     * This value must be secure, otherwise bad actors could decrypt sensitive data and create their own trusted payloads.
+     * If this value or [encryptionSalt] changes, various values such as pagination tokens will be invalidated.
+     * Care must be exercised when changing these values.
+     */
+    private val encryptionKey: String,
+
+    /**
+     * An ideally 8 character long encryption salt for application use.
+     * If this value or [encryptionKey] changes, various values such as pagination tokens will be invalidated.
+     * Care must be exercised when changing these values.
+     */
+    private val encryptionSalt: String
 ) {
     companion object {
-        /**
-         * For internal use only. Do not use or modify.
-         * @since 2.0.0
-         */
-        var instanceInternal: Crypto? = null
+        private var _instance: CryptoService? = null
 
         /**
-         * The global [Crypto] instance.
-         * Should be used in places where a local [AppContext] object is not available.
+         * The global [CryptoService] instance.
+         * Will throw [NullPointerException] if accessed before [initInstance] is called.
          * @since 2.0.0
          */
         val INSTANCE
-            get() = instanceInternal!!
+            get() = _instance!!
+
+        /**
+         * Initializes the global [INSTANCE] singleton
+         * @param config The [AppConfig] to use for the singleton creation
+         * @since 2.0.0
+         */
+        suspend fun initInstance(vertx: Vertx, config: AppConfig) {
+            _instance = CryptoService(
+                vertx,
+                config.passwordHashThreadCount,
+                config.passwordHashMemoryKib,
+                config.encryptionKey,
+                config.encryptionSalt
+            )
+        }
     }
 
     // Argon2 instance
@@ -51,8 +88,8 @@ class Crypto(
     init {
         val factory = SecretKeyFactory.getInstance("PBKDF2WithHmacSHA256")
         val spec = PBEKeySpec(
-            appCtx.config.encryptionKey.toCharArray(),
-            appCtx.config.encryptionSalt.toByteArray(),
+            encryptionKey.toCharArray(),
+            encryptionSalt.toByteArray(),
             65536,
             256
         )
@@ -67,9 +104,9 @@ class Crypto(
     suspend fun hashPassword(password: String): String = vertx.executeBlocking {
         // Hash password using configured performance settings
         it.complete(argon2.hash(
-                appCtx.config.passwordHashThreadCount,
-                appCtx.config.passwordHashMemoryKib,
-                appCtx.config.passwordHashThreadCount,
+                passwordHashThreadCount,
+                passwordHashMemoryKib,
+                passwordHashThreadCount,
                 password.toCharArray()
         ))
     }.await()
@@ -83,7 +120,7 @@ class Crypto(
     }.await()
 
     /**
-     * Encrypts a [ByteArray] using the AES algorithm and the secret stored in this [Crypto] instance.
+     * Encrypts a [ByteArray] using the AES algorithm and the secret stored in this [CryptoService] instance.
      * Both sides of the result string are encoded using Base64Url.
      * @param bytes The [ByteArray] to encrypt
      * @return The encrypted string
@@ -106,7 +143,7 @@ class Crypto(
     }.await()
 
     /**
-     * Encrypts a string using the AES algorithm and the secret stored in this [Crypto] instance.
+     * Encrypts a string using the AES algorithm and the secret stored in this [CryptoService] instance.
      * Both sides of the result string are encoded using Base64Url.
      * @param str The string to encrypt
      * @return The encrypted string
@@ -115,7 +152,7 @@ class Crypto(
     suspend fun aesEncryptString(str: String) = aesEncrypt(str.toByteArray(UTF_8))
 
     /**
-     * Decrypts bytes using the AES algorithm and the secret stored in this [Crypto] instance
+     * Decrypts bytes using the AES algorithm and the secret stored in this [CryptoService] instance
      * @param str The encrypted string to decrypt
      * @return The decrypted bytes
      * @since 2.0.0
@@ -138,7 +175,7 @@ class Crypto(
     }.await()
 
     /**
-     * Decrypts a string using the AES algorithm and the secret stored in this [Crypto] instance
+     * Decrypts a string using the AES algorithm and the secret stored in this [CryptoService] instance
      * @param str The encrypted string to decrypt
      * @return The decrypted string
      * @since 2.0.0

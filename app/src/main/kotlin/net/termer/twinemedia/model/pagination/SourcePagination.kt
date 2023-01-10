@@ -3,6 +3,7 @@ package net.termer.twinemedia.model.pagination
 import io.vertx.core.http.HttpServerRequest
 import net.termer.twinemedia.dataobject.SourceDto
 import net.termer.twinemedia.model.SourcesModel.*
+import net.termer.twinemedia.service.CryptoService
 import net.termer.twinemedia.util.*
 import org.jooq.impl.DSL.*
 import java.time.OffsetDateTime
@@ -35,7 +36,7 @@ interface SourcePagination<TColType>: RowPagination<SourceDto, SortOrder, TColTy
 		 * @since 2.0.0
 		 */
 		suspend fun decodeToken(token: String): SourcePagination<*> {
-			val bytes = Crypto.INSTANCE.aesDecrypt(token)
+			val bytes = CryptoService.INSTANCE.aesDecrypt(token)
 
 			// Extract sort enum
 			val sortEnumVals = SortOrder.values()

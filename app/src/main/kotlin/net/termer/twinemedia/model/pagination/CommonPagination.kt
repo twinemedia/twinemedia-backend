@@ -2,6 +2,7 @@ package net.termer.twinemedia.model.pagination
 
 import io.vertx.sqlclient.Row
 import net.termer.twinemedia.dataobject.StandardRow
+import net.termer.twinemedia.service.CryptoService
 import net.termer.twinemedia.util.*
 import net.termer.twinemedia.util.db.fetchManyAwait
 import org.jooq.Field
@@ -195,7 +196,7 @@ object CommonPagination {
 			buf.putInt(internalId ?: -1)
 			buf.put(colBytes)
 
-			return Crypto.INSTANCE.aesEncrypt(buf.array())
+			return CryptoService.INSTANCE.aesEncrypt(buf.array())
 		}
 	}
 

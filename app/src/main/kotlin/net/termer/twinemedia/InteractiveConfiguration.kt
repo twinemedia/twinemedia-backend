@@ -4,6 +4,7 @@ import io.vertx.core.Vertx
 import kotlinx.coroutines.DelicateCoroutinesApi
 import kotlinx.coroutines.runBlocking
 import net.termer.twinemedia.model.AccountsModel
+import net.termer.twinemedia.service.CryptoService
 import net.termer.twinemedia.util.*
 import net.termer.twinemedia.util.db.dbInit
 import net.termer.twinemedia.util.db.dbMigrate
@@ -42,6 +43,10 @@ private fun checkConsole() {
 fun interactiveCreateAdmin(config: AppConfig, vertx: Vertx = Vertx.vertx(), shutDown: Boolean = true) {
 	try {
 		checkConsole()
+
+		runBlocking {
+			App.initServices(vertx, config)
+		}
 
 		var email = ""
 		while (email.isBlank()) {
@@ -98,8 +103,7 @@ fun interactiveCreateAdmin(config: AppConfig, vertx: Vertx = Vertx.vertx(), shut
 				name = name,
 				email = email,
 				isAdmin = true,
-				password = pass,
-				crypto = Crypto(vertx, AppContext(config))
+				password = pass
 			)
 		}
 		println("Created!")
@@ -320,6 +324,11 @@ fun interactiveInstall(configPath: Path, shutDown: Boolean = true) {
 		println("Wrote configuration to ${configPath.pathString}")
 
 		runBlocking {
+			runBlocking {
+				println("Initializing services...")
+				App.initServices(vertx, config)
+			}
+
 			// Connect to database
 			println("Testing database connection...")
 			try {
@@ -376,6 +385,10 @@ fun interactiveResetPassword(config: AppConfig, shutDown: Boolean = true) {
 		println("Connected!")
 
 		runBlocking {
+			runBlocking {
+				App.initServices(vertx, config)
+			}
+
 			val email = cons.readLine("Account email: ")
 
 			println("Fetching account info...")
@@ -407,7 +420,7 @@ fun interactiveResetPassword(config: AppConfig, shutDown: Boolean = true) {
 			// Update password
 			try {
 				println("Updating password...")
-				updateAccountPassword(account.internalId, pass, crypto = Crypto(vertx, AppContext(config)))
+				updateAccountPassword(account.internalId, pass)
 				println("Updated!")
 			} catch (e: Exception) {
 				System.err.println("Failed to update password due to error:")
