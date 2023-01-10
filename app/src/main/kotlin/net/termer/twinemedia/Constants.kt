@@ -34,4 +34,10 @@ object Constants {
 	 * @since 2.0.0
 	 */
 	const val API_MAX_RESULT_LIMIT = 100
+
+	/**
+	 * The default Redis key prefix used by the application
+	 * @since 2.0.0
+	 */
+	const val DEFAULT_REDIS_KEY_PREFIX = "tm_"
 }

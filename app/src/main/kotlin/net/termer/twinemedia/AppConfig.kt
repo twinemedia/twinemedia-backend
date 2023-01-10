@@ -2,6 +2,7 @@ package net.termer.twinemedia
 
 import io.vertx.core.json.DecodeException
 import io.vertx.core.json.JsonObject
+import net.termer.twinemedia.Constants.DEFAULT_REDIS_KEY_PREFIX
 import net.termer.twinemedia.util.JsonSerializable
 import net.termer.twinemedia.util.SPECIAL_CHARS
 
@@ -65,7 +66,7 @@ data class AppConfig(
      * The application database's host
      * @since 2.0.0
      */
-    var dbHost: String = "localhost",
+    var dbHost: String = "127.0.0.1",
 
     /**
      * The application database's port
@@ -99,9 +100,41 @@ data class AppConfig(
 
     /**
      * Whether to apply new database migrations on application startup
-     * @sinec 2.0.0
+     * @since 2.0.0
      */
     var dbAutoMigrate: Boolean = true,
+
+    /**
+     * The Redis server's host
+     * @since 2.0.0
+     */
+    var redisHost: String = "127.0.0.1",
+
+    /**
+     * The Redis server's port
+     * @since 2.0.0
+     */
+    var redisPort: Int = 6379,
+
+    /**
+     * The user to use for authenticating with the Redis server, or null for none
+     * @since 2.0.0
+     */
+    var redisAuthUser: String? = null,
+
+    /**
+     * The password to use for authenticating with the Redis server, or null for none
+     * @since 2.0.0
+     */
+    var redisAuthPassword: String? = null,
+
+    /**
+     * The key prefix to use for Redis calls.
+     * This should only be changed if the prefix happens to conflict with other keys on the Redis server.
+     * In most cases, you should keep this the way it is.
+     * @since 2.0.0
+     */
+    var redisKeyPrefix: String = DEFAULT_REDIS_KEY_PREFIX,
 
     /**
      * The secret to use for signing JWT keys.

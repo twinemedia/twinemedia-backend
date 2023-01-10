@@ -24,7 +24,7 @@ private val accountsModel = AccountsModel.INSTANCE
 // This would both block those threads for normal operation by other parts of the application, and additionally throw exceptions because of being blocked.
 
 /**
- * Throws [IllegalStateException] if there is no console available
+ * @throws IllegalStateException if there is no console available
  */
 private fun checkConsole() {
 	if(cons == null)
@@ -237,6 +237,38 @@ fun interactiveInstall(configPath: Path, shutDown: Boolean = true) {
 
 			config.passwordHashThreadCount =
 				cons.promptNumber("How many threads should be used to hash passwords?", config.passwordHashThreadCount)
+			config.passwordHashMemoryKib = cons.promptNumber(
+				"How many kibibytes (1024 bytes) of memory should be used to hash passwords?",
+				config.passwordHashMemoryKib
+			)
+
+			config.httpServerThreads = cons.promptNumber(
+				"How many threads should be used for serving HTTP requests?",
+				config.httpServerThreads
+			)
+		}
+
+		if (advanced) {
+			config.redisHost = cons.promptLine("On which host is the Redis server running?", config.redisHost)
+			config.redisPort = cons.promptNumber("On which port is the Redis server running?", config.redisPort)
+
+			if (cons.promptYesNo("Does the Redis server require authentication?", config.redisAuthPassword != null)) {
+				config.redisAuthUser = cons.promptLine(
+					"What is the username that ${Constants.APP_NAME} will use to authenticate with the Redis server? (leave blank for none)",
+					config.redisAuthUser ?: ""
+				).nullIfEmpty()
+				config.redisAuthPassword = cons.promptLine(
+					message = "What is the password that ${Constants.APP_NAME} will use to authenticate with the Redis server? (<leave blank to use existing/default value>)",
+					default = "",
+					trim = false,
+					promptUntilNonEmpty = false,
+					disableEcho = true
+				).nullIfEmpty() ?: config.redisAuthPassword
+			} else {
+				config.redisAuthUser = null
+				config.redisAuthPassword = null
+			}
+
 			config.passwordHashMemoryKib = cons.promptNumber(
 				"How many kibibytes (1024 bytes) of memory should be used to hash passwords?",
 				config.passwordHashMemoryKib

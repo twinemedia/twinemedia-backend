@@ -97,10 +97,12 @@ class App {
 			// Setup global Crypto instance
 			Crypto.instanceInternal = Crypto(vertx, appCtx)
 
-			// Start verticles in coroutine using Vert.x dispatcher
+			// Connect to databases and start verticles in coroutine using Vert.x dispatcher
 			val runtime = Runtime.getRuntime()
 			GlobalScope.launch(vertx.dispatcher()) {
 				val appCtxJson = appCtx.toJson()
+
+				// TODO Connect to PG and Redis
 
 				// Start API verticle with instances specified by the config "httpServerThreads" property
 				val apiVerticleInstances = if(config.httpServerThreads < 1)

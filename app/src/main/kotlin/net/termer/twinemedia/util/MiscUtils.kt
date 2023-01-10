@@ -4,6 +4,7 @@ import io.vertx.core.Promise
 import io.vertx.core.json.JsonArray
 import io.vertx.core.json.JsonObject
 import io.vertx.kotlin.coroutines.await
+import java.net.URLEncoder
 import java.text.SimpleDateFormat
 import java.time.Instant
 import java.time.OffsetDateTime
@@ -12,6 +13,7 @@ import java.time.ZoneOffset
 import java.time.format.DateTimeParseException
 import java.util.*
 import java.util.concurrent.CompletableFuture
+import kotlin.text.Charsets.UTF_8
 
 private val simpleDateFormat = SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss.SSS'Z'")
 private val gmtDateFormat = SimpleDateFormat("EEE, dd MMM yyyy HH:mm:ss zzz")
@@ -401,3 +403,10 @@ fun dateStringToOffsetDateTimeOrNone(str: String) = try {
  * @since 2.0.0
  */
 fun <T> T?.orNone(): Option<T> = if(this == null) none() else some(this)
+
+/**
+ * Returns a URL-encoded version of this string using UTF-8 encoding
+ * @return A URL-encoded version of this string
+ * @since 2.0.0
+ */
+fun String.urlEncode() = URLEncoder.encode(this, UTF_8)
