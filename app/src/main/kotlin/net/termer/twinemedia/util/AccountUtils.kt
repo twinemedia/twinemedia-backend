@@ -8,17 +8,15 @@ import net.termer.twinemedia.service.CryptoService
  * Updates an account's password
  * @param internalId The account's internal ID
  * @param password The new password
- * @param cryptoService The [CryptoService] instance to use for hashing the password (defaults to [CryptoService.INSTANCE])
  * @param accountsModel The [AccountsModel] instance to use for updating the account in the database (defaults to [AccountsModel.INSTANCE])
  * @since 2.0.0
  */
 suspend fun updateAccountPassword(
     internalId: Int,
     password: String,
-    cryptoService: CryptoService = CryptoService.INSTANCE,
     accountsModel: AccountsModel = AccountsModel.INSTANCE
 ) {
-	val hash = cryptoService.hashPassword(password)
+	val hash = CryptoService.INSTANCE.hashPassword(password)
 
 	accountsModel.updateOne(
 		AccountsModel.UpdateValues(hash = some(hash)),
