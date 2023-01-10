@@ -4,7 +4,6 @@ import io.vertx.core.Vertx
 import kotlinx.coroutines.DelicateCoroutinesApi
 import kotlinx.coroutines.runBlocking
 import net.termer.twinemedia.model.AccountsModel
-import net.termer.twinemedia.service.CryptoService
 import net.termer.twinemedia.util.*
 import net.termer.twinemedia.util.db.dbInit
 import net.termer.twinemedia.util.db.dbMigrate
