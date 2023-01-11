@@ -8,6 +8,7 @@ import io.vertx.sqlclient.*
 import net.termer.twinemedia.AppConfig
 import org.flywaydb.core.Flyway
 import org.flywaydb.core.api.Location
+import org.flywaydb.core.api.output.MigrateResult
 import org.jooq.SQLDialect
 import org.jooq.impl.DSL
 
@@ -36,7 +37,7 @@ object Database {
  * Initializes the database connection
  * @since 2.0.0
  */
-fun dbInit(vertx: Vertx, config: AppConfig) {
+suspend fun dbInit(vertx: Vertx, config: AppConfig) {
 	// Configuration
 	val connOps = PgConnectOptions()
 		.setHost(config.dbHost)
@@ -48,14 +49,25 @@ fun dbInit(vertx: Vertx, config: AppConfig) {
 		.setMaxSize(config.dbMaxPoolSize)
 
 	// Create and connect
-	Database.pgClient = PgPool.pool(vertx, connOps, poolOps)
+	val pool = PgPool.pool(vertx, connOps, poolOps)
+	Database.pgClient = pool
+
+	// Run a test query to ensure a connection can be made
+	val conn = pool.connection.await()
+	try {
+		conn.query("SELECT 1").execute().await()
+	} finally {
+		conn.close().await()
+	}
 }
 
 /**
- * Runs database migrations
+ * Runs database migrations.
+ * Note that this method is runs migrations with JDBC and is therefore blocking.
+ * @return The migration result
  * @since 2.0.0
  */
-fun dbMigrate(config: AppConfig) {
+fun dbMigrate(config: AppConfig): MigrateResult {
 	// Create FlyWay instance
 	val flyway = Flyway.configure().dataSource(
 		"jdbc:postgresql://${config.dbHost}:${config.dbPort}/${config.dbName}",
@@ -64,15 +76,15 @@ fun dbMigrate(config: AppConfig) {
 	).locations(Location("twinemedia/db/migration")).load()
 
 	// Run database migrations
-	flyway.migrate()
+	return flyway.migrate()
 }
 
 /**
  * Closes the database connection
- * @since 1.0.0
+ * @since 2.0.0
  */
-fun dbClose() {
-	Database.client.close()
+suspend fun dbClose() {
+	Database.pgClient?.close()?.await()
 }
 
 /**

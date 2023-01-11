@@ -13,6 +13,8 @@ import net.termer.twinemedia.service.CryptoService
 import net.termer.twinemedia.service.RateLimitService
 import net.termer.twinemedia.service.RedisService
 import net.termer.twinemedia.service.TokenService
+import net.termer.twinemedia.util.db.dbInit
+import net.termer.twinemedia.util.db.dbMigrate
 import net.termer.twinemedia.util.toJsonObject
 import net.termer.twinemedia.verticle.ApiVerticle
 import org.apache.commons.cli.DefaultParser
@@ -107,6 +109,22 @@ object App {
 		// Create Vert.x instance
 		val vertx = Vertx.vertx()
 
+		// Connect to database and run migrations
+		runBlocking {
+			logger.info("Connecting to database...")
+			dbInit(vertx, config)
+
+			if (config.dbAutoMigrate) {
+				logger.info("Running migrations...")
+				val res = dbMigrate(config)
+
+				if (res.migrationsExecuted > 0)
+					logger.info("Ran ${res.migrationsExecuted} migration(s) and upgraded schema from \"${res.initialSchemaVersion}\" to \"${res.targetSchemaVersion}\"")
+				else
+					logger.info("There were no new migrations to run")
+			}
+		}
+
 		// Create app context with the resources that were just setup
 		val appCtx = AppContext(config)
 
@@ -114,6 +132,7 @@ object App {
 		GlobalScope.launch(vertx.dispatcher()) {
 			val appCtxJson = appCtx.toJson()
 
+			logger.info("Initializing services...")
 			initServices(vertx, config)
 
 			// Start API verticle with instances specified by the config "httpServerThreads" property

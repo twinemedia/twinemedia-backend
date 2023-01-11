@@ -380,14 +380,13 @@ fun interactiveResetPassword(config: AppConfig, shutDown: Boolean = true) {
 		println("Press enter to continue.")
 		cons.readLine()
 
-		println("Attempting to connect to the database...")
-		dbInit(vertx, config)
-		println("Connected!")
-
 		runBlocking {
-			runBlocking {
-				App.initServices(vertx, config)
-			}
+			println("Attempting to connect to the database...")
+			dbInit(vertx, config)
+			println("Connected!")
+
+			println("Initializing services...")
+			App.initServices(vertx, config)
 
 			val email = cons.readLine("Account email: ")
 
