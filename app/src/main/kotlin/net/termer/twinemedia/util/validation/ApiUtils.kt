@@ -3,6 +3,7 @@ package net.termer.twinemedia.util.validation
 import io.vertx.core.http.HttpServerResponse
 import io.vertx.ext.web.RoutingContext
 import net.termer.twinemedia.middleware.ReverseProxyIpMiddleware
+import net.termer.twinemedia.util.account.AccountContext
 
 /**
  * Returns the IP address of the client.
@@ -40,3 +41,17 @@ fun HttpServerResponse.corsAllowHeader(header: String): HttpServerResponse {
 
     return this
 }
+
+/**
+ * Returns whether this [RoutingContext] is authenticated
+ * @return Whether this [RoutingContext] is authenticated
+ * @since 2.0.0
+ */
+fun RoutingContext.isAuthenticated() = this.data().containsKey("accountContext")
+
+/**
+ * Returns the [AccountContext] associated with this [RoutingContext], or null if it is not authenticated
+ * @return The [AccountContext] associated with this [RoutingContext], or null if it is not authenticated
+ * @since 2.0.0
+ */
+fun RoutingContext.accountContext(): AccountContext? = this.get("accountContext", null)
