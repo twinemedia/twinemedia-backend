@@ -2,8 +2,11 @@ package net.termer.twinemedia.service
 
 import io.vertx.core.Vertx
 import io.vertx.core.json.JsonObject
+import io.vertx.ext.auth.User
+import io.vertx.ext.auth.authentication.TokenCredentials
 import io.vertx.ext.auth.jwt.JWTAuth
 import io.vertx.kotlin.core.json.jsonObjectOf
+import io.vertx.kotlin.coroutines.await
 import io.vertx.kotlin.ext.auth.jwt.jwtAuthOptionsOf
 import io.vertx.kotlin.ext.auth.jwtOptionsOf
 import io.vertx.kotlin.ext.auth.pubSecKeyOptionsOf
@@ -18,12 +21,12 @@ class TokenService(
     /**
      * The Vert.x instance to use
      */
-    private val vertx: Vertx,
+    vertx: Vertx,
 
     /**
      * The secret to use for signing JWTs
      */
-    private val jwtSecret: String
+    jwtSecret: String
 ) {
     companion object {
         private var _instance: TokenService? = null
@@ -85,5 +88,19 @@ class TokenService(
         return createJwt(jsonObjectOf(
             "sub" to accountId
         ), expireMinutes)
+    }
+
+    /**
+     * Authenticates with a JWT and returns the resulting [User] object, or null if the token was not valid
+     * @param jwt The JWT to authenticate with
+     * @return The resulting [User] object, or null if the token was not valid
+     * @since 2.0.0
+     */
+    suspend fun authenticateWithJwt(jwt: String): User? {
+        return try {
+            jwtAuth.authenticate(TokenCredentials(jwt)).await()
+        } catch (e: Throwable) {
+            null
+        }
     }
 }

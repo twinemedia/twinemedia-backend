@@ -29,11 +29,15 @@ class HeadersMiddleware(
         headers["Access-Control-Allow-Origin"] = origin
 
         // Handle preflight headers
-        if(event.request().method() == HttpMethod.OPTIONS)
+        if(event.request().method() == HttpMethod.OPTIONS) {
             event.response()
                 .corsAllowHeader("Authorization")
                 .corsAllowHeader("Content-Type")
 
-        event.next()
+            // Ignore the rest of the request
+            event.response().end()
+        } else {
+            event.next()
+        }
     }
 }

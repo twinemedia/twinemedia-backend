@@ -10,6 +10,7 @@ import net.termer.twinemedia.AppContext
 import net.termer.twinemedia.Constants.API_VERSIONS
 import net.termer.twinemedia.Constants.CURRENT_API_VERSION
 import net.termer.twinemedia.controller.AuthController
+import net.termer.twinemedia.middleware.AuthMiddleware
 import net.termer.twinemedia.middleware.HeadersMiddleware
 import net.termer.twinemedia.middleware.ReverseProxyIpMiddleware
 import org.slf4j.Logger
@@ -46,6 +47,7 @@ class ApiVerticle: CoroutineVerticle() {
 		// Middleware
 		router.route().suspendHandler(ReverseProxyIpMiddleware(appCtx.config.reverseProxyIpHeader))
 		router.route("/api/*").suspendHandler(HeadersMiddleware(appCtx.config.apiAllowOrigin))
+		router.route("/api/$CURRENT_API_VERSION/*").suspendHandler(AuthMiddleware(appCtx.config))
 
 		// Build OpenAPI router
 		val oapiRouter = RouterBuilder.create(vertx, "openapi/twinemedia.json").await()

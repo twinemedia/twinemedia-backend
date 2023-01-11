@@ -23,7 +23,6 @@ class AccountContext(
 ) {
     /**
      * Returns if the account has the specified permission.
-     *
      * @param permission The permission to check
      * @return Whether this user account has the specified permission
      * @since 2.0.0
