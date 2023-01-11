@@ -1,10 +1,16 @@
 package net.termer.twinemedia.controller
 
 import io.vertx.ext.web.RoutingContext
+import io.vertx.kotlin.core.json.jsonObjectOf
 import net.termer.krestx.api.util.ApiResponse
+import net.termer.krestx.api.util.apiError
 import net.termer.krestx.api.util.apiSuccess
 import net.termer.twinemedia.AppContext
+import net.termer.twinemedia.model.AccountsModel
+import net.termer.twinemedia.service.CryptoService
 import net.termer.twinemedia.service.RateLimitService
+import net.termer.twinemedia.service.TokenService
+import net.termer.twinemedia.util.some
 
 /**
  * Controller for authentication/authorization operations
@@ -28,8 +34,20 @@ class AuthController(override val appCtx: AppContext, override val ctx: RoutingC
         val email = bodyJson.getString("email")
         val password = bodyJson.getString("password")
 
+        fun invalidCreds() = apiError("invalid_credentials", "Invalid credentials")
 
+        // Fetch account
+        // We use the global AccountsModel here because the request is not yet authenticated, and therefore has no context
+        val account = AccountsModel.INSTANCE.fetchOneRow(AccountsModel.Filters(whereEmailIs = some(email)))
+            ?: return invalidCreds()
 
-        return apiSuccess()
+        // Verify password
+        if (!CryptoService.INSTANCE.verifyPassword(password, account.hash))
+            return invalidCreds()
+
+        // All is well; issue token
+        return apiSuccess(jsonObjectOf(
+            "token" to TokenService.INSTANCE.createAuthToken(account.id, cfg.jwtExpireMinutes)
+        ))
     }
 }

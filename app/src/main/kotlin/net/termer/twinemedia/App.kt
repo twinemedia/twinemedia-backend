@@ -12,6 +12,7 @@ import kotlinx.coroutines.runBlocking
 import net.termer.twinemedia.service.CryptoService
 import net.termer.twinemedia.service.RateLimitService
 import net.termer.twinemedia.service.RedisService
+import net.termer.twinemedia.service.TokenService
 import net.termer.twinemedia.util.toJsonObject
 import net.termer.twinemedia.verticle.ApiVerticle
 import org.apache.commons.cli.DefaultParser
@@ -95,6 +96,7 @@ object App {
 		CryptoService.initInstance(vertx, config)
 		RedisService.initInstance(vertx, config)
 		RateLimitService.initInstance(RedisService.INSTANCE)
+		TokenService.initInstance(vertx, config)
 	}
 
 	/**

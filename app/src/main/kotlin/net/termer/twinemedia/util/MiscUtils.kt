@@ -1,6 +1,7 @@
 package net.termer.twinemedia.util
 
 import io.vertx.core.Promise
+import io.vertx.core.buffer.Buffer
 import io.vertx.core.json.JsonArray
 import io.vertx.core.json.JsonObject
 import io.vertx.kotlin.coroutines.await
@@ -410,3 +411,10 @@ fun <T> T?.orNone(): Option<T> = if(this == null) none() else some(this)
  * @since 2.0.0
  */
 fun String.urlEncode() = URLEncoder.encode(this, UTF_8)
+
+/**
+ * Allocates a new [Buffer] instance using this string as its content
+ * @return The new [Buffer]
+ * @since 2.0.0
+ */
+fun String.toBuffer() = Buffer.buffer(this)
