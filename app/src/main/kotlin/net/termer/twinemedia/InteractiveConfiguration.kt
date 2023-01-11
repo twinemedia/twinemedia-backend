@@ -272,15 +272,7 @@ fun interactiveInstall(configPath: Path, shutDown: Boolean = true) {
 				config.redisAuthPassword = null
 			}
 
-			config.passwordHashMemoryKib = cons.promptNumber(
-				"How many kibibytes (1024 bytes) of memory should be used to hash passwords?",
-				config.passwordHashMemoryKib
-			)
-
-			config.httpServerThreads = cons.promptNumber(
-				"How many threads should be used for serving HTTP requests?",
-				config.httpServerThreads
-			)
+			config.redisKeyPrefix = cons.promptLine("What prefix should ${Constants.APP_NAME} Redis keys have?", config.redisKeyPrefix)
 		}
 
 		config.ffmpegPath = cons.promptLine("At which path is your FFmpeg binary located?", config.ffmpegPath)
