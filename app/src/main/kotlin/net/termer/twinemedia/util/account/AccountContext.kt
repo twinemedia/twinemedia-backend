@@ -10,16 +10,16 @@ import net.termer.twinemedia.util.containsPermission
  */
 class AccountContext(
     /**
-     * The user's self-account info
-     * @since 2.0.0
-     */
-    val selfAccount: SelfAccountDto,
-
-    /**
      * The associated Vert.x instance
      * @since 2.0.0
      */
-    val vertx: Vertx
+    val vertx: Vertx,
+
+    /**
+     * The user's self-account info
+     * @since 2.0.0
+     */
+    val selfAccount: SelfAccountDto
 ) {
     /**
      * Returns if the account has the specified permission.
