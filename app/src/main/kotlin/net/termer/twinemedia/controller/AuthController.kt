@@ -34,7 +34,7 @@ class AuthController(override val appCtx: AppContext, override val ctx: RoutingC
         val email = bodyJson.getString("email")
         val password = bodyJson.getString("password")
 
-        fun invalidCreds() = apiError("invalid_credentials", "Invalid credentials")
+        fun invalidCreds() = apiError("invalid_credentials", "Invalid credentials", statusCode = 401)
 
         // Fetch account
         // We use the global AccountsModel here because the request is not yet authenticated, and therefore has no context
