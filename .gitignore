@@ -34,3 +34,7 @@ hs_err_pid*
 
 # App config
 /config.json
+
+# GraalVM Native Image build artifacts
+/app-all
+/app-all.build_artifacts.txt
