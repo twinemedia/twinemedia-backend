@@ -84,9 +84,24 @@ class TokenService(
      * @return The newly created authentication token
      * @since 2.0.0
      */
-    fun createAuthToken(accountId: String, expireMinutes: Int): String {
+    fun createAccountAuthToken(accountId: String, expireMinutes: Int): String {
         return createJwt(jsonObjectOf(
             "sub" to accountId
+        ), expireMinutes)
+    }
+
+    /**
+     * Creates an API key token for the account with the specified alphanumeric ID and the API key with the specified alphanumeric ID
+     * @param accountId The account's alphanumeric ID
+     * @param apiKeyId The API key's alphanumeric ID
+     * @param expireMinutes The number of minutes until the token should expire, or <1 to never expire
+     * @return The newly created API key token
+     * @since 2.0.0
+     */
+    fun createAccountApiKeyToken(accountId: String, apiKeyId: String, expireMinutes: Int): String {
+        return createJwt(jsonObjectOf(
+            "sub" to accountId,
+            "apiKeyId" to apiKeyId
         ), expireMinutes)
     }
 

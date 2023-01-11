@@ -47,7 +47,7 @@ class AuthController(override val appCtx: AppContext, override val ctx: RoutingC
 
         // All is well; issue token
         return apiSuccess(jsonObjectOf(
-            "token" to TokenService.INSTANCE.createAuthToken(account.id, cfg.jwtExpireMinutes)
+            "token" to TokenService.INSTANCE.createAccountAuthToken(account.id, cfg.jwtExpireMinutes)
         ))
     }
 }

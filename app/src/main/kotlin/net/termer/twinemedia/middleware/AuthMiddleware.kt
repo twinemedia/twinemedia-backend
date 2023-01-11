@@ -31,8 +31,8 @@ class AuthMiddleware(
                     val principal = user.principal()
 
                     // Fetch context for token
-                    val token: String? = principal.getString("token")
-                    val selfAcc = if (token == null) {
+                    val apiKeyId: String? = principal.getString("apiKeyId")
+                    val selfAcc = if (apiKeyId == null) {
                         AccountsModel.INSTANCE.fetchOneSelfDto(
                             AccountsModel.Filters(whereIdIs = some(principal.getString("sub"))),
                             fetchApiKeyInfo = false,
@@ -40,13 +40,13 @@ class AuthMiddleware(
                         )
                     } else {
                         AccountsModel.INSTANCE.fetchOneSelfDto(
-                            AccountsModel.Filters(whereApiKeyIdIs = some(token)),
+                            AccountsModel.Filters(whereApiKeyIdIs = some(apiKeyId)),
                             fetchApiKeyInfo = true,
                             config
                         )
                     }
 
-                    // Check if account exists (and API token is valid if the JWT was an API token)
+                    // Check if account exists (and API key is valid if the JWT was an API key)
                     if (selfAcc != null) {
                         // All is well; put user and context
                         event.setUser(user)
