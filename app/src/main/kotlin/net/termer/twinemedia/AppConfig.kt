@@ -54,7 +54,7 @@ data class AppConfig(
      * The maximum file upload size, in bytes
      * @since 2.0.0
      */
-    var maxUploadSize: Long = 1073741824, // 1GB
+    var maxUploadSize: Long = 5368709120, // 5GiB
 
     /**
      * The maximum number of concurrent uploads per account
@@ -147,7 +147,7 @@ data class AppConfig(
      * The amount of minutes JWT tokens should last before becoming invalid
      * @since 2.0.0
      */
-    var jwtExpireMinutes: Int = 120,
+    var jwtExpireMinutes: Int = 1440, // 24 hours
 
     /**
      * The number of threads to use for password hashing
