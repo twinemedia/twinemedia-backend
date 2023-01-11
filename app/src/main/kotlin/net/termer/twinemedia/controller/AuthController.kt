@@ -28,7 +28,7 @@ class AuthController(override val appCtx: AppContext, override val ctx: RoutingC
      * Handler for the "auth" operation
      * @since 2.0.0
      */
-    suspend fun auth(): ApiResponse {
+    suspend fun postAuth(): ApiResponse {
         // Collect params
         val bodyJson = bodyParams.jsonObject
         val email = bodyJson.getString("email")

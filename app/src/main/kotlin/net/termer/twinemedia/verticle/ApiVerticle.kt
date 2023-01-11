@@ -9,6 +9,7 @@ import net.termer.krestx.api.util.*
 import net.termer.twinemedia.AppContext
 import net.termer.twinemedia.Constants.API_VERSIONS
 import net.termer.twinemedia.Constants.CURRENT_API_VERSION
+import net.termer.twinemedia.controller.AccountsController
 import net.termer.twinemedia.controller.AuthController
 import net.termer.twinemedia.middleware.AuthMiddleware
 import net.termer.twinemedia.middleware.HeadersMiddleware
@@ -55,7 +56,11 @@ class ApiVerticle: CoroutineVerticle() {
 		// Bind operations
 		oapiRouter.operation("postAuth").handler(wrapApiRequestHandler {
 			val controller = AuthController(appCtx, it)
-			controller.initialize() ?: controller.auth()
+			controller.initialize() ?: controller.postAuth()
+		})
+		oapiRouter.operation("getSelfAccount").handler(wrapApiRequestHandler {
+			val controller = AccountsController(appCtx, it)
+			controller.initialize() ?: controller.getSelfAccount()
 		})
 
 		router.mountApiRouter(CURRENT_API_VERSION, oapiRouter.createRouter())
