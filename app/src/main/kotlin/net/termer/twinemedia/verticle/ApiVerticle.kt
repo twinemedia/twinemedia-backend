@@ -64,6 +64,10 @@ class ApiVerticle: CoroutineVerticle() {
 			val controller = AccountsController(appCtx, it)
 			controller.initialize() ?: controller.getSelfAccount()
 		})
+		oapiRouter.operation("putSelfAccount").handler(wrapApiRequestHandler {
+			val controller = AccountsController(appCtx, it)
+			controller.initialize() ?: controller.putSelfAccount()
+		})
 
 		router.mountApiRouter(CURRENT_API_VERSION, oapiRouter.createRouter())
 

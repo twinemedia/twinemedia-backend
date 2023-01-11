@@ -13,6 +13,9 @@
 			"url": "http://twinemedia.local/api/v2"
 		}
 	],
+	"security": [{
+		"jwt": []
+	}],
 	"paths": {
 		"/": {
 			"get": {
