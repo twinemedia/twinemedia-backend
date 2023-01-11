@@ -195,7 +195,7 @@ data class AppConfig(
      * The timeout in seconds to impose after an IP address makes too many failed authentication attempts
      * @since 2.0.0
      */
-    var authTimeoutSeconds: Int = 300,
+    var authTimeoutSeconds: Int = 60, // 1 minute
 
     /**
      * The minimum required password length
