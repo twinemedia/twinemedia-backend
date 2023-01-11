@@ -30,6 +30,16 @@ fun Row.hasCol(col: String) = getColumnIndex(col) != -1
  */
 fun genRowId(len: Int = 10) = genSecureStrOf(ROW_ID_CHARS, len)
 
+private val jooqParamRegex = Regex(":(\\d+)")
+
+private fun sqlWithParams(query: Query) = query.getSQL(ParamType.NAMED).replace(jooqParamRegex, "\\$$1")
+
+private fun params(query: Query) = Tuple.wrap(
+	query.params.values
+		.map { it.value }
+		.toMutableList()
+)
+
 /**
  * Fetches query results and returns all rows
  * @return All result rows
@@ -37,8 +47,8 @@ fun genRowId(len: Int = 10) = genSecureStrOf(ROW_ID_CHARS, len)
  */
 suspend fun Query.fetchManyAwait() =
 	Database.client
-		.query(getSQL(ParamType.INLINED))
-		.execute().await()
+		.preparedQuery(sqlWithParams(this))
+		.execute(params(this)).await()
 
 /**
  * Fetches query results and returns the first row.
@@ -79,9 +89,8 @@ suspend fun <TRow: StandardRow, TSortEnum: Enum<TSortEnum>, TColType> SelectQuer
  */
 suspend fun Query.executeAwait() {
 	Database.client
-		.preparedQuery(sql)
-		.execute(Tuple.wrap(params.entries.toMutableList())).await()
-	// TODO Make sure the params are bound properly. If they are not, then we have a problem.
+		.preparedQuery(sqlWithParams(this))
+		.execute(params(this)).await()
 }
 
 /**
