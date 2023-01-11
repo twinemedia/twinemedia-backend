@@ -1,5 +1,6 @@
 package net.termer.twinemedia.util.validation
 
+import io.vertx.core.http.HttpServerResponse
 import io.vertx.ext.web.RoutingContext
 import net.termer.twinemedia.middleware.ReverseProxyIpMiddleware
 
@@ -10,3 +11,32 @@ import net.termer.twinemedia.middleware.ReverseProxyIpMiddleware
  * @since 2.0.0
  */
 inline fun RoutingContext.ip(): String = (this["ip"] ?: this.request().remoteAddress().hostAddress())
+
+/**
+ * Allows a header via Access-Control-Allow-Headers
+ * @param header The header to allow
+ * @return This, to be used fluently
+ * @since 1.4.0
+ */
+fun HttpServerResponse.corsAllowHeader(header: String): HttpServerResponse {
+    val allowed = arrayListOf<String>()
+    if (headers().contains("Access-Control-Allow-Headers")) {
+        val strs = headers()["Access-Control-Allow-Headers"].split(',')
+
+        // Add existing allowed headers
+        for (str in strs) {
+            val procStr = str.lowercase()
+            if (!allowed.contains(procStr))
+                allowed.add(procStr)
+        }
+    }
+
+    // Add new allowed header
+    if (!allowed.contains(header.lowercase()))
+        allowed.add(header.lowercase())
+
+    // Set Access-Control-Allow-Headers
+    putHeader("Access-Control-Allow-Headers", allowed.joinToString(", "))
+
+    return this
+}
