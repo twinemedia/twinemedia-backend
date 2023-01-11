@@ -24,10 +24,10 @@ data class AppConfig(
     var bindPort: Int = 8080,
 
     /**
-     * Whether to respect X-Forwarded-For headers to determine a client's IP address
+     * The reverse proxy header to use for getting the origin IP address of a request, or null to not use any
      * @since 2.0.0
      */
-    var respectXff: Boolean = true,
+    var reverseProxyIpHeader: String? = null,
 
     /**
      * Path where uploads are temporarily stored before being sent to their destination storage sources.

@@ -3,6 +3,7 @@ package net.termer.twinemedia
 import io.vertx.core.Vertx
 import kotlinx.coroutines.DelicateCoroutinesApi
 import kotlinx.coroutines.runBlocking
+import net.termer.twinemedia.Constants.DEFAULT_REVERSE_PROXY_IP_HEADER
 import net.termer.twinemedia.model.AccountsModel
 import net.termer.twinemedia.util.*
 import net.termer.twinemedia.util.db.dbInit
@@ -140,6 +141,14 @@ fun interactiveInstall(configPath: Path, shutDown: Boolean = true) {
 			defaultConfig
 
 		val advanced = cons.promptYesNo("Show advanced install options?")
+
+		config.bindHost = cons.promptLine("What host will the ${Constants.APP_NAME} API server run on?", config.bindHost)
+		config.bindPort = cons.promptNumber("What port will the ${Constants.APP_NAME} API server run on?", config.bindPort)
+
+		if (cons.promptYesNo("Will ${Constants.APP_NAME} be running behind a reverse proxy such as Nginx?"))
+			config.reverseProxyIpHeader = cons.promptLine("What header does your reverse proxy use to pass the request client's IP to the API server?", config.reverseProxyIpHeader ?: DEFAULT_REVERSE_PROXY_IP_HEADER).nullIfEmpty()
+		else
+			config.reverseProxyIpHeader = null
 
 		config.apiAllowOrigin = cons.promptLine(
 			(if (advanced)

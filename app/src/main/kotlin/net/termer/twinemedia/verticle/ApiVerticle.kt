@@ -10,6 +10,7 @@ import net.termer.twinemedia.AppContext
 import net.termer.twinemedia.Constants.API_VERSIONS
 import net.termer.twinemedia.Constants.CURRENT_API_VERSION
 import net.termer.twinemedia.controller.AuthController
+import net.termer.twinemedia.middleware.ReverseProxyIpMiddleware
 import org.slf4j.Logger
 import org.slf4j.LoggerFactory
 
@@ -20,14 +21,17 @@ import org.slf4j.LoggerFactory
  */
 class ApiVerticle: CoroutineVerticle() {
 	private val logger: Logger = LoggerFactory.getLogger(ApiVerticle::class.java)
-	private lateinit var context: AppContext
+	private lateinit var appCtx: AppContext
 	private lateinit var http: HttpServer
 
 	override suspend fun start() {
-		context = AppContext.fromJson(config.getJsonObject("context"))
+		appCtx = AppContext.fromJson(config.getJsonObject("context"))
 
 		// Create main app router
 		val router = Router.router(vertx)
+
+		// Default handlers
+		router
 			.defaultApiInfoHandler(CURRENT_API_VERSION, API_VERSIONS)
 			.defaultApiNotFoundHandler()
 			.defaultBadRequestHandler()
@@ -38,19 +42,22 @@ class ApiVerticle: CoroutineVerticle() {
 				logger.error("Error occurred while serving ${req.method()} ${req.path()}", ctx.failure())
 			}
 
+		// Middleware
+		router.route().suspendHandler(ReverseProxyIpMiddleware(appCtx.config.reverseProxyIpHeader))
+
 		// Build OpenAPI router
 		val oapiRouter = RouterBuilder.create(vertx, "openapi/twinemedia.json").await()
 
 		// Bind operations
 		oapiRouter.operation("postAuth").handler(wrapApiRequestHandler {
-			val controller = AuthController(it)
+			val controller = AuthController(appCtx, it)
 			controller.initialize() ?: controller.auth()
 		})
 
 		router.mountApiRouter(CURRENT_API_VERSION, oapiRouter.createRouter())
 
 		// Create server
-		val cfg = context.config
+		val cfg = appCtx.config
 		http = vertx
 			.createHttpServer()
 			.requestHandler(router)

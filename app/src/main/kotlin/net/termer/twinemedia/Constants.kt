@@ -40,4 +40,10 @@ object Constants {
 	 * @since 2.0.0
 	 */
 	const val DEFAULT_REDIS_KEY_PREFIX = "tm_"
+
+	/**
+	 * The default reverse proxy IP header
+	 * @since 2.0.0
+	 */
+	const val DEFAULT_REVERSE_PROXY_IP_HEADER = "X-Forwarded-For"
 }
