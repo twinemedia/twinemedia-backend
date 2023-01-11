@@ -86,6 +86,12 @@ class SelfAccountDto(
 	val isApiKey: Boolean = false,
 
 	/**
+	 * The alphanumeric ID of the API key that is accessing the account, or null if the account is not being accessed by an API key
+	 * @since 2.0.0
+	 */
+	val keyId: String? = null,
+
+	/**
 	 * An array of permissions that this key is authorized to use, or null if the account is not being accessed by an API key
 	 * @since 2.0.0
 	 */
@@ -163,7 +169,7 @@ class SelfAccountDto(
 		 * @since 2.0.0
 		 */
 		fun fromRow(row: Row): SelfAccountDto {
-			val isApiKey = row.hasCol("key_permissions")
+			val isApiKey = row.hasCol("key_id")
 			val defaultSourceId = row.getString("account_default_source_id")
 
 			return SelfAccountDto(
@@ -180,10 +186,13 @@ class SelfAccountDto(
 				excludeOtherProcessPresets = row.getBoolean("account_exclude_other_process_presets"),
 				excludeOtherSources = row.getBoolean("account_exclude_other_sources"),
 				isApiKey = isApiKey,
-				keyPermissions = if(isApiKey)
+				keyId = if (isApiKey)
+					row.getString("key_id")
+				else null,
+				keyPermissions = if (isApiKey)
 					row.getArrayOfStrings("key_permissions")
 				else null,
-				defaultSource = if(defaultSourceId == null) null else RecordSourceDto(
+				defaultSource = if (defaultSourceId == null) null else RecordSourceDto(
 					id = defaultSourceId,
 					name = row.getString("account_default_source_name"),
 					type = row.getString("account_default_source_type")

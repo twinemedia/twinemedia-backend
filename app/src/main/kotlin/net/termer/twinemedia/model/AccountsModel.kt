@@ -508,6 +508,7 @@ class AccountsModel(context: Context?, ignoreContext: Boolean): Model(context, i
 	private fun handleFetchKeyInfo(query: SelectQuery<*>, filters: Filters, fetchApiKeyInfo: Boolean) {
 		if(fetchApiKeyInfo) {
 			query.addSelect(field("api_keys.key_permissions"))
+			query.addSelect(field("api_keys.key_id"))
 			query.addJoin(
 				table("api_keys"),
 				field("api_keys.key_owner").eq(field("accounts.id"))
@@ -524,7 +525,7 @@ class AccountsModel(context: Context?, ignoreContext: Boolean): Model(context, i
 	 * @param order Which order to sort results with (defaults to [SortOrder.CREATED_TS])
 	 * @param orderDesc Whether to sort results in descending order (defaults to false)
 	 * @param limit The number of results to return (defaults to [API_MAX_RESULT_LIMIT])
-	 * @param fetchApiKeyInfo Whether to fetch key info associated with the account (should be used in conjunction with [Filters.whereApiKeyIdIs]) (defaults to false)
+	 * @param fetchApiKeyInfo Whether to fetch key info associated with the account (should be used in conjunction with [Filters.whereApiKeyIdIs], otherwise info for the wrong API key may be returned) (defaults to false)
 	 * @param config The [AppConfig] to be used for filling in missing values in resulting [SelfAccountDto] objects, or null to do nothing
 	 * @return The results
 	 * @since 2.0.0
@@ -563,7 +564,7 @@ class AccountsModel(context: Context?, ignoreContext: Boolean): Model(context, i
 	 * Fetches one account's self-account DTO.
 	 * Use [fetchManySelfDtos] to fetch multiple self-accounts.
 	 * @param filters Additional filters to apply
-	 * @param fetchApiKeyInfo Whether to fetch key info associated with the account (should be used in conjunction with [Filters.whereApiKeyIdIs]) (defaults to false)
+	 * @param fetchApiKeyInfo Whether to fetch key info associated with the account (should be used in conjunction with [Filters.whereApiKeyIdIs], otherwise info for the wrong API key may be returned) (defaults to false)
 	 * @param config The [AppConfig] to be used for filling in missing values in resulting [SelfAccountDto] object, or null to do nothing
 	 * @return The account DTO, or null if there was no result
 	 * @since 2.0.0
