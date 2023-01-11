@@ -52,6 +52,7 @@
 								"properties": {
 									"email": {
 										"type": "string",
+										"format": "email",
 										"maxLength": 254,
 										"description": "The user's email address"
 									},
@@ -151,6 +152,7 @@
 									},
 									"email": {
 										"type": "string",
+										"format": "email",
 										"maxLength": 254,
 										"description": "The account's new email address. Requires existingPassword."
 									},
@@ -399,6 +401,7 @@
 						"properties": {
 							"email": {
 								"type": "string",
+								"format": "email",
 								"maxLength": 254,
 								"description": "The account's email address"
 							},
@@ -480,6 +483,7 @@
 						"properties": {
 							"email": {
 								"type": "string",
+								"format": "email",
 								"maxLength": 254,
 								"description": "The account's email address"
 							},
