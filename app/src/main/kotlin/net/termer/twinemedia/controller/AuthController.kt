@@ -11,6 +11,7 @@ import net.termer.twinemedia.service.CryptoService
 import net.termer.twinemedia.service.RateLimitService
 import net.termer.twinemedia.service.TokenService
 import net.termer.twinemedia.util.some
+import net.termer.twinemedia.util.validation.apiInvalidCredentialsError
 
 /**
  * Controller for authentication/authorization operations
@@ -34,16 +35,14 @@ class AuthController(override val appCtx: AppContext, override val ctx: RoutingC
         val email = bodyJson.getString("email")
         val password = bodyJson.getString("password")
 
-        fun invalidCreds() = apiError("invalid_credentials", "Invalid credentials", statusCode = 401)
-
         // Fetch account
         // We use the global AccountsModel here because the request is not yet authenticated, and therefore has no context
         val account = AccountsModel.INSTANCE.fetchOneRow(AccountsModel.Filters(whereEmailIs = some(email)))
-            ?: return invalidCreds()
+            ?: return apiInvalidCredentialsError()
 
         // Verify password
         if (!CryptoService.INSTANCE.verifyPassword(password, account.hash))
-            return invalidCreds()
+            return apiInvalidCredentialsError()
 
         // All is well; issue token
         return apiSuccess(jsonObjectOf(

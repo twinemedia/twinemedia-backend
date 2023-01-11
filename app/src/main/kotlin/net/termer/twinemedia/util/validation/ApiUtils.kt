@@ -2,6 +2,7 @@ package net.termer.twinemedia.util.validation
 
 import io.vertx.core.http.HttpServerResponse
 import io.vertx.ext.web.RoutingContext
+import net.termer.krestx.api.util.apiError
 import net.termer.twinemedia.middleware.ReverseProxyIpMiddleware
 import net.termer.twinemedia.util.account.AccountContext
 
@@ -55,3 +56,10 @@ fun RoutingContext.isAuthenticated() = this.data().containsKey("accountContext")
  * @since 2.0.0
  */
 fun RoutingContext.accountContext(): AccountContext? = this.get("accountContext", null)
+
+/**
+ * Returns an API "invalid_credentials" error
+ * @return An API "invalid_credentials" error
+ * @since 2.0.0
+ */
+inline fun apiInvalidCredentialsError() = apiError("invalid_credentials", "Invalid credentials", statusCode = 401)
