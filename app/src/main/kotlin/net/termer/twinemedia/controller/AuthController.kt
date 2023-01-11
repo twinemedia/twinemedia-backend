@@ -14,8 +14,8 @@ class AuthController(override val appCtx: AppContext, override val ctx: RoutingC
     private val cfg = appCtx.config
 
     override suspend fun initialize(): ApiResponse? {
-        // Nothing to initialize
-        return null
+        // Rate limit auth requests based on config values
+        return RateLimitService.INSTANCE.rateLimitRequest(ctx, "AUTH", cfg.authTimeoutSeconds, cfg.authMaxFailedAttempts)
     }
 
     /**
@@ -23,11 +23,6 @@ class AuthController(override val appCtx: AppContext, override val ctx: RoutingC
      * @since 2.0.0
      */
     suspend fun auth(): ApiResponse {
-        // Rate limit request based on config values
-        val rlRes = RateLimitService.INSTANCE.rateLimitRequest(ctx, "AUTH", cfg.authTimeoutSeconds, cfg.authMaxFailedAttempts)
-        if (rlRes != null)
-            return rlRes
-
         // Collect params
         val bodyJson = bodyParams.jsonObject
         val email = bodyJson.getString("email")
