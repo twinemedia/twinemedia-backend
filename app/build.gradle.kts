@@ -45,7 +45,6 @@ dependencies {
     implementation("net.bramp.ffmpeg:ffmpeg:0.7.0")
     implementation("com.fasterxml.jackson.core:jackson-databind:2.14.0")
     implementation("net.termer.vertx.kotlin.validation:vertx-web-validator-kotlin:2.0.0")
-    // Pull from git for testing
     implementation("net.termer.krestx:krestx-api:1.1.2")
 
     // Amazon S3
