@@ -60,6 +60,7 @@ class RedisService(
 
         /**
          * Initializes the global [INSTANCE] singleton
+         * @param vertx The Vert.x instance to use
          * @param config The [AppConfig] to use for the singleton creation
          * @since 2.0.0
          */
