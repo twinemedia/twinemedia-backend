@@ -1,6 +1,7 @@
 package net.termer.twinemedia.model
 
 import io.vertx.core.http.HttpServerRequest
+import io.vertx.ext.web.RoutingContext
 import net.termer.twinemedia.AppConfig
 import net.termer.twinemedia.Constants.API_MAX_RESULT_LIMIT
 import net.termer.twinemedia.dataobject.AccountDto
@@ -30,6 +31,14 @@ class AccountsModel(context: Context?, ignoreContext: Boolean): Model(context, i
 		 * @since 2.0.0
 		 */
 		val INSTANCE = AccountsModel(null, true)
+
+		/**
+		 * Creates a new model instance using context from the provided [RoutingContext]
+		 * @param ctx The [RoutingContext]
+		 * @return The new model instance
+		 * @since 2.0.0
+		 */
+		fun fromRequest(ctx: RoutingContext) = AccountsModel(Context.fromRequest(ctx), false)
 	}
 
 	/**

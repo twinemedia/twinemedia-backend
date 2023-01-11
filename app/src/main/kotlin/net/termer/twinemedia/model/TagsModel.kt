@@ -4,6 +4,7 @@ package net.termer.twinemedia.model
 
 import io.vertx.core.http.HttpServerRequest
 import io.vertx.core.json.JsonObject
+import io.vertx.ext.web.RoutingContext
 import net.termer.twinemedia.Constants.API_MAX_RESULT_LIMIT
 import net.termer.twinemedia.dataobject.*
 import net.termer.twinemedia.model.pagination.RowPagination
@@ -29,6 +30,14 @@ class TagsModel(context: Context?, ignoreContext: Boolean): Model(context, ignor
 		 * @since 2.0.0
 		 */
 		val INSTANCE = TagsModel(null, true)
+
+		/**
+		 * Creates a new model instance using context from the provided [RoutingContext]
+		 * @param ctx The [RoutingContext]
+		 * @return The new model instance
+		 * @since 2.0.0
+		 */
+		fun fromRequest(ctx: RoutingContext) = TagsModel(Context.fromRequest(ctx), false)
 	}
 
 	/**

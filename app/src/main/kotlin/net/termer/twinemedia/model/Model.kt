@@ -1,11 +1,13 @@
 package net.termer.twinemedia.model
 
 import io.vertx.core.http.HttpServerRequest
+import io.vertx.ext.web.RoutingContext
 import net.termer.twinemedia.dataobject.StandardRow
 import net.termer.twinemedia.util.Option
 import net.termer.twinemedia.util.Some
 import net.termer.twinemedia.util.account.AccountContext
 import net.termer.twinemedia.util.dateStringToOffsetDateTimeOrNone
+import net.termer.twinemedia.util.validation.accountContext
 import org.jooq.Condition
 import org.jooq.UpdateQuery
 import org.jooq.impl.DSL.falseCondition
@@ -39,7 +41,20 @@ abstract class Model(
 		 * @since 2.0.0
 		 */
 		val account: AccountContext
-	)
+	) {
+		companion object {
+			/**
+			 * Creates a new [Model.Context] instance using context from the provided [RoutingContext], or null if the request is not authenticated
+			 * @param ctx The [RoutingContext]
+			 * @return The new [Context] instance, or null if the request is not authenticated
+			 * @since 2.0.0
+			 */
+			fun fromRequest(ctx: RoutingContext): Context? {
+				val accCtx = ctx.accountContext()
+				return if (accCtx == null) null else Context(accCtx)
+			}
+		}
+	}
 
 	/**
 	 * Abstract class for model select, update and delete filters.
