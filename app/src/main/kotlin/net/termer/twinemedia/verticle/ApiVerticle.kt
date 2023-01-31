@@ -50,7 +50,7 @@ class ApiVerticle: CoroutineVerticle() {
 		router.route("/api/*").suspendHandler(HeadersMiddleware(appCtx.config.apiAllowOrigin))
 
 		// Build OpenAPI router
-		val oapiRouter = RouterBuilder.create(vertx, "openapi/twinemedia.json").await()
+		val oapiRouter = RouterBuilder.create(vertx, "openapi.yaml").await()
 		oapiRouter.securityHandler("jwt") {
 			wrapRequestHandler(AuthMiddleware(appCtx.config)).handle(it)
 		}
