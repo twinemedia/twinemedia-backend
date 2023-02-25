@@ -1,8 +1,8 @@
 package net.termer.twinemedia.model
 
-import io.vertx.core.http.HttpServerRequest
 import io.vertx.core.json.JsonObject
 import io.vertx.ext.web.RoutingContext
+import io.vertx.ext.web.validation.RequestParameters
 import net.termer.twinemedia.Constants.API_MAX_RESULT_LIMIT
 import net.termer.twinemedia.dataobject.*
 import net.termer.twinemedia.model.pagination.ProcessPresetPagination
@@ -128,16 +128,17 @@ class ProcessPresetsModel(context: Context?, ignoreContext: Boolean): Model(cont
 			return res
 		}
 
-		override fun setWithRequest(req: HttpServerRequest) {
-			setStandardFiltersWithRequest(req)
+		override fun setWithParameters(params: RequestParameters) {
+			setStandardFiltersFromParameters(params)
 
-			val params = req.params()
+			val mimeIsLikeParam = params.queryParameter("whereMimeIsLike")
+			val matchesQueryParam = params.queryParameter("whereMatchesQuery")
 
-			if(params.contains("whereMimeIsLike"))
-				whereMimeIsLike = some(params["whereMimeIsLike"])
-			if(params.contains("whereMatchesQuery")) {
-				whereMatchesQuery = some(params["whereMatchesQuery"])
-				querySearchName = params["querySearchName"] == "true"
+			if(mimeIsLikeParam != null)
+				whereMimeIsLike = some(mimeIsLikeParam.string)
+			if(matchesQueryParam != null) {
+				whereMatchesQuery = some(matchesQueryParam.string)
+				querySearchName = params.queryParameter("querySearchName")?.boolean == true
 			}
 		}
 

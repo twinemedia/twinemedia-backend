@@ -1,8 +1,8 @@
 package net.termer.twinemedia.model
 
-import io.vertx.core.http.HttpServerRequest
 import io.vertx.core.json.JsonObject
 import io.vertx.ext.web.RoutingContext
+import io.vertx.ext.web.validation.RequestParameters
 import net.termer.twinemedia.Constants.API_MAX_RESULT_LIMIT
 import net.termer.twinemedia.dataobject.*
 import net.termer.twinemedia.model.pagination.FilePagination
@@ -199,26 +199,31 @@ class FilesModel(context: Context?, ignoreContext: Boolean): Model(context, igno
 			return res
 		}
 
-		override fun setWithRequest(req: HttpServerRequest) {
-			setStandardFiltersWithRequest(req)
+		override fun setWithParameters(params: RequestParameters) {
+			setStandardFiltersFromParameters(params)
 
-			val params = req.params()
+			val mimeIsLikeParam = params.queryParameter("whereMimeIsLike")
+			val tagCountLessThanParam = params.queryParameter("whereTagCountLessThan")
+			val tagCountMoreThanParam = params.queryParameter("whereTagCountMoreThan")
+			val childCountLessThanParam = params.queryParameter("whereChildCountLessThan")
+			val childCountMoreThanParam = params.queryParameter("whereChildCountMoreThan")
+			val matchesQueryParam = params.queryParameter("whereMatchesQuery")
 
-			if(params.contains("whereMimeIsLike"))
-				whereMimeIsLike = some(params["whereMimeIsLike"])
-			if(params.contains("whereTagCountLessThan"))
-				whereTagCountLessThan = some(params["whereTagCountLessThan"].toIntOr(Int.MAX_VALUE))
-			if(params.contains("whereTagCountMoreThan"))
-				whereTagCountMoreThan = some(params["whereTagCountMoreThan"].toIntOr(0))
-			if(params.contains("whereChildCountLessThan"))
-				whereChildCountLessThan = some(params["whereChildCountLessThan"].toIntOr(Int.MAX_VALUE))
-			if(params.contains("whereChildCountMoreThan"))
-				whereChildCountMoreThan = some(params["whereChildCountMoreThan"].toIntOr(0))
-			if(params.contains("whereMatchesQuery")) {
-				whereMatchesQuery = some(params["whereMatchesQuery"])
-				querySearchTitle = params["querySearchTitle"] == "true"
-				querySearchName = params["querySearchName"] == "true"
-				querySearchDescription = params["querySearchDescription"] == "true"
+			if (mimeIsLikeParam != null)
+				whereMimeIsLike = some(mimeIsLikeParam.string)
+			if (tagCountLessThanParam != null )
+				whereTagCountLessThan = some(tagCountLessThanParam.integer)
+			if (tagCountMoreThanParam != null)
+				whereTagCountMoreThan = some(tagCountMoreThanParam.integer)
+			if (childCountLessThanParam != null)
+				whereChildCountLessThan = some(childCountLessThanParam.integer)
+			if (childCountMoreThanParam != null)
+				whereChildCountMoreThan = some(childCountMoreThanParam.integer)
+			if (matchesQueryParam != null) {
+				whereMatchesQuery = some(matchesQueryParam.string)
+				querySearchTitle = params.queryParameter("querySearchTitle")?.boolean == true
+				querySearchName = params.queryParameter("querySearchName")?.boolean == true
+				querySearchDescription = params.queryParameter("querySearchDescription")?.boolean == true
 			}
 		}
 

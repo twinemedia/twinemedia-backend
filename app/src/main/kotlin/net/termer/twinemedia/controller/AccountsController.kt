@@ -6,7 +6,9 @@ import net.termer.krestx.api.util.apiError
 import net.termer.krestx.api.util.apiSuccess
 import net.termer.krestx.api.util.apiUnauthorizedError
 import net.termer.twinemedia.AppContext
+import net.termer.twinemedia.Constants.API_MAX_RESULT_LIMIT
 import net.termer.twinemedia.model.AccountsModel
+import net.termer.twinemedia.model.pagination.AccountPagination.Companion.resolvePaginationFromParameters
 import net.termer.twinemedia.service.CryptoService
 import net.termer.twinemedia.util.*
 import net.termer.twinemedia.util.account.AccountContext
@@ -38,6 +40,10 @@ class AccountsController(override val appCtx: AppContext, override val ctx: Rout
         return apiSuccess(accountCtx.selfAccount.toJson())
     }
 
+    /**
+     * Handler for the "putSelfAccount" operation
+     * @since 2.0.0
+     */
     suspend fun putSelfAccount(): ApiResponse {
         // Collect parameters
         val jsonBody = bodyParams.jsonObject
@@ -109,5 +115,26 @@ class AccountsController(override val appCtx: AppContext, override val ctx: Rout
             return apiUnauthorizedError()
 
         return apiSuccess(selfAccount.toJson())
+    }
+
+    /**
+     * Handler for the "putManyAccounts" operation
+     * @since 2.0.0
+     */
+    suspend fun getManyAccounts(): ApiResponse {
+        if (!accountCtx.hasPermission("accounts.list"))
+            return apiUnauthorizedError()
+
+        // Collect parameters
+        val limit = params.queryParameter("pagination").jsonObject.getInteger("limit") ?: API_MAX_RESULT_LIMIT
+        val pagination = resolvePaginationFromParameters(params)
+        val filters = AccountsModel.Filters().apply { setWithParameters(params) }
+
+        val accountsModel = AccountsModel.fromRequest(ctx)
+
+        // TODO Add an OpenAPI schema for account filters and standard filters
+        val res = accountsModel.fetchManyDtosPaginated(pagination, limit, filters)
+
+        return apiSuccess(res.toJson())
     }
 }

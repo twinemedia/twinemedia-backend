@@ -331,6 +331,29 @@ fun <T> Array<T>.getOr(index: Int, default: T) =
 		this[index]
 
 /**
+ * Returns the enum value with the specified name, or null if none with that name exists
+ * @param name The value name
+ * @return The enum value, or null if none with the specified name exists
+ */
+inline fun <reified T : Enum<T>> enumByName(name: String): T? {
+	for (enumVal in enumValues<T>())
+		if (name == enumVal.name)
+			return enumVal
+
+	return null
+}
+
+/**
+ * Returns the enum value with the specified name, or a default value if none with that name exists
+ * @param name The value name
+ * @param default The default value to return
+ * @return The enum value, or the default value
+ */
+inline fun <reified T : Enum<T>> enumByNameOr(name: String, default: T): T {
+	return enumByName<T>(name) ?: default
+}
+
+/**
  * Parses the string into an int, or returns a default value if the string is not a valid int
  * @param default The default value to return
  * @return The int or the default value

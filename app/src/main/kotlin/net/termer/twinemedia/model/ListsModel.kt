@@ -1,7 +1,7 @@
 package net.termer.twinemedia.model
 
-import io.vertx.core.http.HttpServerRequest
 import io.vertx.ext.web.RoutingContext
+import io.vertx.ext.web.validation.RequestParameters
 import net.termer.twinemedia.Constants.API_MAX_RESULT_LIMIT
 import net.termer.twinemedia.dataobject.*
 import net.termer.twinemedia.enumeration.ListType
@@ -167,23 +167,27 @@ class ListsModel(context: Context?, ignoreContext: Boolean): Model(context, igno
 			return res
 		}
 
-		override fun setWithRequest(req: HttpServerRequest) {
-			setStandardFiltersWithRequest(req)
+		override fun setWithParameters(params: RequestParameters) {
+			setStandardFiltersFromParameters(params)
 
-			val params = req.params()
+			val typeIsParam = params.queryParameter("whereTypeIs")
+			val visibilityIsParam = params.queryParameter("whereVisibilityIs")
+			val fileCountLessThanParam = params.queryParameter("whereFileCountLessThan")
+			val fileCountMoreThanParam = params.queryParameter("whereFileCountMoreThan")
+			val matchesQueryParam = params.queryParameter("whereMatchesQuery")
 
-			if(params.contains("whereTypeIs"))
-				whereTypeIs = intToListType(params["whereTypeIs"].toIntOrNull() ?: -1).orNone()
-			if(params.contains("whereVisibilityIs"))
-				whereVisibilityIs = intToListVisibility(params["whereVisibilityIs"].toIntOrNull() ?: -1).orNone()
-			if(params.contains("whereFileCountLessThan"))
-				whereFileCountLessThan = some(params["whereFileCountLessThan"].toIntOr(Int.MAX_VALUE))
-			if(params.contains("whereFileCountMoreThan"))
-				whereFileCountMoreThan = some(params["whereFileCountMoreThan"].toIntOr(0))
-			if(params.contains("whereMatchesQuery")) {
-				whereMatchesQuery = some(params["whereMatchesQuery"])
-				querySearchName = params["querySearchName"] == "true"
-				querySearchDescription = params["querySearchDescription"] == "true"
+			if(typeIsParam != null)
+				whereTypeIs = enumByName<ListType>(typeIsParam.string).orNone()
+			if(visibilityIsParam != null)
+				whereVisibilityIs = enumByName<ListVisibility>(visibilityIsParam.string).orNone()
+			if(fileCountLessThanParam != null)
+				whereFileCountLessThan = some(fileCountLessThanParam.integer)
+			if(fileCountMoreThanParam != null)
+				whereFileCountMoreThan = some(fileCountMoreThanParam.integer)
+			if(matchesQueryParam != null) {
+				whereMatchesQuery = some(matchesQueryParam.string)
+				querySearchName = params.queryParameter("querySearchName")?.boolean == true
+				querySearchDescription = params.queryParameter("querySearchDescription")?.boolean == true
 			}
 		}
 

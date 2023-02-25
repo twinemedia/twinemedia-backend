@@ -1,7 +1,8 @@
 package net.termer.twinemedia.model
 
-import io.vertx.core.http.HttpServerRequest
+import io.vertx.core.json.JsonObject
 import io.vertx.ext.web.RoutingContext
+import io.vertx.ext.web.validation.RequestParameters
 import net.termer.twinemedia.dataobject.StandardRow
 import net.termer.twinemedia.util.Option
 import net.termer.twinemedia.util.Some
@@ -83,12 +84,12 @@ abstract class Model(
 		abstract fun genConditions(): MutableList<Condition>
 
 		/**
-		 * Changes the instance's filters based on the provided [HttpServerRequest].
+		 * Changes the instance's filters based on the provided request parameters.
 		 * Only API-safe filters should be changed by this method.
-		 * @param req The request
+		 * @param params The request parameters
 		 * @since 2.0.0
 		 */
-		abstract fun setWithRequest(req: HttpServerRequest)
+		abstract fun setWithParameters(params: RequestParameters)
 	}
 
 	/**
@@ -166,18 +167,23 @@ abstract class Model(
 		}
 
 		/**
-		 * Changes the instance's filters based on the provided [HttpServerRequest] for API-safe standard filters.
-		 * This should be called in the beginning of the [setWithRequest] implementation.
+		 * Changes the instance's filters based on the provided request parameters for API-safe standard filters.
+		 * This should be called in the beginning of the [setWithParameters] implementation.
 		 */
-		protected fun setStandardFiltersWithRequest(req: HttpServerRequest) {
-			val params = req.params()
+		protected fun setStandardFiltersFromParameters(params: RequestParameters) {
+			val createdBeforeParam = params.queryParameter("whereCreatedBefore")
+			val createdAfterParam = params.queryParameter("whereCreatedAfter")
+			val modBeforeParam = params.queryParameter("whereModifiedBefore")
+			val modAfterParam = params.queryParameter("whereModifiedAfter")
 
-			if(params.contains("whereCreatedAfter"))
-				whereCreatedAfter = dateStringToOffsetDateTimeOrNone(params["whereCreatedAfter"])
-			if(params.contains("whereModifiedBefore"))
-				whereModifiedBefore = dateStringToOffsetDateTimeOrNone(params["whereModifiedBefore"])
-			if(params.contains("whereModifiedAfter"))
-				whereModifiedAfter = dateStringToOffsetDateTimeOrNone(params["whereModifiedAfter"])
+			if (createdBeforeParam != null)
+				whereModifiedBefore = dateStringToOffsetDateTimeOrNone(createdBeforeParam.string)
+			if (createdAfterParam != null)
+				whereCreatedAfter = dateStringToOffsetDateTimeOrNone(createdAfterParam.string)
+			if (modBeforeParam != null)
+				whereModifiedBefore = dateStringToOffsetDateTimeOrNone(modBeforeParam.string)
+			if (modAfterParam != null)
+				whereModifiedAfter = dateStringToOffsetDateTimeOrNone(modAfterParam.string)
 		}
 	}
 

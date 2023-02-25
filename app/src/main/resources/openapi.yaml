@@ -8,7 +8,7 @@ info:
 servers:
     -   url: http://twinemedia.local/api/v2
 security:
-    -   jwt: [ ]
+    -   bearerAuth: [ ]
 paths:
     /:
         get:
@@ -63,12 +63,6 @@ paths:
                                     token:
                                         type: string
                                         description: The authorization token
-                default:
-                    description: An error occurred
-                    content:
-                        application/json:
-                            schema:
-                                $ref: '#/components/schemas/ApiErrorRes'
     /accounts/self:
         get:
             summary: Returns the request user's account info
@@ -83,12 +77,6 @@ paths:
                         application/json:
                             schema:
                                 $ref: '#/components/schemas/SelfAccount'
-                default:
-                    description: An error occurred
-                    content:
-                        application/json:
-                            schema:
-                                $ref: '#/components/schemas/ApiErrorRes'
         put:
             summary: Updates the user's account
             operationId: putSelfAccount
@@ -147,12 +135,6 @@ paths:
                         application/json:
                             schema:
                                 $ref: '#/components/schemas/SelfAccount'
-                default:
-                    description: An error occurred
-                    content:
-                        application/json:
-                            schema:
-                                $ref: '#/components/schemas/ApiErrorRes'
     /accounts:
         get:
             summary: Returns many accounts.
@@ -162,9 +144,20 @@ paths:
             operationId: getManyAccounts
             tags:
                 - accounts
+
+            parameters:
+                - in: query
+                  name: pagination
+                  schema:
+                      $ref: '#/components/schemas/ApiPaginationParams'
+                - in: query
+                  name: order
+                  schema:
+                      $ref: '#/components/schemas/AccountSortOrder'
+
             responses:
                 '200':
-                    description: The request user's account info
+                    description: The paginated response
                     headers: { }
                     content:
                         application/json:
@@ -175,23 +168,18 @@ paths:
                                         required:
                                             - items
                                         properties:
-                                            items:
+                                            results:
                                                 type: array
                                                 items:
                                                     $ref: '#/components/schemas/Account'
                                     -   $ref: '#/components/schemas/ApiPaginatedRes'
-                default:
-                    description: An error occurred
-                    content:
-                        application/json:
-                            schema:
-                                $ref: '#/components/schemas/ApiErrorRes'
 components:
     securitySchemes:
-        jwt:
-            type: apiKey
-            name: bearer
-            in: header
+        bearerAuth:
+            type: http
+            scheme: bearer
+            bearerFormat: jwt
+            description: An account or API key JWT
     schemas:
         ApiInfo:
             type: object
@@ -240,8 +228,57 @@ components:
                     minItems: 1
         ApiPaginatedRes:
             type: object
-            description: A paginated API response
-            properties: { }
+            description: |
+                A paginated API response.
+                Results are in a property called `results`, which is an array.
+                It is not included in this schema because the item type differs from endpoint to endpoint.
+            properties:
+                prevToken:
+                    type: string
+                    nullable: true
+                    description: A token for fetching the previous page of results, or null if this is the first page
+                nextToken:
+                    type: string
+                    nullable: true
+                    description: A token for fetching the next page of results, or null if this is the last page
+
+        ApiPaginationParams:
+            type: object
+            description: |
+                Parameters for returning paginated resources.
+                The sort order type is in a property called `order`, which is an enum string.
+                It is not included in this schema because the enum differs from endpoint to endpoint.
+            properties:
+                orderDesc:
+                    type: boolean
+                    description: Whether to sort results in descending order instead of ascending
+                    default: false
+                limit:
+                    type: integer
+                    minimum: 1
+                    default: 100
+                    description: |
+                        The maximum number of results to return.
+                        The response may contain less results than specified in this parameter, which indicates that there are no more results.
+                page:
+                    type: string
+                    description: |
+                        The page token to use.
+                        Page tokens are used to fetch the previous or next page.
+                        If a page token is specified, the `order` and `orderDesc` parameters have no effect.
+                        Page tokens are returned in responses for paginated resources.
+
+        AccountSortOrder:
+            type: string
+            description: Possible sort orders to use when fetching accounts
+            enum:
+                - CREATED_TS
+                - MODIFIED_TS
+                - NAME_ALPHABETICALLY
+                - EMAIL_ALPHABETICALLY
+                - FILE_COUNT
+            default: 'CREATED_TS'
+
         StandardRecord:
             type: object
             description: Standard fields for most record types
@@ -745,3 +782,10 @@ components:
                             description: The file's source
                 -   $ref: '#/components/schemas/StandardRecord'
                 -   $ref: '#/components/schemas/RecordWithNullableOwner'
+    responses:
+        default:
+            description: An error occurred
+            content:
+                application/json:
+                    schema:
+                        $ref: '#/components/schemas/ApiErrorRes'

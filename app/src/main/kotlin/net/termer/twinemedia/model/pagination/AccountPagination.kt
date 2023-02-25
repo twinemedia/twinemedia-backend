@@ -1,6 +1,6 @@
 package net.termer.twinemedia.model.pagination
 
-import io.vertx.core.http.HttpServerRequest
+import io.vertx.ext.web.validation.RequestParameters
 import net.termer.twinemedia.dataobject.AccountDto
 import net.termer.twinemedia.model.AccountsModel.*
 import net.termer.twinemedia.service.CryptoService
@@ -15,18 +15,18 @@ import java.time.OffsetDateTime
 interface AccountPagination<TColType>: RowPagination<AccountDto, SortOrder, TColType> {
 	companion object {
 		@Suppress("UNCHECKED_CAST")
-		private fun CommonPagination.TokenData<SortOrder, *>.toPagination(): AccountPagination<*> {
-			return when(sortEnum) {
+		private fun toPagination(tokenData: CommonPagination.TokenData<SortOrder, *>): AccountPagination<*> {
+			return when(tokenData.sortEnum) {
 				SortOrder.CREATED_TS ->
-					CreatedTsPagination(this as CommonPagination.TokenData<SortOrder, OffsetDateTime>)
+					CreatedTsPagination(tokenData as CommonPagination.TokenData<SortOrder, OffsetDateTime>)
 				SortOrder.MODIFIED_TS ->
-					ModifiedTsPagination(this as CommonPagination.TokenData<SortOrder, OffsetDateTime>)
+					ModifiedTsPagination(tokenData as CommonPagination.TokenData<SortOrder, OffsetDateTime>)
 				SortOrder.NAME_ALPHABETICALLY ->
-					NamePagination(this as CommonPagination.TokenData<SortOrder, String>)
+					NamePagination(tokenData as CommonPagination.TokenData<SortOrder, String>)
 				SortOrder.EMAIL_ALPHABETICALLY ->
-					EmailPagination(this as CommonPagination.TokenData<SortOrder, String>)
+					EmailPagination(tokenData as CommonPagination.TokenData<SortOrder, String>)
 				SortOrder.FILE_COUNT ->
-					FileCountPagination(this as CommonPagination.TokenData<SortOrder, Int>)
+					FileCountPagination(tokenData as CommonPagination.TokenData<SortOrder, Int>)
 			}
 		}
 
@@ -46,51 +46,27 @@ interface AccountPagination<TColType>: RowPagination<AccountDto, SortOrder, TCol
 
 			return when(sort) {
 				SortOrder.CREATED_TS ->
-					CommonPagination.Timestamp.decodeTokenBytes(bytes, sortEnumVals, sort).toPagination()
+					toPagination(CommonPagination.Timestamp.decodeTokenBytes(bytes, sortEnumVals, sort))
 				SortOrder.MODIFIED_TS ->
-					CommonPagination.Timestamp.decodeTokenBytes(bytes, sortEnumVals, sort).toPagination()
+					toPagination(CommonPagination.Timestamp.decodeTokenBytes(bytes, sortEnumVals, sort))
 				SortOrder.NAME_ALPHABETICALLY ->
-					CommonPagination.Text.decodeTokenBytes(bytes, sortEnumVals, sort).toPagination()
+					toPagination(CommonPagination.Text.decodeTokenBytes(bytes, sortEnumVals, sort))
 				SortOrder.EMAIL_ALPHABETICALLY ->
-					CommonPagination.Text.decodeTokenBytes(bytes, sortEnumVals, sort).toPagination()
+					toPagination(CommonPagination.Text.decodeTokenBytes(bytes, sortEnumVals, sort))
 				SortOrder.FILE_COUNT ->
-					CommonPagination.Integer.decodeTokenBytes(bytes, sortEnumVals, sort).toPagination()
+					toPagination(CommonPagination.Integer.decodeTokenBytes(bytes, sortEnumVals, sort))
 			}
 		}
 
 		/**
 		 * Resolves an [AccountPagination] object based on request parameters
+		 * @param params The request parameters to resolve pagination from
 		 * @return The [AccountPagination] object
 		 * @throws PaginationTokenDecodeException If the token provided (if any) is malformed or decoding it fails for another reason
 		 * @since 2.0.0
 		 */
-		suspend fun HttpServerRequest.resolvePagination(): AccountPagination<*> {
-			val params = params()
-
-			// Check for pagination token
-			val pageToken = params["page"]
-			if(pageToken == null) {
-				// Extract ordering from params
-				val order = if(params.contains("order"))
-					SortOrder.values().getOr(
-						params["order"].toIntOr(0),
-						SortOrder.CREATED_TS
-					)
-				else
-					SortOrder.CREATED_TS
-				val orderDesc = params["orderDesc"] == "true"
-
-				// Create token data without a cursor
-				return CommonPagination.TokenData(
-					sortEnum = order,
-					isSortedByDesc = orderDesc,
-					isPreviousCursor = false,
-					columnValue = null,
-					internalId = null
-				).toPagination()
-			} else {
-				return decodeToken(pageToken)
-			}
+		suspend fun resolvePaginationFromParameters(params: RequestParameters): AccountPagination<*> {
+			return CommonPagination.resolvePaginationFromParameters(params, SortOrder.CREATED_TS, ::toPagination, ::decodeToken)
 		}
 	}
 

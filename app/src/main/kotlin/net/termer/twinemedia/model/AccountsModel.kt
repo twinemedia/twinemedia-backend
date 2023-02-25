@@ -1,7 +1,7 @@
 package net.termer.twinemedia.model
 
-import io.vertx.core.http.HttpServerRequest
 import io.vertx.ext.web.RoutingContext
+import io.vertx.ext.web.validation.RequestParameters
 import net.termer.twinemedia.AppConfig
 import net.termer.twinemedia.Constants.API_MAX_RESULT_LIMIT
 import net.termer.twinemedia.dataobject.AccountDto
@@ -174,25 +174,27 @@ class AccountsModel(context: Context?, ignoreContext: Boolean): Model(context, i
 			return res
 		}
 
-		override fun setWithRequest(req: HttpServerRequest) {
-			setStandardFiltersWithRequest(req)
+		override fun setWithParameters(params: RequestParameters) {
+			setStandardFiltersFromParameters(params)
 
-			val params = req.params()
+			val emailIsParam = params.queryParameter("whereEmailIs")
+			val adminStatusIsParam = params.queryParameter("whereAdminStatusIs")
+			val fileCountLessThanParam = params.queryParameter("whereFileCountLessThan")
+			val fileCountMoreThanParam = params.queryParameter("whereFileCountMoreThan")
+			val matchesQueryParam = params.queryParameter("whereMatchesQuery")
 
-			if(params.contains("whereEmailIs"))
-				whereEmailIs = some(params["whereEmailIs"])
-			if(params.contains("whereAdminStatusIs"))
-				whereAdminStatusIs = some(params["whereAdminStatusIs"] == "true")
-			if(params.contains("whereFileCountLessThan"))
-				whereFileCountLessThan = some(params["whereFileCountLessThan"].toIntOr(Int.MAX_VALUE))
-			if(params.contains("whereFileCountMoreThan"))
-				whereFileCountMoreThan = some(params["whereFileCountMoreThan"].toIntOr(0))
-			if(params.contains("whereCreatedBefore"))
-				whereCreatedBefore = dateStringToOffsetDateTimeOrNone(params["whereCreatedBefore"])
-			if(params.contains("whereMatchesQuery")) {
-				whereMatchesQuery = some(params["whereMatchesQuery"])
-				querySearchName = params["querySearchName"] == "true"
-				querySearchEmail = params["querySearchEmail"] == "true"
+			if (emailIsParam != null)
+				whereEmailIs = some(emailIsParam.string)
+			if (adminStatusIsParam != null)
+				whereAdminStatusIs = some(adminStatusIsParam.boolean)
+			if (fileCountLessThanParam != null)
+				whereFileCountLessThan = some(fileCountLessThanParam.integer)
+			if (fileCountMoreThanParam != null)
+				whereFileCountMoreThan = some(fileCountMoreThanParam.integer)
+			if (matchesQueryParam != null) {
+				whereMatchesQuery = some(matchesQueryParam.string)
+				querySearchName = params.queryParameter("querySearchName")?.boolean == true
+				querySearchEmail = params.queryParameter("querySearchEmail")?.boolean == true
 			}
 		}
 	}

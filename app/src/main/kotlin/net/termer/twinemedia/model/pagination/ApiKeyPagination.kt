@@ -1,6 +1,6 @@
 package net.termer.twinemedia.model.pagination
 
-import io.vertx.core.http.HttpServerRequest
+import io.vertx.ext.web.validation.RequestParameters
 import net.termer.twinemedia.dataobject.ApiKeyDto
 import net.termer.twinemedia.model.ApiKeysModel.*
 import net.termer.twinemedia.service.CryptoService
@@ -15,14 +15,14 @@ import java.time.OffsetDateTime
 interface ApiKeyPagination<TColType>: RowPagination<ApiKeyDto, SortOrder, TColType> {
 	companion object {
 		@Suppress("UNCHECKED_CAST")
-		private fun CommonPagination.TokenData<SortOrder, *>.toPagination(): ApiKeyPagination<*> {
-			return when(sortEnum) {
+		private fun toPagination(tokenData: CommonPagination.TokenData<SortOrder, *>): ApiKeyPagination<*> {
+			return when(tokenData.sortEnum) {
 				SortOrder.CREATED_TS ->
-					CreatedTsPagination(this as CommonPagination.TokenData<SortOrder, OffsetDateTime>)
+					CreatedTsPagination(tokenData as CommonPagination.TokenData<SortOrder, OffsetDateTime>)
 				SortOrder.MODIFIED_TS ->
-					ModifiedTsPagination(this as CommonPagination.TokenData<SortOrder, OffsetDateTime>)
+					ModifiedTsPagination(tokenData as CommonPagination.TokenData<SortOrder, OffsetDateTime>)
 				SortOrder.NAME_ALPHABETICALLY ->
-					NamePagination(this as CommonPagination.TokenData<SortOrder, String>)
+					NamePagination(tokenData as CommonPagination.TokenData<SortOrder, String>)
 			}
 		}
 
@@ -42,47 +42,23 @@ interface ApiKeyPagination<TColType>: RowPagination<ApiKeyDto, SortOrder, TColTy
 
 			return when(sort) {
 				SortOrder.CREATED_TS ->
-					CommonPagination.Timestamp.decodeTokenBytes(bytes, sortEnumVals, sort).toPagination()
+					toPagination(CommonPagination.Timestamp.decodeTokenBytes(bytes, sortEnumVals, sort))
 				SortOrder.MODIFIED_TS ->
-					CommonPagination.Timestamp.decodeTokenBytes(bytes, sortEnumVals, sort).toPagination()
+					toPagination(CommonPagination.Timestamp.decodeTokenBytes(bytes, sortEnumVals, sort))
 				SortOrder.NAME_ALPHABETICALLY ->
-					CommonPagination.Text.decodeTokenBytes(bytes, sortEnumVals, sort).toPagination()
+					toPagination(CommonPagination.Text.decodeTokenBytes(bytes, sortEnumVals, sort))
 			}
 		}
 
 		/**
 		 * Resolves an [ApiKeyPagination] object based on request parameters
+		 * @param params The request parameters to resolve pagination from
 		 * @return The [ApiKeyPagination] object
 		 * @throws PaginationTokenDecodeException If the token provided (if any) is malformed or decoding it fails for another reason
 		 * @since 2.0.0
 		 */
-		suspend fun HttpServerRequest.resolvePagination(): ApiKeyPagination<*> {
-			val params = params()
-
-			// Check for pagination token
-			val pageToken = params["page"]
-			if(pageToken == null) {
-				// Extract ordering from params
-				val order = if(params.contains("order"))
-					SortOrder.values().getOr(
-						params["order"].toIntOr(0),
-						SortOrder.CREATED_TS
-					)
-				else
-					SortOrder.CREATED_TS
-				val orderDesc = params["orderDesc"] == "true"
-
-				// Create token data without a cursor
-				return CommonPagination.TokenData(
-					sortEnum = order,
-					isSortedByDesc = orderDesc,
-					isPreviousCursor = false,
-					columnValue = null,
-					internalId = null
-				).toPagination()
-			} else {
-				return decodeToken(pageToken)
-			}
+		suspend fun resolvePaginationFromParameters(params: RequestParameters): ApiKeyPagination<*> {
+			return CommonPagination.resolvePaginationFromParameters(params, SortOrder.CREATED_TS, ::toPagination, ::decodeToken)
 		}
 	}
 

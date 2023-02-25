@@ -1,5 +1,6 @@
 package net.termer.twinemedia.model.pagination
 
+import io.vertx.ext.web.validation.RequestParameters
 import io.vertx.sqlclient.Row
 import net.termer.twinemedia.dataobject.StandardRow
 import net.termer.twinemedia.service.CryptoService
@@ -115,6 +116,51 @@ object CommonPagination {
 			throw PaginationTokenDecodeException("Invalid sorting enum int $enumInt")
 
 		return enumVals[enumInt]
+	}
+
+	/**
+	 * Resolves a [TRowPag] pagination object based on request parameters.
+	 * [TRowPag] is the implementation of [RowPagination] to be used.
+	 * [TOrder] is the order enum to resolve the order type from.
+	 * @param params The parameters to resolve pagination from
+	 * @param defaultOrder The default sort order to use if none is provided in the JSON
+	 * @param tokenDataToPaginationFunc The function to transform a [TokenData] object into a [TRowPag] object
+	 * @param decodeTokenFunc The function to decode a raw pagination token into a [TRowPag] object
+	 * @return The [TRowPag] object
+	 * @throws PaginationTokenDecodeException If the token provided (if any) is malformed or decoding it fails for another reason
+	 * @since 2.0.0
+	 */
+	suspend inline fun <TRowPag : RowPagination<*, *, *>, reified TOrder : Enum<TOrder>> resolvePaginationFromParameters(
+		params: RequestParameters,
+		defaultOrder: TOrder,
+		tokenDataToPaginationFunc: (tokenData: TokenData<TOrder, *>) -> TRowPag,
+		decodeTokenFunc: suspend (token: String) -> TRowPag
+	): TRowPag {
+		// Check for pagination token
+		// TODO Figure out whether this is all stored in one param
+		val paramsObj = params.queryParameter("pagination").jsonObject
+		val pageToken = paramsObj.getString("page")
+		if(pageToken == null) {
+			// Extract ordering from params
+			val orderStr = params.queryParameter("order").string
+			val order = if(orderStr == null)
+				defaultOrder
+			else
+				enumByNameOr(orderStr, defaultOrder)
+
+			val orderDesc = paramsObj.getBoolean("orderDesc") == true
+
+			// Create token data without a cursor
+			return tokenDataToPaginationFunc(TokenData(
+				sortEnum = order,
+				isSortedByDesc = orderDesc,
+				isPreviousCursor = false,
+				columnValue = null,
+				internalId = null
+			))
+		} else {
+			return decodeTokenFunc(pageToken)
+		}
 	}
 
 	private fun <TSortEnum: Enum<TSortEnum>> decodeTokenCommonParts(bytes: ByteArray, sortEnumValues: Array<TSortEnum>, sortEnumVal: TSortEnum? = null): TokenCommonParts<TSortEnum> {
