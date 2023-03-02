@@ -20,7 +20,7 @@ repositories {
 }
 
 val jvmVersion = 17
-val vertxVersion = "4.3.7"
+val vertxVersion = "4.3.8"
 
 dependencies {
     // Kotlin dependencies
