@@ -8,7 +8,7 @@ import net.termer.twinemedia.util.Some
 import net.termer.twinemedia.util.account.AccountContext
 import net.termer.twinemedia.util.dateStringToOffsetDateTimeOrNone
 import net.termer.twinemedia.util.getOrNone
-import net.termer.twinemedia.util.validation.accountContext
+import net.termer.twinemedia.util.accountContext
 import org.jooq.Condition
 import org.jooq.UpdateQuery
 import org.jooq.impl.DSL.falseCondition

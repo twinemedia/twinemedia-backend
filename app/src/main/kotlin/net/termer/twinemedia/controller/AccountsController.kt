@@ -7,14 +7,15 @@ import net.termer.krestx.api.util.apiSuccess
 import net.termer.krestx.api.util.apiUnauthorizedError
 import net.termer.twinemedia.AppContext
 import net.termer.twinemedia.Constants.API_MAX_RESULT_LIMIT
+import net.termer.twinemedia.dataobject.SingleResultDto
 import net.termer.twinemedia.model.AccountsModel
 import net.termer.twinemedia.model.pagination.AccountPagination.Companion.resolvePaginationFromParameters
 import net.termer.twinemedia.service.CryptoService
 import net.termer.twinemedia.util.*
 import net.termer.twinemedia.util.account.AccountContext
-import net.termer.twinemedia.util.validation.accountContext
-import net.termer.twinemedia.util.validation.apiInvalidCredentialsError
-import net.termer.twinemedia.util.validation.isAuthenticated
+import net.termer.twinemedia.util.accountContext
+import net.termer.twinemedia.util.apiInvalidCredentialsError
+import net.termer.twinemedia.util.isAuthenticated
 
 /**
  * Controller for account-related operations
@@ -36,8 +37,8 @@ class AccountsController(override val appCtx: AppContext, override val ctx: Rout
      * Handler for the "getSelfAccount" operation
      * @since 2.0.0
      */
-    suspend fun getSelfAccount(): ApiResponse {
-        return apiSuccess(accountCtx.selfAccount.toJson())
+    fun getSelfAccount(): ApiResponse {
+        return apiSuccess(SingleResultDto(accountCtx.selfAccount))
     }
 
     /**
@@ -114,7 +115,7 @@ class AccountsController(override val appCtx: AppContext, override val ctx: Rout
         if (selfAccount == null)
             return apiUnauthorizedError()
 
-        return apiSuccess(selfAccount.toJson())
+        return apiSuccess(SingleResultDto(selfAccount))
     }
 
     /**
@@ -134,6 +135,6 @@ class AccountsController(override val appCtx: AppContext, override val ctx: Rout
 
         val res = accountsModel.fetchManyDtosPaginated(pagination, limit, filters)
 
-        return apiSuccess(res.toJson())
+        return apiSuccess(res)
     }
 }

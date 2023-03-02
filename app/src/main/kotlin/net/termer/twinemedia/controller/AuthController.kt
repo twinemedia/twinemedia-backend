@@ -3,7 +3,6 @@ package net.termer.twinemedia.controller
 import io.vertx.ext.web.RoutingContext
 import io.vertx.kotlin.core.json.jsonObjectOf
 import net.termer.krestx.api.util.ApiResponse
-import net.termer.krestx.api.util.apiError
 import net.termer.krestx.api.util.apiSuccess
 import net.termer.twinemedia.AppContext
 import net.termer.twinemedia.model.AccountsModel
@@ -11,7 +10,7 @@ import net.termer.twinemedia.service.CryptoService
 import net.termer.twinemedia.service.RateLimitService
 import net.termer.twinemedia.service.TokenService
 import net.termer.twinemedia.util.some
-import net.termer.twinemedia.util.validation.apiInvalidCredentialsError
+import net.termer.twinemedia.util.apiInvalidCredentialsError
 
 /**
  * Controller for authentication/authorization operations

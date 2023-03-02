@@ -2,7 +2,7 @@ package net.termer.twinemedia.middleware
 
 import io.vertx.core.http.HttpMethod
 import io.vertx.ext.web.RoutingContext
-import net.termer.twinemedia.util.validation.corsAllowHeader
+import net.termer.twinemedia.util.corsAllowHeader
 
 /**
  * Middleware that sets up CORS and other headers for API routes

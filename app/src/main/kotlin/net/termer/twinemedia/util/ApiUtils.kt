@@ -1,4 +1,4 @@
-package net.termer.twinemedia.util.validation
+package net.termer.twinemedia.util
 
 import io.vertx.core.http.HttpServerResponse
 import io.vertx.ext.web.RoutingContext
@@ -63,3 +63,17 @@ fun RoutingContext.accountContext(): AccountContext? = this.get("accountContext"
  * @since 2.0.0
  */
 inline fun apiInvalidCredentialsError() = apiError("invalid_credentials", "Invalid credentials", statusCode = 401)
+
+/**
+ * Wrapper around [net.termer.krestx.api.util.apiSuccess] that accepts [JsonSerializable]
+ * @param obj The JSON-serializable object
+ * @return The response
+ */
+inline fun apiSuccess(obj: JsonSerializable) = net.termer.krestx.api.util.apiSuccess(obj.toJson())
+
+/**
+ * Wrapper around [net.termer.krestx.api.util.apiSuccess] that accepts [SuspendJsonSerializable]
+ * @param obj The JSON-serializable object
+ * @return The response
+ */
+suspend inline fun apiSuccess(obj: SuspendJsonSerializable) = net.termer.krestx.api.util.apiSuccess(obj.toJson())

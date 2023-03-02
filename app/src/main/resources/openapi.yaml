@@ -76,7 +76,11 @@ paths:
                     content:
                         application/json:
                             schema:
-                                $ref: '#/components/schemas/SelfAccount'
+                                type: object
+                                required: ['result']
+                                properties:
+                                    result:
+                                        $ref: '#/components/schemas/SelfAccount'
         put:
             summary: Updates the user's account
             operationId: putSelfAccount
@@ -134,14 +138,19 @@ paths:
                     content:
                         application/json:
                             schema:
-                                $ref: '#/components/schemas/SelfAccount'
+                                type: object
+                                required: ['result']
+                                properties:
+                                    result:
+                                        $ref: '#/components/schemas/SelfAccount'
+
     /accounts:
         get:
+            operationId: getManyAccounts
             summary: Returns many accounts.
             description: |-
                 Permissions:
                   - accounts.list
-            operationId: getManyAccounts
             tags:
                 - accounts
 
@@ -181,6 +190,26 @@ paths:
                                                 items:
                                                     $ref: '#/components/schemas/Account'
                                     -   $ref: '#/components/schemas/ApiPaginatedRes'
+
+    /account/{id}:
+        get:
+            operationId: getOneAccountById
+            summary: Returns the account with the specified ID, or null.
+            description: |-
+                Permissions:
+                  - accounts.list
+            tags:
+                - accounts
+
+            responses:
+                '200':
+                    description: The request user's account info
+                    headers: { }
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/SelfAccount'
+
 components:
     securitySchemes:
         bearerAuth:

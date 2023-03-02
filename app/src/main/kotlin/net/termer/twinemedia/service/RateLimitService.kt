@@ -3,8 +3,7 @@ package net.termer.twinemedia.service
 import io.vertx.ext.web.RoutingContext
 import net.termer.krestx.api.util.ApiErrorResponse
 import net.termer.krestx.api.util.apiError
-import net.termer.krestx.api.util.send
-import net.termer.twinemedia.util.validation.ip
+import net.termer.twinemedia.util.ip
 
 /**
  * Service for handling rate limiting
