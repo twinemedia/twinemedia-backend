@@ -1,6 +1,7 @@
 package net.termer.twinemedia
 
 import io.vertx.core.Vertx
+import io.vertx.core.json.jackson.DatabindCodec
 import io.vertx.kotlin.core.deploymentOptionsOf
 import io.vertx.kotlin.core.json.jsonObjectOf
 import io.vertx.kotlin.coroutines.await
@@ -9,6 +10,7 @@ import kotlinx.coroutines.DelicateCoroutinesApi
 import kotlinx.coroutines.GlobalScope
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.runBlocking
+import net.termer.twinemedia.serializer.MinimalTimeModule
 import net.termer.twinemedia.service.CryptoService
 import net.termer.twinemedia.service.RateLimitService
 import net.termer.twinemedia.service.RedisService
@@ -106,6 +108,10 @@ object App {
 	 * @param config The app config to use
 	 */
 	private fun start(config: AppConfig) {
+		// Register JSON object mappers
+		DatabindCodec.mapper().registerModule(MinimalTimeModule())
+		DatabindCodec.prettyMapper().registerModule(MinimalTimeModule())
+
 		// Create Vert.x instance
 		val vertx = Vertx.vertx()
 
