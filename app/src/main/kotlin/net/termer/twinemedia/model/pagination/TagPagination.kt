@@ -61,7 +61,7 @@ interface TagPagination<TColType>: RowPagination<TagDto, SortOrder, TColType> {
 		 * @throws PaginationTokenDecodeException If the token provided (if any) is malformed or decoding it fails for another reason
 		 * @since 2.0.0
 		 */
-		suspend fun resolvePaginationFromJson(params: RequestParameters): TagPagination<*> {
+		suspend fun resolvePaginationFromParameters(params: RequestParameters): TagPagination<*> {
 			return CommonPagination.resolvePaginationFromParameters(params, SortOrder.CREATED_TS, ::toPagination, ::decodeToken)
 		}
 	}
