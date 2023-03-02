@@ -138,6 +138,10 @@ class AccountsController(override val appCtx: AppContext, override val ctx: Rout
         return apiSuccess(res)
     }
 
+    /**
+     * Handler for the "getOneAccount" operation
+     * @since 2.0.0
+     */
     suspend fun getOneAccount(): ApiResponse {
         if (!accountCtx.hasPermission("accounts.view"))
             return apiUnauthorizedError()
