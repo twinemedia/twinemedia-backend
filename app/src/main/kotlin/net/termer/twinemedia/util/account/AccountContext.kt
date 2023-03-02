@@ -31,7 +31,7 @@ class AccountContext(
         return if(selfAccount.isApiKey && selfAccount.keyPermissions != null)
             (selfAccount.isAdmin || selfAccount.permissions.containsPermission(permission)) && selfAccount.keyPermissions.containsPermission(permission)
         else
-            selfAccount.isApiKey || selfAccount.permissions.containsPermission(permission)
+            selfAccount.isAdmin || selfAccount.permissions.containsPermission(permission)
     }
 
     /**
