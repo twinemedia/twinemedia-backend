@@ -64,7 +64,7 @@ class AccountsController(override val appCtx: AppContext, override val ctx: Rout
         // Handle updating email and/or password
         if (emailRaw != null || passwordRaw != null) {
             if (currentPasswordRaw == null) {
-                return apiError("credentials_required", "Credentials are required to update your email and password")
+                return apiError("credentials_required", lang.credentialsRequired())
             } else {
                 // Fetch the user's account and check the password against the user's password hash
                 val account = AccountsModel.INSTANCE.fetchOneRow(AccountsModel.Filters(whereInternalIdIs = some(accountCtx.selfAccount.internalId)))
@@ -77,7 +77,7 @@ class AccountsController(override val appCtx: AppContext, override val ctx: Rout
                     if (passwordRaw != null)
                         hash = some(CryptoService.INSTANCE.hashPassword(passwordRaw))
                 } else {
-                    return apiInvalidCredentialsError()
+                    return apiInvalidCredentialsError(lang.invalidCredentials())
                 }
             }
         }
@@ -155,4 +155,16 @@ class AccountsController(override val appCtx: AppContext, override val ctx: Rout
 
         return apiSuccess(SingleResultDto(res))
     }
+
+    // TODO Document how this works in OpenAPI first, and make sure to describe accounts.edit.credentials and accounts.edit.permissions
+//    suspend fun putOneAccount(): ApiResponse {
+//        if (!accountCtx.hasPermission("accounts.edit"))
+//            return apiUnauthorizedError()
+//
+//        val id = params.pathParameter("id").string
+//
+//        // Disallow editing self
+//        if (id === accountCtx.selfAccount.id)
+//            return apiError("cannot_edit_self", "You cannot edit your own account", statusCode = 401)
+//    }
 }

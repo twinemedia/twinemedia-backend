@@ -37,11 +37,11 @@ class AuthController(override val appCtx: AppContext, override val ctx: RoutingC
         // Fetch account
         // We use the global AccountsModel here because the request is not yet authenticated, and therefore has no context
         val account = AccountsModel.INSTANCE.fetchOneRow(AccountsModel.Filters(whereEmailIs = some(email)))
-            ?: return apiInvalidCredentialsError()
+            ?: return apiInvalidCredentialsError(lang.invalidCredentials())
 
         // Verify password
         if (!CryptoService.INSTANCE.verifyPassword(password, account.hash))
-            return apiInvalidCredentialsError()
+            return apiInvalidCredentialsError(lang.invalidCredentials())
 
         // All is well; issue token
         return apiSuccess(jsonObjectOf(

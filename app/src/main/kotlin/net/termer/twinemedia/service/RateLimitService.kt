@@ -3,6 +3,7 @@ package net.termer.twinemedia.service
 import io.vertx.ext.web.RoutingContext
 import net.termer.krestx.api.util.ApiErrorResponse
 import net.termer.krestx.api.util.apiError
+import net.termer.twinemedia.AppLang
 import net.termer.twinemedia.util.ip
 
 /**
@@ -142,7 +143,9 @@ class RateLimitService(
     suspend fun rateLimitRequest(ctx: RoutingContext, resource: String, windowSeconds: Int, windowMaxHits: Int, accessor: String = ctx.ip()): ApiErrorResponse? {
         return if (hitAndCheck(resource, windowSeconds, windowMaxHits, accessor)) {
             ctx.response().putHeader("Retry-After", windowSeconds.toString())
-            return apiError("rate_limited", "Rate limited", statusCode = 429)
+
+            val lang = AppLang.fromRequest(ctx)
+            return apiError("rate_limited", lang.rateLimited(), statusCode = 429)
         } else {
             null
         }

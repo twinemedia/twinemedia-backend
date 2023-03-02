@@ -46,4 +46,11 @@ object Constants {
 	 * @since 2.0.0
 	 */
 	const val DEFAULT_REVERSE_PROXY_IP_HEADER = "X-Forwarded-For"
+
+	/**
+	 * The default language code used for translating application text.
+	 * Note that the value is case-insensitive.
+	 * @since 2.0.0
+	 */
+	const val DEFAULT_LANG_CODE = "en-us"
 }

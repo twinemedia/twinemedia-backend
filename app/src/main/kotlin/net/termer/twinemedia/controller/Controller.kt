@@ -6,6 +6,7 @@ import io.vertx.ext.web.validation.RequestParameters
 import io.vertx.ext.web.validation.ValidationHandler
 import net.termer.krestx.api.util.ApiResponse
 import net.termer.twinemedia.AppContext
+import net.termer.twinemedia.AppLang
 
 /**
  * Abstract class to be extended by API controllers.
@@ -37,6 +38,13 @@ abstract class Controller {
      * @since 2.0.0
      */
     protected val bodyParams: RequestParameter by lazy { params.body() }
+
+    /**
+     * The controller instance's [AppLang] using the request's language.
+     * Will not be initialized until it is accessed.
+     * @since 2.0.0
+     */
+    protected val lang: AppLang by lazy { AppLang.fromRequest(ctx) }
 
     /**
      * Initializes the controller.

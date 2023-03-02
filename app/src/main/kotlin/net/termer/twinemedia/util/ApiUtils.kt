@@ -3,6 +3,7 @@ package net.termer.twinemedia.util
 import io.vertx.core.http.HttpServerResponse
 import io.vertx.ext.web.RoutingContext
 import net.termer.krestx.api.util.apiError
+import net.termer.twinemedia.AppLang
 import net.termer.twinemedia.middleware.ReverseProxyIpMiddleware
 import net.termer.twinemedia.util.account.AccountContext
 
@@ -59,10 +60,11 @@ fun RoutingContext.accountContext(): AccountContext? = this.get("accountContext"
 
 /**
  * Returns an API "invalid_credentials" error
+ * @param msg The human-readable error message (for use with [AppLang])
  * @return An API "invalid_credentials" error
  * @since 2.0.0
  */
-inline fun apiInvalidCredentialsError() = apiError("invalid_credentials", "Invalid credentials", statusCode = 401)
+inline fun apiInvalidCredentialsError(msg: String) = apiError("invalid_credentials", msg, statusCode = 401)
 
 /**
  * Wrapper around [net.termer.krestx.api.util.apiSuccess] that accepts [JsonSerializable]
