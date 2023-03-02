@@ -10,7 +10,11 @@ import org.jooq.Field
 import org.jooq.SelectQuery
 import org.jooq.impl.DSL.*
 import java.nio.ByteBuffer
+import java.security.InvalidAlgorithmParameterException
+import java.security.InvalidKeyException
 import java.time.OffsetDateTime
+import javax.crypto.BadPaddingException
+import javax.crypto.IllegalBlockSizeException
 import kotlin.text.Charsets.UTF_8
 
 /**
@@ -119,6 +123,23 @@ object CommonPagination {
 	}
 
 	/**
+	 * Creates a default [RowPagination] instance without a cursor using the provided [TokenData] transformer function and default order
+	 * @param defaultOrder The default sort order to use
+	 * @param tokenDataToPaginationFunc The [TokenData] transformer function to use
+	 * @return The empty [RowPagination] instance
+	 */
+	inline fun <TRowPag : RowPagination<*, *, *>, reified TOrder : Enum<TOrder>> createDefaultPagination(
+		defaultOrder: TOrder,
+		tokenDataToPaginationFunc: (tokenData: TokenData<TOrder, *>) -> TRowPag
+	) = tokenDataToPaginationFunc(TokenData(
+		sortEnum = defaultOrder,
+		isSortedByDesc = false,
+		isPreviousCursor = false,
+		columnValue = null,
+		internalId = null
+	))
+
+	/**
 	 * Resolves a [TRowPag] pagination object based on request parameters.
 	 * [TRowPag] is the implementation of [RowPagination] to be used.
 	 * [TOrder] is the order enum to resolve the order type from.
@@ -138,13 +159,7 @@ object CommonPagination {
 	): TRowPag {
 		// Check for pagination token
 		val paramsObj = params.queryParameter("pagination")?.jsonObject
-			?: return tokenDataToPaginationFunc(TokenData(
-				sortEnum = defaultOrder,
-				isSortedByDesc = false,
-				isPreviousCursor = false,
-				columnValue = null,
-				internalId = null
-			))
+			?: return createDefaultPagination(defaultOrder, tokenDataToPaginationFunc)
 
 		val pageToken = paramsObj.getString("page")
 		if(pageToken == null) {
@@ -166,7 +181,28 @@ object CommonPagination {
 				internalId = null
 			))
 		} else {
-			return decodeTokenFunc(pageToken)
+			// Various exceptions relating to token decryption can be discarded because they are indicative of a malformed or otherwise invalid pagination token.
+
+
+			// termer 2023/03/02:
+			// As horribly repetitive as the below code is, it's the only performant way to return an empty response without using Lazy (which would result in a heap allocation that most of the time will be unused).
+			// I would use a local function, but those aren't supported in inline functions, so I'm stuck with exposing an effectively internal function publicly.
+			// Ironically, catching different types of exceptions in one catch block is a convenience that Java has but Kotlin removed.
+			// Kotlin makes some bad decisions in terms of usability for the sake of "readability", such as removing the ternary operator (but adding the "elvis operator", which is just a weird syntax for what other languages call the "null coalescing operator").
+			// This is the type of thing that soured me on Go, and I'm unhappy everytime I see Kotlin reducing usability for the vague concept of "readability", something that tends to slow down developers who know what they're doing.
+			return try {
+				decodeTokenFunc(pageToken)
+			} catch (e: IllegalArgumentException) {
+				createDefaultPagination(defaultOrder, tokenDataToPaginationFunc)
+			} catch (e: InvalidKeyException) {
+				createDefaultPagination(defaultOrder, tokenDataToPaginationFunc)
+			} catch (e: InvalidAlgorithmParameterException) {
+				createDefaultPagination(defaultOrder, tokenDataToPaginationFunc)
+			} catch (e: IllegalBlockSizeException) {
+				createDefaultPagination(defaultOrder, tokenDataToPaginationFunc)
+			} catch (e: BadPaddingException) {
+				createDefaultPagination(defaultOrder, tokenDataToPaginationFunc)
+			}
 		}
 	}
 
