@@ -137,12 +137,19 @@ object CommonPagination {
 		decodeTokenFunc: suspend (token: String) -> TRowPag
 	): TRowPag {
 		// Check for pagination token
-		// TODO Figure out whether this is all stored in one param
-		val paramsObj = params.queryParameter("pagination").jsonObject
+		val paramsObj = params.queryParameter("pagination")?.jsonObject
+			?: return tokenDataToPaginationFunc(TokenData(
+				sortEnum = defaultOrder,
+				isSortedByDesc = false,
+				isPreviousCursor = false,
+				columnValue = null,
+				internalId = null
+			))
+
 		val pageToken = paramsObj.getString("page")
 		if(pageToken == null) {
 			// Extract ordering from params
-			val orderStr = params.queryParameter("order").string
+			val orderStr = paramsObj.getString("order")
 			val order = if(orderStr == null)
 				defaultOrder
 			else
@@ -190,43 +197,90 @@ object CommonPagination {
 		private val internalIdField: Field<Any>,
 		private val constructor: CommonPaginationConstructor<TRow, TSortEnum, TColType>,
 		private val rowColumnAccessor: CommonRowColumnAccessor<TRow, TColType>
-	): RowPagination<TRow, TSortEnum, TColType> {
+	) : RowPagination<TRow, TSortEnum, TColType> {
 		override suspend fun fetch(
 			query: SelectQuery<*>,
 			limit: Int,
 			mapper: CommonRowMapper<TRow>
 		): RowPagination.Results<TRow, TSortEnum, TColType> {
 			// Apply pagination on query
-			if(columnValue != null && internalId != null) {
+			val useLtAndDesc = isSortedByDesc.oppositeIf(isPreviousCursor)
+			val hasCursor = columnValue != null && internalId != null
+			if (hasCursor) {
 				val row = row(colValField, internalIdField)
 
 				query.addConditions(
-					if (isSortedByDesc.oppositeIf(isPreviousCursor))
+					if (useLtAndDesc)
 						row.lt(row(columnValue, internalId))
 					else
 						row.gt(row(columnValue, internalId))
 				)
 			}
-			query.addLimit(limit)
-			if(isSortedByDesc)
+
+			// Order the query
+			if (useLtAndDesc)
 				query.addOrderBy(colValField.desc(), internalIdField.desc())
 			else
 				query.addOrderBy(colValField, internalIdField)
 
+			// Fetch one more row than we need so that we can determine whether there's a prev/next page
+			query.addLimit(limit + 1)
+
 			// Fetch results
 			val rows = query.fetchManyAwait().map(mapper)
-			val res = if(isPreviousCursor)
+
+			// No need to do anything if no rows were returned; return an empty result object
+			if (rows.isEmpty()) {
+				return RowPagination.Results(
+					results = rows,
+					prevPage = null,
+					nextPage = null,
+				)
+			}
+
+			// Reverse rows if this is the result of a previous cursor query
+			val res = if (isPreviousCursor)
 				rows.asReversed()
 			else
 				rows
 
-			val first = res.first()
-			val last = if(res.size < limit) null else res.last()
+			// The number of rows to return (necessary because we're fetching one extra row)
+			val returnCount = rows.size.coerceAtMost(limit)
+
+			// Determine whether there are prev/next pages based on the returned results length and presence of a cursor
+			val hasPrevPage: Boolean
+			val hasNextPage: Boolean
+			if (isPreviousCursor) {
+				hasPrevPage = res.size > limit
+				hasNextPage = hasCursor && res.isNotEmpty()
+			} else {
+				hasPrevPage = hasCursor && res.isNotEmpty()
+				hasNextPage = res.size > limit
+			}
+
+			// Resolve prev and next pagination values
+			val prevPage = if (hasPrevPage) {
+				val row = res[if (isPreviousCursor) 1 else 0]
+				constructor(isSortedByDesc, true, row.internalId, rowColumnAccessor(row))
+			} else {
+				null
+			}
+			val nextPage = if (hasNextPage) {
+				val row = res[returnCount - 1]
+				constructor(isSortedByDesc, false, row.internalId, rowColumnAccessor(row))
+			} else {
+				null
+			}
 
 			return RowPagination.Results(
-				results = res,
-				prevPage = constructor(isSortedByDesc, true, first.internalId, rowColumnAccessor(first)),
-				nextPage = if(last == null) null else constructor(isSortedByDesc, false, last.internalId, rowColumnAccessor(last))
+				results =
+					if (isPreviousCursor)
+						res.slice(1 until res.size)
+					else
+						res.slice(0 until returnCount),
+
+				prevPage = prevPage,
+				nextPage = nextPage,
 			)
 		}
 
