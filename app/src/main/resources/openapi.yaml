@@ -193,22 +193,38 @@ paths:
 
     /account/{id}:
         get:
-            operationId: getOneAccountById
+            operationId: getOneAccount
             summary: Returns the account with the specified ID, or null.
             description: |-
                 Permissions:
-                  - accounts.list
+                  - accounts.view
             tags:
                 - accounts
 
+            parameters:
+                -   in: path
+                    name: id
+                    required: true
+                    schema:
+                        type: string
+                        minLength: 10
+                        maxLength: 10
+                        description: The account ID
+
             responses:
                 '200':
-                    description: The request user's account info
+                    description: The specified account, or null if not found
                     headers: { }
                     content:
                         application/json:
                             schema:
-                                $ref: '#/components/schemas/SelfAccount'
+                                type: object
+                                required: ['result']
+                                properties:
+                                    result:
+                                        oneOf:
+                                            - $ref: '#/components/schemas/Account'
+                                            - $ref: '#/components/schemas/Nothing'
 
 components:
     securitySchemes:
@@ -218,6 +234,10 @@ components:
             bearerFormat: jwt
             description: An account or API key JWT
     schemas:
+        Nothing:
+            description: Wrapper around `null` to appease various tools
+            enum: [null]
+
         ApiInfo:
             type: object
             description: Info about the API

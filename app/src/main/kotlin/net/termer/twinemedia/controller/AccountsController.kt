@@ -3,7 +3,6 @@ package net.termer.twinemedia.controller
 import io.vertx.ext.web.RoutingContext
 import net.termer.krestx.api.util.ApiResponse
 import net.termer.krestx.api.util.apiError
-import net.termer.krestx.api.util.apiSuccess
 import net.termer.krestx.api.util.apiUnauthorizedError
 import net.termer.twinemedia.AppContext
 import net.termer.twinemedia.Constants.API_MAX_RESULT_LIMIT
@@ -133,8 +132,23 @@ class AccountsController(override val appCtx: AppContext, override val ctx: Rout
 
         val accountsModel = AccountsModel.fromRequest(ctx)
 
+        // Fetch accounts
         val res = accountsModel.fetchManyDtosPaginated(pagination, limit, filters)
 
         return apiSuccess(res)
+    }
+
+    suspend fun getOneAccount(): ApiResponse {
+        if (!accountCtx.hasPermission("accounts.view"))
+            return apiUnauthorizedError()
+
+        val id = params.pathParameter("id").string
+
+        val accountsModel = AccountsModel.fromRequest(ctx)
+
+        // Fetch account
+        val res = accountsModel.fetchOneDto(AccountsModel.Filters(whereIdIs = some(id)))
+
+        return apiSuccess(SingleResultDto(res))
     }
 }
