@@ -4,6 +4,7 @@ import io.vertx.core.Promise
 import io.vertx.core.buffer.Buffer
 import io.vertx.core.json.JsonArray
 import io.vertx.core.json.JsonObject
+import io.vertx.kotlin.core.json.get
 import io.vertx.kotlin.coroutines.await
 import java.net.URLEncoder
 import java.text.SimpleDateFormat
@@ -422,11 +423,37 @@ fun dateStringToOffsetDateTimeOrNone(str: String) = try {
 }
 
 /**
+ * Same as [dateStringToOffsetDateTimeOrNone], but returns [None] if the provided [Option] is [None]
+ * @param str The date string, wrapped in an [Option]
+ * @return The [Option]<[OffsetDateTime]>, or [None] if the date string [Option] is invalid or [None]
+ * @since 2.0.0
+ */
+fun dateStringToOffsetDateTimeOrNone(str: Option<String>) = try {
+	if (str is Some)
+		some(dateStringToOffsetDateTime(str.value))
+	else
+		none()
+} catch (e: DateTimeParseException) {
+	none()
+}
+
+/**
  * Returns [Some]<[T]> or [None]<[T]> if null
  * @return This wrapped in an [Option] object
  * @since 2.0.0
  */
 fun <T> T?.orNone(): Option<T> = if(this == null) none() else some(this)
+
+/**
+ * Returns the value for the specified key in the JSON object, or [None]<[T]> if it does not contain the key
+ * @param key The key
+ * @return The value wrapped in [Some], or [None] if the JSON object does not contain the specified key
+ */
+fun <T> JsonObject.getOrNone(key: String): Option<T> =
+	if (this.containsKey(key))
+		some(this[key])
+	else
+		none<T>()
 
 /**
  * Returns a URL-encoded version of this string using UTF-8 encoding
