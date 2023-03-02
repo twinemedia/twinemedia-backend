@@ -118,7 +118,7 @@ class AccountsController(override val appCtx: AppContext, override val ctx: Rout
     }
 
     /**
-     * Handler for the "putManyAccounts" operation
+     * Handler for the "getManyAccounts" operation
      * @since 2.0.0
      */
     suspend fun getManyAccounts(): ApiResponse {
@@ -132,7 +132,6 @@ class AccountsController(override val appCtx: AppContext, override val ctx: Rout
 
         val accountsModel = AccountsModel.fromRequest(ctx)
 
-        // TODO Add an OpenAPI schema for account filters and standard filters
         val res = accountsModel.fetchManyDtosPaginated(pagination, limit, filters)
 
         return apiSuccess(res.toJson())

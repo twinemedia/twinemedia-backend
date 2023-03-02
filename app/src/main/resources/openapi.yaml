@@ -149,11 +149,19 @@ paths:
                 - in: query
                   name: pagination
                   schema:
-                      $ref: '#/components/schemas/ApiPaginationParams'
+                      allOf:
+                          - $ref: '#/components/schemas/PaginationParams'
+                          - type: object
+                            properties:
+                                order:
+                                    $ref: '#/components/schemas/AccountSortOrder'
+
                 - in: query
-                  name: order
+                  name: filters
                   schema:
-                      $ref: '#/components/schemas/AccountSortOrder'
+                    allOf:
+                        - $ref: '#/components/schemas/StandardFilters'
+                        - $ref: "#/components/schemas/AccountFilters"
 
             responses:
                 '200':
@@ -242,7 +250,7 @@ components:
                     nullable: true
                     description: A token for fetching the next page of results, or null if this is the last page
 
-        ApiPaginationParams:
+        PaginationParams:
             type: object
             description: |
                 Parameters for returning paginated resources.
@@ -253,6 +261,7 @@ components:
                     type: boolean
                     description: Whether to sort results in descending order instead of ascending
                     default: false
+
                 limit:
                     type: integer
                     minimum: 1
@@ -278,6 +287,68 @@ components:
                 - EMAIL_ALPHABETICALLY
                 - FILE_COUNT
             default: 'CREATED_TS'
+
+        StandardFilters:
+            type: object
+            description: Standard filters for most record types
+            properties:
+                whereCreatedBefore:
+                    type: string
+                    format: date-time
+                    description: Matches records created before this time
+
+                whereCreatedAfter:
+                    type: string
+                    format: date-time
+                    description: Matches records created after this time
+
+                whereModifiedBefore:
+                    type: string
+                    format: date-time
+                    description: Matches records modified before this time
+
+                whereModifiedAfter:
+                    type: string
+                    format: date-time
+                    description: Matches records modified after this time
+
+        AccountFilters:
+            type: object
+            description: Filters for account records
+            properties:
+                whereEmailIs:
+                    type: string
+                    format: email
+                    description: Matches records where the email is this (case-insensitive)
+
+                whereAdminStatusIs:
+                    type: boolean
+                    description: Matches records that have this administrator status
+
+                whereFileCountLessThan:
+                    type: integer
+                    minimum: 1
+                    description: Matches records that have fewer files than this
+
+                whereFileCountMoreThan:
+                    type: integer
+                    minimum: 0
+                    description: Matches records that have more files than this
+
+                whereMatchesQuery:
+                    type: string
+                    minLength: 1
+                    description: |
+                        Matches records where their values match this plaintext query.
+                        Search fields can be enabled by setting querySearch* parameters to true.
+
+                querySearchName:
+                    type: boolean
+                    description: Whether `whereMatchesQuery` should search names
+
+                querySearchEmail:
+                    type: boolean
+                    description: Whether `whereMatchesQuery` should search emails
 
         StandardRecord:
             type: object

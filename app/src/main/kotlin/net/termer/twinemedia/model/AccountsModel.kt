@@ -177,24 +177,17 @@ class AccountsModel(context: Context?, ignoreContext: Boolean): Model(context, i
 		override fun setWithParameters(params: RequestParameters) {
 			setStandardFiltersFromParameters(params)
 
-			val emailIsParam = params.queryParameter("whereEmailIs")
-			val adminStatusIsParam = params.queryParameter("whereAdminStatusIs")
-			val fileCountLessThanParam = params.queryParameter("whereFileCountLessThan")
-			val fileCountMoreThanParam = params.queryParameter("whereFileCountMoreThan")
-			val matchesQueryParam = params.queryParameter("whereMatchesQuery")
+			val paramsObj = params.queryParameter("filters")?.jsonObject ?: return
 
-			if (emailIsParam != null)
-				whereEmailIs = some(emailIsParam.string)
-			if (adminStatusIsParam != null)
-				whereAdminStatusIs = some(adminStatusIsParam.boolean)
-			if (fileCountLessThanParam != null)
-				whereFileCountLessThan = some(fileCountLessThanParam.integer)
-			if (fileCountMoreThanParam != null)
-				whereFileCountMoreThan = some(fileCountMoreThanParam.integer)
-			if (matchesQueryParam != null) {
-				whereMatchesQuery = some(matchesQueryParam.string)
-				querySearchName = params.queryParameter("querySearchName")?.boolean == true
-				querySearchEmail = params.queryParameter("querySearchEmail")?.boolean == true
+			whereEmailIs = paramsObj.getOrNone("whereEmailIs")
+			whereAdminStatusIs = paramsObj.getOrNone("whereAdminStatusIs")
+			whereFileCountLessThan = paramsObj.getOrNone("whereFileCountLessThan")
+			whereFileCountMoreThan = paramsObj.getOrNone("whereFileCountMoreThan")
+
+			whereMatchesQuery = paramsObj.getOrNone("whereMatchesQuery")
+			if (whereMatchesQuery is Some) {
+				querySearchName = paramsObj.getBoolean("querySearchName") == true
+				querySearchEmail = paramsObj.getBoolean("querySearchEmail") == true
 			}
 		}
 	}

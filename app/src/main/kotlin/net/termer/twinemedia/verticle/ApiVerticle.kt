@@ -51,7 +51,7 @@ class ApiVerticle: CoroutineVerticle() {
 
 		// Build OpenAPI router
 		val oapiRouter = RouterBuilder.create(vertx, "openapi.yaml").await()
-		oapiRouter.securityHandler("jwt") {
+		oapiRouter.securityHandler("bearerAuth") {
 			wrapRequestHandler(AuthMiddleware(appCtx.config)).handle(it)
 		}
 
@@ -67,6 +67,10 @@ class ApiVerticle: CoroutineVerticle() {
 		oapiRouter.operation("putSelfAccount").handler(wrapApiRequestHandler {
 			val controller = AccountsController(appCtx, it)
 			controller.initialize() ?: controller.putSelfAccount()
+		})
+		oapiRouter.operation("getManyAccounts").handler(wrapApiRequestHandler {
+			val controller = AccountsController(appCtx, it)
+			controller.initialize() ?: controller.getManyAccounts()
 		})
 
 		router.mountApiRouter(CURRENT_API_VERSION, oapiRouter.createRouter())

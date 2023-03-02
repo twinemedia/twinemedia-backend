@@ -1,6 +1,5 @@
 package net.termer.twinemedia.model
 
-import io.vertx.core.json.JsonObject
 import io.vertx.ext.web.RoutingContext
 import io.vertx.ext.web.validation.RequestParameters
 import net.termer.twinemedia.dataobject.StandardRow
@@ -8,6 +7,7 @@ import net.termer.twinemedia.util.Option
 import net.termer.twinemedia.util.Some
 import net.termer.twinemedia.util.account.AccountContext
 import net.termer.twinemedia.util.dateStringToOffsetDateTimeOrNone
+import net.termer.twinemedia.util.getOrNone
 import net.termer.twinemedia.util.validation.accountContext
 import org.jooq.Condition
 import org.jooq.UpdateQuery
@@ -171,19 +171,15 @@ abstract class Model(
 		 * This should be called in the beginning of the [setWithParameters] implementation.
 		 */
 		protected fun setStandardFiltersFromParameters(params: RequestParameters) {
-			val createdBeforeParam = params.queryParameter("whereCreatedBefore")
-			val createdAfterParam = params.queryParameter("whereCreatedAfter")
-			val modBeforeParam = params.queryParameter("whereModifiedBefore")
-			val modAfterParam = params.queryParameter("whereModifiedAfter")
+			val paramsObj = params.queryParameter("filters")?.jsonObject ?: return
 
-			if (createdBeforeParam != null)
-				whereModifiedBefore = dateStringToOffsetDateTimeOrNone(createdBeforeParam.string)
-			if (createdAfterParam != null)
-				whereCreatedAfter = dateStringToOffsetDateTimeOrNone(createdAfterParam.string)
-			if (modBeforeParam != null)
-				whereModifiedBefore = dateStringToOffsetDateTimeOrNone(modBeforeParam.string)
-			if (modAfterParam != null)
-				whereModifiedAfter = dateStringToOffsetDateTimeOrNone(modAfterParam.string)
+			fun dateOrNone(key: String) =
+				dateStringToOffsetDateTimeOrNone(paramsObj.getOrNone(key))
+
+			whereCreatedBefore = dateOrNone("whereCreatedBefore")
+			whereCreatedAfter = dateOrNone("whereCreatedAfter")
+			whereModifiedBefore = dateOrNone("whereModifiedBefore")
+			whereModifiedAfter = dateOrNone("whereModifiedAfter")
 		}
 	}
 
