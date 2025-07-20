@@ -10,7 +10,7 @@ class TwineMediaConfig {
     var upload_location = "file-uploads/"
     var processing_location = "processing-media/"
     var thumbnails_location = "thumbnails/"
-    var max_upload = 1073741824
+    var max_upload: Long = 1073741824
 
     var db_address = "localhost"
     var db_port = 5432

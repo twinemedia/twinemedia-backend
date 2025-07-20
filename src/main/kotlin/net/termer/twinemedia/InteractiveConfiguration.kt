@@ -75,6 +75,7 @@ private fun createAdminPrompt() {
  * Runs an interactive install wizard in the console
  * @since 1.4.0
  */
+@OptIn(ExperimentalStdlibApi::class)
 @DelicateCoroutinesApi
 fun interactiveInstall() {
 	val cfg = File("configs/twinemedia.json")
@@ -130,14 +131,14 @@ fun interactiveInstall() {
 		}
 	}
 
-	var size: Int? = null
+	var size: Long? = null
 	while(size == null) {
 		println("What maximum upload size do you want (in MB)? (${config.max_upload / 1024 / 1024}): ")
 		ln = cons.readLine()
 
 		if(ln != null && ln.trim().isNotBlank()) {
 			try {
-				size = ln.trim().toInt() * 1024 * 1024
+				size = ln.trim().toLong() * 1024 * 1024
 			} catch(e: Exception) {
 				println("!!! Value must be an integer !!!")
 			}
@@ -423,6 +424,7 @@ fun interactiveInstall() {
  * Runs an interactive administrator password reset wizard in the console
  * @since 1.4.0
  */
+@OptIn(ExperimentalStdlibApi::class)
 @DelicateCoroutinesApi
 fun interactiveResetAdminPassword() {
 	val cfg = File("configs/twinemedia.json")
@@ -541,6 +543,7 @@ fun interactiveResetAdminPassword() {
  * Runs an interactive media source migration for 1.4.0 -> 1.5.0 migration
  * @since 1.5.0
  */
+@OptIn(ExperimentalStdlibApi::class)
 @DelicateCoroutinesApi
 fun interactiveMediaSourceMigration() {
 	println("You are about to start the media source migration process. This will create a new media source based on where your files are already stored, and set it as the default for accounts that have not yet been migrated.")
