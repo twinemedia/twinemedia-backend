@@ -1,11 +1,11 @@
-import org.asciidoctor.gradle.jvm.AsciidoctorTask
+//import org.asciidoctor.gradle.jvm.AsciidoctorTask
 
 plugins {
 	// Apply the Kotlin JVM plugin to add support for Kotlin
 	kotlin("jvm") version "1.7.10"
 
 	id("com.github.johnrengelman.shadow") version("7.0.0")
-	id("org.asciidoctor.jvm.convert") version("3.1.0")
+	//id("org.asciidoctor.jvm.convert") version("3.1.0")
 }
 
 repositories {
@@ -14,7 +14,7 @@ repositories {
 
 kotlin {
 	jvmToolchain {
-		languageVersion.set(JavaLanguageVersion.of("8")) // "8"
+		languageVersion.set(JavaLanguageVersion.of("11")) // "8"
 	}
 }
 
@@ -28,6 +28,7 @@ dependencies {
 
 	// Normal dependencies
 	implementation("io.vertx:vertx-auth-jwt:4.1.2")
+	implementation("io.vertx:vertx-codegen:4.5.7")
 	implementation("de.mkammerer:argon2-jvm:2.10.1")
 	implementation("net.bramp.ffmpeg:ffmpeg:0.6.2")
 	implementation("com.fasterxml.jackson.core:jackson-databind:2.10.0")
@@ -47,15 +48,17 @@ dependencies {
 	compileOnly("net.termer.twine:twine:2.1b")
 }
 
-tasks {
+// Commented out because there are broken missing dependencies.
+// Making it compile is more important than docs.
+/*tasks {
 	"asciidoctor"(AsciidoctorTask::class) {
 		setSourceDir(file("docs"))
 		sources(delegateClosureOf<PatternSet> {
-			include("index.adoc"/*, "another.adoc", "third.adoc"*/)
+			include("index.adoc")
 		})
 		setOutputDir(file("build/docs"))
 	}
-}
+}*/
 
 // Task dependencies
 tasks.named("build") {
